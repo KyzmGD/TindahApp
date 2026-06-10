@@ -1,7 +1,5 @@
 # 🔥 TinderApp - Enhanced UI/UX Clone Project
 
-![Tinder Clone Banner](https://img.shields.io/badge/App-Tinder_Clone-ff69b4?style=for-the-badge&logo=tinder)
-![Platform](https://img.shields.io/badge/Platform-Mobile-blue?style=for-the-badge)
 
 Dự án **TinderApp** là một ứng dụng hẹn hò di động được lấy cảm hứng từ Tinder nhưng được nghiên cứu và tinh chỉnh mạnh mẽ về mặt **UI/UX (Giao diện & Trải nghiệm người dùng)**. Mục tiêu cốt lõi là khắc phục những điểm hạn chế về thao tác của phiên bản gốc, tối ưu hóa luồng tương tác và mang lại cảm giác mượt mà, giữ chân người dùng tốt hơn.
 
