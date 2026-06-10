@@ -64,7 +64,7 @@ TinderApp/
 ├── 📄 .env.example            # File mẫu cấu hình các biến môi trường bảo mật
 ├── 📄 package.json / ...      # File quản lý các thư viện phụ thuộc (Dependencies)
 └── 📄 README.md               # Tài liệu hướng dẫn và giới thiệu dự án (File này)
-
+```text
 📝 Mô tả chi tiết các file quan trọng:
 TinderCard: Đây là trái tim của giao diện Home. File này chứa thuật toán xử lý đồ họa, tính toán góc xoay dựa trên khoảng cách kéo dX, dY từ tâm màn hình.
 
