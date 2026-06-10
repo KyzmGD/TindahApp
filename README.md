@@ -64,3 +64,59 @@ TinderApp/
 ├── 📄 .env.example            # File mẫu cấu hình các biến môi trường bảo mật
 ├── 📄 package.json / ...      # File quản lý các thư viện phụ thuộc (Dependencies)
 └── 📄 README.md               # Tài liệu hướng dẫn và giới thiệu dự án (File này)
+
+📝 Mô tả chi tiết các file quan trọng:
+TinderCard: Đây là trái tim của giao diện Home. File này chứa thuật toán xử lý đồ họa, tính toán góc xoay dựa trên khoảng cách kéo dX, dY từ tâm màn hình.
+
+HomeScreen: Chịu trách nhiệm gọi danh sách dữ liệu người dùng từ services, quản lý mảng (array) các thẻ bài, và loại bỏ thẻ sau khi người dùng đã đưa ra quyết định (Like/Dislike).
+
+MatchScreen: File này xử lý các hiệu ứng overlay, làm mờ màn hình nền và kích hoạt âm thanh/hoạt ảnh chúc mừng khi bắt được sự kiện trùng khớp từ database.
+
+🚀 4. Hướng dẫn Cài đặt & Chạy Ứng dụng
+Vui lòng làm theo các bước dưới đây để thiết lập môi trường và khởi chạy ứng dụng trên máy tính của bạn:
+
+📋 Yêu cầu hệ thống trước khi cài đặt (Prerequisites)
+Đã cài đặt Node.js (Phiên bản từ 16.x trở lên) hoặc Flutter SDK (tùy theo môi trường phát triển của bạn).
+
+Đã cài đặt trình quản lý gói: npm hoặc yarn.
+
+Môi trường giả lập hoặc thiết bị thật:
+
+Android: Android Studio và một thiết bị ảo Android (Emulator) đã chạy sẵn.
+
+iOS: Xcode (Yêu cầu hệ điều hành macOS) và thiết bị ảo iOS (Simulator).
+
+⚙️ Quy trình triển khai chi tiết
+Bước 1: Tải mã nguồn về máy
+Mở terminal trên máy tính của bạn và chạy lệnh:
+
+Bash
+git clone [https://github.com/vutuandat17/TinderApp.git](https://github.com/vutuandat17/TinderApp.git)
+cd TinderApp
+Bước 2: Cài đặt các gói thư viện phụ thuộc (Dependencies)
+Cài đặt tất cả các thư viện được định nghĩa trong file cấu hình bằng một trong các lệnh sau:
+
+Bash
+npm install
+# hoặc nếu bạn dùng yarn:
+yarn install
+(Nếu đây là dự án iOS/React Native, hãy chạy thêm lệnh cài thư viện cấu trúc native: cd ios && pod install && cd ..)
+
+Bước 3: Thiết lập cấu hình hệ thống (Environment Variables)
+
+Copy file mẫu môi trường để tạo file cấu hình chính thức:
+
+Bash
+cp .env.example .env
+Mở file .env vừa tạo và điền các thông tin kết nối (như API Key, URL Server, hoặc cấu hình Firebase của riêng bạn).
+
+Bước 4: Khởi chạy ứng dụng
+
+Chạy trên thiết bị/máy ảo Android:
+
+Bash
+npm run android   # Hoặc: npx react-native run-android / flutter run
+Chạy trên thiết bị/máy ảo iOS:
+
+Bash
+npm run ios       # Hoặc: npx react-native run-ios / flutter run
