@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import CardStack from "../components/swipe/CardStack";
 import { discover, sendSwipe } from "../services/swipe.api";
 
 export default function ExploreScreen() {
   const [users, setUsers] = useState([]);
+  const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [matchBanner, setMatchBanner] = useState("");
@@ -12,11 +21,15 @@ export default function ExploreScreen() {
   const loadProfiles = useCallback(async () => {
     const candidates = await discover();
     setUsers(candidates);
+    setRemaining(candidates.length);
   }, []);
 
   useEffect(() => {
     loadProfiles()
-      .catch(() => setUsers([]))
+      .catch(() => {
+        setUsers([]);
+        setRemaining(0);
+      })
       .finally(() => setLoading(false));
   }, [loadProfiles]);
 
@@ -30,7 +43,12 @@ export default function ExploreScreen() {
   };
 
   const handleSwipe = async (user, direction) => {
-    setUsers((current) => current.filter((item) => item._id !== user._id));
+    setUsers((current) => {
+      const updated = current.filter((item) => item._id !== user._id);
+      setRemaining(updated.length);
+      return updated;
+    });
+
     const result = await sendSwipe(user._id, direction);
 
     if (result.isMatch) {
@@ -44,7 +62,9 @@ export default function ExploreScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.logo}>tinder</Text>
-        <Text style={styles.headerAction}>Filters</Text>
+        <Pressable style={styles.filterButton} onPress={refresh}>
+          <Text style={styles.filterText}>Filters</Text>
+        </Pressable>
       </View>
 
       {matchBanner ? (
@@ -55,7 +75,13 @@ export default function ExploreScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#ff4458" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor="#ff4458"
+          />
+        }
       >
         {loading ? (
           <View style={styles.loading}>
@@ -64,6 +90,7 @@ export default function ExploreScreen() {
         ) : (
           <CardStack
             users={users}
+            remaining={remaining}
             onNope={(user) => handleSwipe(user, "nope")}
             onLike={(user) => handleSwipe(user, "like")}
             onSuperLike={(user) => handleSwipe(user, "superlike")}
@@ -72,17 +99,23 @@ export default function ExploreScreen() {
       </ScrollView>
 
       <View style={styles.actions}>
-        <Pressable style={[styles.actionButton, styles.nope]} onPress={() => users[0] && handleSwipe(users[0], "nope")}>
-          <Text style={styles.nopeText}>X</Text>
+        <Pressable
+          style={[styles.actionButton, styles.nope]}
+          onPress={() => users[0] && handleSwipe(users[0], "nope")}
+        >
+          <Text style={styles.nopeText}>✕</Text>
         </Pressable>
         <Pressable
           style={[styles.actionButton, styles.superLike]}
           onPress={() => users[0] && handleSwipe(users[0], "superlike")}
         >
-          <Text style={styles.superLikeText}>S</Text>
+          <Text style={styles.superLikeText}>★</Text>
         </Pressable>
-        <Pressable style={[styles.actionButton, styles.like]} onPress={() => users[0] && handleSwipe(users[0], "like")}>
-          <Text style={styles.likeText}>H</Text>
+        <Pressable
+          style={[styles.actionButton, styles.like]}
+          onPress={() => users[0] && handleSwipe(users[0], "like")}
+        >
+          <Text style={styles.likeText}>♥</Text>
         </Pressable>
       </View>
     </View>
@@ -108,23 +141,30 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: "900",
   },
-  headerAction: {
+  filterButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: "#f4f5f8",
+    borderRadius: 18,
+  },
+  filterText: {
     color: "#626678",
     fontWeight: "800",
   },
   content: {
-    height: 560,
+    flexGrow: 1,
     padding: 16,
   },
   loading: {
     flex: 1,
+    minHeight: 520,
     alignItems: "center",
     justifyContent: "center",
   },
   banner: {
     position: "absolute",
     zIndex: 4,
-    top: 112,
+    top: 120,
     left: 20,
     right: 20,
     borderRadius: 18,
@@ -144,9 +184,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#f7f8fc",
   },
   actionButton: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#fff",
@@ -170,17 +210,16 @@ const styles = StyleSheet.create({
   },
   nopeText: {
     color: "#ff4458",
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "900",
   },
   superLikeText: {
     color: "#2ba7ff",
-    fontSize: 23,
+    fontSize: 28,
     fontWeight: "900",
   },
   likeText: {
     color: "#20c970",
-    fontSize: 24,
-    fontWeight: "900",
+    fontSize: 28,
   },
 });

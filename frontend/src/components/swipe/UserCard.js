@@ -6,35 +6,77 @@ const fallbackImages = [
   "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80",
 ];
 
-export default function UserCard({ user, style }) {
-  const primaryPhoto = user?.photos?.find((photo) => photo.isPrimary)?.url || user?.photos?.[0]?.url;
-  const imageUrl = primaryPhoto || fallbackImages[Math.abs((user?.name || "A").charCodeAt(0)) % fallbackImages.length];
+export default function UserCard({ user, style, remaining = 0 }) {
+  const primaryPhoto =
+    user?.photos?.find((photo) => photo.isPrimary)?.url ||
+    user?.photos?.[0]?.url;
+  const imageUrl =
+    primaryPhoto ||
+    fallbackImages[
+      Math.abs((user?.name || "A").charCodeAt(0)) % fallbackImages.length
+    ];
+  const matchScore = user?.matchScore ?? 92;
+  const interests = (
+    user?.interests || ["Hẹn hò", "Cà phê", "Nhạc indie"]
+  ).slice(0, 3);
+  const extraTags = ["KHÔNG HÚT THUỐC"];
 
   return (
     <View style={[styles.card, style]}>
-      <ImageBackground source={{ uri: imageUrl }} style={styles.image} imageStyle={styles.imageRadius}>
+      <ImageBackground
+        source={{ uri: imageUrl }}
+        style={styles.image}
+        imageStyle={styles.imageRadius}
+      >
         <View style={styles.scrim} />
+
+        <View style={styles.topOverlay}>
+          <View style={styles.headerBadge}>
+            <Text style={styles.badgeText}>{`${remaining} LEFT`}</Text>
+          </View>
+          <View style={styles.matchBadge}>
+            <Text style={styles.matchScore}>{matchScore}%</Text>
+            <Text style={styles.matchLabel}>TƯƠNG HỢP</Text>
+          </View>
+        </View>
+
         <View style={styles.content}>
-          <Text style={styles.name} numberOfLines={1}>
-            {user?.name || "New profile"}
-            {user?.age ? <Text style={styles.age}> {user.age}</Text> : null}
-          </Text>
+          <View style={styles.profileRow}>
+            <Text style={styles.name} numberOfLines={1}>
+              {user?.name || "New profile"}
+              {user?.age ? <Text style={styles.age}> {user.age}</Text> : null}
+            </Text>
+          </View>
+
           {user?.jobTitle || user?.school ? (
             <Text style={styles.meta} numberOfLines={1}>
               {[user.jobTitle, user.school].filter(Boolean).join(" at ")}
             </Text>
           ) : null}
-          {user?.bio ? (
-            <Text style={styles.bio} numberOfLines={2}>
-              {user.bio}
-            </Text>
-          ) : null}
-          <View style={styles.tags}>
-            {(user?.interests || []).slice(0, 3).map((interest) => (
-              <Text key={interest} style={styles.tag}>
-                {interest}
-              </Text>
+
+          <View style={styles.tagRow}>
+            {interests.map((interest) => (
+              <View key={interest} style={styles.tagBubble}>
+                <Text style={styles.tagBubbleText}>{interest}</Text>
+              </View>
             ))}
+          </View>
+
+          <View style={styles.tagRowBottom}>
+            {extraTags.map((tag) => (
+              <View key={tag} style={styles.tagBubbleSecondary}>
+                <Text style={styles.tagBubbleSecondaryText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.promptCard}>
+          <Text style={styles.promptText} numberOfLines={2}>
+            {user?.bio || "Chưa có giới thiệu, hãy thử bắt chuyện!"}
+          </Text>
+          <View style={styles.commentButton}>
+            <Text style={styles.commentText}>Bình luận...</Text>
           </View>
         </View>
       </ImageBackground>
@@ -55,51 +97,128 @@ const styles = StyleSheet.create({
   },
   image: {
     flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
   },
   imageRadius: {
     borderRadius: 22,
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.22)",
+    backgroundColor: "rgba(0,0,0,0.28)",
+  },
+  topOverlay: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 18,
+    zIndex: 2,
+  },
+  headerBadge: {
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  badgeText: {
+    color: "#1d2233",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  matchBadge: {
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: "center",
+  },
+  matchScore: {
+    color: "#1d2233",
+    fontWeight: "900",
+    fontSize: 16,
+  },
+  matchLabel: {
+    color: "#6b7280",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
   },
   content: {
-    padding: 22,
-    gap: 8,
+    paddingHorizontal: 22,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  profileRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   name: {
     color: "#fff",
     fontSize: 34,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   age: {
-    fontWeight: "500",
+    fontWeight: "600",
   },
   meta: {
-    color: "#fff",
+    color: "#f3f4f8",
     fontSize: 15,
     fontWeight: "700",
   },
-  bio: {
-    color: "#f3f4f8",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  tags: {
+  tagRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 4,
   },
-  tag: {
+  tagRowBottom: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  tagBubble: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tagBubbleText: {
     color: "#fff",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.5)",
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
     fontSize: 12,
     fontWeight: "700",
+  },
+  tagBubbleSecondary: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tagBubbleSecondaryText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  promptCard: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    margin: 20,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  promptText: {
+    color: "#1d2233",
+    fontSize: 14,
+    flex: 1,
+  },
+  commentButton: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  commentText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 12,
   },
 });

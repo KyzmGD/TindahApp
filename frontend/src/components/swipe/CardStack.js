@@ -2,7 +2,13 @@ import { Animated, StyleSheet, Text, View } from "react-native";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 import UserCard from "./UserCard";
 
-export default function CardStack({ users, onLike, onNope, onSuperLike }) {
+export default function CardStack({
+  users,
+  remaining,
+  onLike,
+  onNope,
+  onSuperLike,
+}) {
   const currentUser = users[0];
   const nextUser = users[1];
   const { panHandlers, cardStyle } = useSwipeGesture({
@@ -15,16 +21,31 @@ export default function CardStack({ users, onLike, onNope, onSuperLike }) {
     return (
       <View style={[styles.card, styles.empty]}>
         <Text style={styles.emptyTitle}>No more profiles</Text>
-        <Text style={styles.emptyText}>Check back later or widen your distance filters.</Text>
+        <Text style={styles.emptyText}>
+          Check back later or widen your distance filters.
+        </Text>
       </View>
     );
   }
 
   return (
     <View style={styles.stack}>
-      {nextUser ? <UserCard user={nextUser} style={[styles.card, styles.nextCard]} /> : null}
-      <Animated.View {...panHandlers} style={[styles.card, styles.activeCard, cardStyle]}>
-        <UserCard user={currentUser} style={StyleSheet.absoluteFill} />
+      {nextUser ? (
+        <UserCard
+          user={nextUser}
+          style={[styles.card, styles.nextCard]}
+          remaining={Math.max(remaining - 1, 0)}
+        />
+      ) : null}
+      <Animated.View
+        {...panHandlers}
+        style={[styles.card, styles.activeCard, cardStyle]}
+      >
+        <UserCard
+          user={currentUser}
+          style={StyleSheet.absoluteFill}
+          remaining={remaining}
+        />
       </Animated.View>
     </View>
   );
