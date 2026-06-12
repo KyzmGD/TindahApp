@@ -1,13 +1,15 @@
 {
   "name": "back-end",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend API for a Tinder-style dating app clone.",
+  "main": "src/server.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "jest --runInBand"
   },
   "keywords": [],
   "author": "",
