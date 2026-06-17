@@ -13,10 +13,21 @@ const photoSchema = new mongoose.Schema(
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    // unique: true ở đây đã tự động tạo Unique Index rồi
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     passwordHash: { type: String, required: true, select: false },
     birthDate: Date,
-    gender: { type: String, enum: ["woman", "man", "nonbinary", "other"], default: "other" },
+    gender: {
+      type: String,
+      enum: ["woman", "man", "nonbinary", "other"],
+      default: "other",
+    },
     interestedIn: {
       type: [String],
       enum: ["woman", "man", "nonbinary", "other"],
@@ -44,8 +55,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Giữ lại index cho tọa độ để query tìm kiếm vị trí xung quanh (App Tinder)
 userSchema.index({ location: "2dsphere" });
-userSchema.index({ email: 1 }, { unique: true });
+
+// ❌ ĐÃ XÓA DÒNG KHAI BÁO INDEX EMAIL TRÙNG LẶP Ở ĐÂY
 
 userSchema.virtual("age").get(function getAge() {
   if (!this.birthDate) return null;
