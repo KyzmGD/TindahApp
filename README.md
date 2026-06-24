@@ -72,7 +72,7 @@ Dự án **TinderApp** là một ứng dụng hẹn hò di động được lấ
 
 - **Frontend/Mobile Framework:** React Native / Flutter / Native Android-iOS _(Có thể tùy chỉnh theo code thực tế của bạn)_.
 - **Xử lý Animation:** Sử dụng thư viện chuyên sâu về hoạt ảnh hiệu năng cao (như Reanimated hoặc Core Animation).
-- **Backend & Cơ sở dữ liệu:** Firebase (Auth, Firestore, Cloud Messaging) hoặc REST API kết hợp cơ sở dữ liệu để lưu trữ luồng dữ liệu của User.
+- **Backend & Cơ sở dữ liệu:** MONGODB
 
 ---
 
