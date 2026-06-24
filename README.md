@@ -9,6 +9,7 @@ Full-stack starter for a Tinder-style dating app clone.
 - `docs`: project documents.
 
 ## Run Backend
++ npm install cors ( cai dat thu vien cors )
 
 ```bash
 cd back-end
