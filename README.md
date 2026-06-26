@@ -303,12 +303,14 @@ EXPO_PUBLIC_SOCKET_URL=
 
 ### Login Screen
 
-<img width="1919" height="964" alt="image" src="https://github.com/user-attachments/assets/d792b7df-7c97-4883-bdf5-d3c755e2486b" />
+<img width="1918" height="964" alt="image" src="https://github.com/user-attachments/assets/846e3e9c-c7a3-4e1d-9994-62a75d95d70b" />
+
 
 
 ### Matching Screen
 
-<img width="1919" height="964" alt="image" src="https://github.com/user-attachments/assets/cba8dc79-9568-4797-ba46-014da740de14" />
+<img width="1916" height="964" alt="image" src="https://github.com/user-attachments/assets/b4fa57dd-4799-4f7e-9180-b86247c026e1" />
+
 
 
 ### Chat Screen
@@ -316,9 +318,10 @@ EXPO_PUBLIC_SOCKET_URL=
 <img width="1919" height="962" alt="image" src="https://github.com/user-attachments/assets/a65a1c67-b20a-4448-863f-fc50ea264469" />
 
 
+
 ### Profile Screen
 
-<img width="1919" height="963" alt="image" src="https://github.com/user-attachments/assets/fcf57fd7-9464-48b1-95ef-9edce9365eb9" />
+<img width="1917" height="964" alt="image" src="https://github.com/user-attachments/assets/d31a49dc-1c5e-4a80-9c00-232beafe1811" />
 
 
 
