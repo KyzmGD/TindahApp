@@ -69,7 +69,7 @@ export default function ExploreScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.logo}>tinder</Text>
+        <Text style={styles.logo}>tindah</Text>
         <Pressable style={styles.filterButton} onPress={refresh}>
           <Text style={styles.filterText}>Filters</Text>
         </Pressable>
