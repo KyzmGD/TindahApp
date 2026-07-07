@@ -94,7 +94,7 @@ React Native
 ## Project Structure
 
 ```text
-tddemo/
+TindahApp/
 │
 ├── frontend/
 │   ├── src/
@@ -132,9 +132,9 @@ tddemo/
 ## Clone Repository
 
 ```bash
-git clone https://github.com/KyzmGD/tddemo.git
+git clone https://github.com/KyzmGD/TindahApp.git
 
-cd tddemo
+cd TindahApp
 ```
 
 ---
