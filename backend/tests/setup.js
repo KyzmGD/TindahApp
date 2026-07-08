@@ -1,4 +1,9 @@
 const mongoose = require("mongoose");
+const path = require("path");
+
+process.env.MONGOMS_DOWNLOAD_DIR = path.join(__dirname, "..", ".cache", "mongodb-binaries");
+process.env.MONGOMS_DISABLE_POSTINSTALL = "1";
+
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongoServer;
@@ -20,5 +25,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
-  await mongoServer.stop();
+  if (mongoServer) {
+    await mongoServer.stop();
+  }
 });

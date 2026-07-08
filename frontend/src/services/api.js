@@ -22,8 +22,10 @@ export function setAuthToken(token) {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || error.message || "Network error";
-    return Promise.reject(new Error(message));
+    const apiError = new Error(error.response?.data?.message || error.message || "Network error");
+    apiError.details = error.response?.data?.details;
+    apiError.status = error.response?.status;
+    return Promise.reject(apiError);
   },
 );
 

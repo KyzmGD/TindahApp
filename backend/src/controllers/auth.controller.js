@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const asyncHandler = require("../utils/asyncHandler");
+const { hasValidationErrors, validateLoginPayload, validateRegisterPayload } = require("../utils/authValidation");
 const httpError = require("../utils/httpError");
 
 function signToken(user) {
@@ -16,26 +17,24 @@ function signToken(user) {
 
 const register = asyncHandler(async (req, res) => {
   const { name, email, password, birthDate, gender } = req.body;
+  const validationErrors = validateRegisterPayload(req.body);
 
-  if (!name || !email || !password) {
-    throw httpError(400, "Name, email and password are required");
+  if (hasValidationErrors(validationErrors)) {
+    throw httpError(400, "Please fix the highlighted fields.", validationErrors);
   }
 
-  if (password.length < 8) {
-    throw httpError(400, "Password must be at least 8 characters");
-  }
-
-  const existingUser = await User.findOne({ email });
+  const normalizedEmail = email.trim().toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
-    throw httpError(409, "Email is already registered");
+    throw httpError(409, "Email is already registered", { email: "Email is already registered." });
   }
 
   const passwordHash = await User.hashPassword(password);
   const user = await User.create({
-    name,
-    email,
+    name: name.trim(),
+    email: normalizedEmail,
     passwordHash,
-    birthDate,
+    birthDate: new Date(`${birthDate}T00:00:00.000Z`),
     gender,
   });
 
@@ -47,12 +46,13 @@ const register = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const validationErrors = validateLoginPayload(req.body);
 
-  if (!email || !password) {
-    throw httpError(400, "Email and password are required");
+  if (hasValidationErrors(validationErrors)) {
+    throw httpError(400, "Please fix the highlighted fields.", validationErrors);
   }
 
-  const user = await User.findOne({ email }).select("+passwordHash");
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+passwordHash");
   if (!user || !(await user.comparePassword(password))) {
     throw httpError(401, "Invalid email or password");
   }
