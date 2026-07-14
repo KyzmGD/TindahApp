@@ -29,13 +29,15 @@ async function registerUser(overrides = {}) {
 describe("auth integration", () => {
   it("registers, stores, logs in, and restores the created account", async () => {
     const password = "password123";
-    const registerResponse = await request(app).post("/api/auth/register").send({
-      name: "Alex Stored",
-      email: "alex@example.com",
-      password,
-      birthDate: "1997-03-14",
-      gender: "woman",
-    });
+    const registerResponse = await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Alex Stored",
+        email: "alex@example.com",
+        password,
+        birthDate: "1997-03-14",
+        gender: "woman",
+      });
 
     expect(registerResponse.status).toBe(201);
     expect(registerResponse.body.token).toEqual(expect.any(String));
@@ -46,17 +48,23 @@ describe("auth integration", () => {
       gender: "woman",
     });
 
-    const storedUser = await User.findOne({ email: "alex@example.com" }).select("+passwordHash");
+    const storedUser = await User.findOne({ email: "alex@example.com" }).select(
+      "+passwordHash",
+    );
     expect(storedUser).toBeTruthy();
     expect(storedUser.passwordHash).toEqual(expect.any(String));
     expect(storedUser.passwordHash).not.toBe(password);
     await expect(storedUser.comparePassword(password)).resolves.toBe(true);
 
-    const duplicateResponse = await request(app).post("/api/auth/register").send({
-      name: "Alex Duplicate",
-      email: "alex@example.com",
-      password,
-    });
+    const duplicateResponse = await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Alex Duplicate",
+        email: "alex@example.com",
+        password,
+        birthDate: "1997-03-14",
+        gender: "woman",
+      });
     expect(duplicateResponse.status).toBe(409);
 
     const loginResponse = await request(app).post("/api/auth/login").send({
@@ -168,7 +176,10 @@ describe("match-gated chat integration", () => {
   });
 
   it("blocks chat access after unmatching", async () => {
-    const alice = await registerUser({ name: "Alice", email: "alice2@example.com" });
+    const alice = await registerUser({
+      name: "Alice",
+      email: "alice2@example.com",
+    });
     const bob = await registerUser({ name: "Bob", email: "bob2@example.com" });
 
     await request(app)
