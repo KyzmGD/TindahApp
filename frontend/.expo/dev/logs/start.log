@@ -490,3 +490,11 @@
 {"_e":"metro:client_log","_t":1783994793849,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
 {"_e":"metro:client_log","_t":1783994793850,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
 {"_e":"metro:client_log","_t":1783994793921,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:bundling:started","_t":1784004399178,"id":"a","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784004399182,"id":"a","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784004399204,"id":"a","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1784004399386,"id":"a","total":1,"ms":205.1435}
+{"_e":"metro:client_log","_t":1784004399842,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784004399843,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784004399843,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784004399959,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
