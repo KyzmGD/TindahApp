@@ -244,3 +244,43 @@
 {"_e":"metro:client_log","_t":1784036758239,"level":"log","data":["currentUser:","undefined"]}
 {"_e":"metro:client_log","_t":1784036758255,"level":"log","data":["users length:","0"]}
 {"_e":"metro:client_log","_t":1784036758255,"level":"log","data":["currentUser:","undefined"]}
+{"_e":"root:init","_t":1784038440142,"format":"v0-jsonl","version":"56.1.16"}
+{"_e":"env:mode","_t":1784038440143,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784038440147,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1784038440437,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784038440883,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1784038444921,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1784038468094,"id":"1","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784038468095,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784038468098,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784038468199,"id":"1","progress":0.10053539559785842,"total":164,"current":52}
+{"_e":"metro:bundling:progress","_t":1784038468299,"id":"1","progress":0.24136507666719276,"total":287,"current":141}
+{"_e":"metro:bundling:progress","_t":1784038468402,"id":"1","progress":0.37243969205232735,"total":467,"current":285}
+{"_e":"metro:bundling:progress","_t":1784038468506,"id":"1","progress":0.6477608645720542,"total":579,"current":466}
+{"_e":"metro:bundling:progress","_t":1784038468606,"id":"1","progress":0.6849740304709141,"total":760,"current":629}
+{"_e":"metro:bundling:progress","_t":1784038468706,"id":"1","progress":0.7619385034688437,"total":889,"current":776}
+{"_e":"metro:bundling:progress","_t":1784038468806,"id":"1","progress":0.9392933646667484,"total":1038,"current":1006}
+{"_e":"metro:bundling:done","_t":1784038468896,"id":"1","total":1038,"ms":802.2659}
+{"_e":"metro:client_log","_t":1784038469185,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784038469185,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1784038469186,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784038469186,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784038489087,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:client_log","_t":1784038489154,"level":"log","data":["users length:","3"]}
+{"_e":"metro:client_log","_t":1784038489155,"level":"log","data":["currentUser:","6a3e5dc0e3965fb71c53d0a2"]}
+{"_e":"metro:client_log","_t":1784038490045,"level":"warn","data":["Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md"]}
+{"_e":"metro:client_log","_t":1784038495590,"level":"log","data":["HANDLE SWIPE:","6a3e5dc0e3965fb71c53d0a2","nope"]}
+{"_e":"metro:client_log","_t":1784038495590,"level":"log","data":["BEFORE:","3"]}
+{"_e":"metro:client_log","_t":1784038495590,"level":"log","data":["AFTER:","2"]}
+{"_e":"metro:client_log","_t":1784038495594,"level":"log","data":["users length:","2"]}
+{"_e":"metro:client_log","_t":1784038495595,"level":"log","data":["currentUser:","6a3e5e2ae3965fb71c53d0a3"]}
+{"_e":"metro:client_log","_t":1784038498191,"level":"log","data":["HANDLE SWIPE:","6a3e5e2ae3965fb71c53d0a3","like"]}
+{"_e":"metro:client_log","_t":1784038498191,"level":"log","data":["BEFORE:","2"]}
+{"_e":"metro:client_log","_t":1784038498191,"level":"log","data":["AFTER:","1"]}
+{"_e":"metro:client_log","_t":1784038498196,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784038498196,"level":"log","data":["currentUser:","6a56393376faef0cc04e9c90"]}
+{"_e":"metro:client_log","_t":1784038500068,"level":"log","data":["HANDLE SWIPE:","6a56393376faef0cc04e9c90","nope"]}
+{"_e":"metro:client_log","_t":1784038500069,"level":"log","data":["BEFORE:","1"]}
+{"_e":"metro:client_log","_t":1784038500069,"level":"log","data":["AFTER:","0"]}
+{"_e":"metro:client_log","_t":1784038500072,"level":"log","data":["users length:","0"]}
+{"_e":"metro:client_log","_t":1784038500072,"level":"log","data":["currentUser:","undefined"]}
