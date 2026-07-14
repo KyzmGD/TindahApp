@@ -32,24 +32,24 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
         <View style={styles.topOverlay}>
           <View style={styles.headerBadge}>
-            <Text style={styles.badgeText}>{`${remaining} LEFT`}</Text>
+            <Text selectable={false} style={styles.badgeText}>{`${remaining} LEFT`}</Text>
           </View>
           <View style={styles.matchBadge}>
-            <Text style={styles.matchScore}>{matchScore}%</Text>
-            <Text style={styles.matchLabel}>TƯƠNG HỢP</Text>
+            <Text selectable={false} style={styles.matchScore}>{matchScore}%</Text>
+            <Text selectable={false} style={styles.matchLabel}>TƯƠNG HỢP</Text>
           </View>
         </View>
 
         <View style={styles.content}>
           <View style={styles.profileRow}>
-            <Text style={styles.name} numberOfLines={1}>
+            <Text selectable={false} style={styles.name} numberOfLines={1}>
               {user?.name || "New profile"}
-              {user?.age ? <Text style={styles.age}> {user.age}</Text> : null}
+              {user?.age ? <Text selectable={false} style={styles.age}> {user.age}</Text> : null}
             </Text>
           </View>
 
           {user?.jobTitle || user?.school ? (
-            <Text style={styles.meta} numberOfLines={1}>
+            <Text selectable={false} style={styles.meta} numberOfLines={1}>
               {[user.jobTitle, user.school].filter(Boolean).join(" at ")}
             </Text>
           ) : null}
@@ -57,7 +57,7 @@ export default function UserCard({ user, style, remaining = 0 }) {
           <View style={styles.tagRow}>
             {interests.map((interest) => (
               <View key={interest} style={styles.tagBubble}>
-                <Text style={styles.tagBubbleText}>{interest}</Text>
+                <Text selectable={false} style={styles.tagBubbleText}>{interest}</Text>
               </View>
             ))}
           </View>
@@ -65,18 +65,18 @@ export default function UserCard({ user, style, remaining = 0 }) {
           <View style={styles.tagRowBottom}>
             {extraTags.map((tag) => (
               <View key={tag} style={styles.tagBubbleSecondary}>
-                <Text style={styles.tagBubbleSecondaryText}>{tag}</Text>
+                <Text selectable={false} style={styles.tagBubbleSecondaryText}>{tag}</Text>
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.promptCard}>
-          <Text style={styles.promptText} numberOfLines={2}>
+          <Text selectable={false} style={styles.promptText} numberOfLines={2}>
             {user?.bio || "Chưa có giới thiệu, hãy thử bắt chuyện!"}
           </Text>
           <View style={styles.commentButton}>
-            <Text style={styles.commentText}>Bình luận...</Text>
+            <Text selectable={false} style={styles.commentText}>Bình luận...</Text>
           </View>
         </View>
       </ImageBackground>
@@ -86,14 +86,17 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
-    backgroundColor: "#111",
-    overflow: "hidden",
-    shadowColor: "#1b1d28",
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+  borderRadius: 22,
+  backgroundColor: "#111",
+  overflow: "hidden",
+  shadowColor: "#1b1d28",
+  shadowOpacity: 0.18,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 12 },
+  elevation: 8,
+
+  // Web fixes
+  userSelect: "none",
   },
   image: {
     flex: 1,
@@ -113,34 +116,38 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerBadge: {
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  badgeText: {
-    color: "#1d2233",
-    fontWeight: "800",
-    fontSize: 13,
-  },
+  backgroundColor: "rgba(255,255,255,0.35)",
+  borderRadius: 14,
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+
+  alignSelf: "flex-start",
+},
+ badgeText: {
+  color: "#fff",
+  fontWeight: "800",
+  fontSize: 13,
+},
   matchBadge: {
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: "center",
-  },
+  backgroundColor: "rgba(255,255,255,0.35)",
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.2)",
+  borderRadius: 18,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  alignItems: "center",
+},
   matchScore: {
-    color: "#1d2233",
-    fontWeight: "900",
-    fontSize: 16,
-  },
+  color: "#fff",
+  fontWeight: "900",
+  fontSize: 16,
+},
   matchLabel: {
-    color: "#6b7280",
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 2,
-  },
+  color: "rgba(255,255,255,0.85)",
+  fontSize: 11,
+  fontWeight: "700",
+  marginTop: 2,
+},
   content: {
     paddingHorizontal: 22,
     paddingBottom: 14,

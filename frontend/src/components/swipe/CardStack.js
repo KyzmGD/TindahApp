@@ -2,6 +2,7 @@ import { Animated, StyleSheet, Text, View } from "react-native";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 import UserCard from "./UserCard";
 
+
 export default function CardStack({
   users,
   remaining,
@@ -10,16 +11,18 @@ export default function CardStack({
   onSuperLike,
 }) {
   const currentUser = users[0];
+  console.log("users length:", users.length);
+console.log("currentUser:", currentUser?._id);
   const nextUser = users[1];
   const { panHandlers, cardStyle } = useSwipeGesture({
-    onSwipeLeft: () => currentUser && onNope?.(currentUser),
-    onSwipeRight: () => currentUser && onLike?.(currentUser),
-    onSwipeUp: () => currentUser && onSuperLike?.(currentUser),
-  });
-
+  currentUser,
+  onSwipeLeft: onNope,
+  onSwipeRight: onLike,
+  onSwipeUp: onSuperLike,
+});
   if (!currentUser) {
     return (
-      <View style={[styles.card, styles.empty]}>
+      <View style={styles.empty}>
         <Text style={styles.emptyTitle}>No more profiles</Text>
         <Text style={styles.emptyText}>
           Check back later or widen your distance filters.
@@ -38,15 +41,23 @@ export default function CardStack({
         />
       ) : null}
       <Animated.View
-        {...panHandlers}
-        style={[styles.card, styles.activeCard, cardStyle]}
-      >
-        <UserCard
-          user={currentUser}
-          style={StyleSheet.absoluteFill}
-          remaining={remaining}
-        />
-      </Animated.View>
+  key={currentUser?._id}
+  {...panHandlers}
+  style={[
+    styles.card,
+    styles.activeCard,
+    cardStyle,
+    styles.swipeCard,
+  ]}
+>
+  <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <UserCard
+      user={currentUser}
+      style={StyleSheet.absoluteFill}
+      remaining={remaining}
+    />
+  </View>
+</Animated.View>
     </View>
   );
 }
@@ -66,18 +77,23 @@ const styles = StyleSheet.create({
   activeCard: {
     zIndex: 2,
   },
+  swipeCard: {
+  userSelect: "none",
+},
   nextCard: {
     transform: [{ scale: 0.96 }, { translateY: 14 }],
     opacity: 0.9,
   },
   empty: {
-    borderRadius: 22,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 8,
-  },
+  flex: 1,
+  minHeight: 500,
+  borderRadius: 22,
+  backgroundColor: "#fff",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 24,
+  gap: 8,
+},
   emptyTitle: {
     fontSize: 22,
     fontWeight: "800",
