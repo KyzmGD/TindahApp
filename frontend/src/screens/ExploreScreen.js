@@ -48,23 +48,37 @@ export default function ExploreScreen() {
   };
 
   const handleSwipe = async (user, direction) => {
-    setUsers((current) => current.filter((item) => item._id !== user._id));
-    setRemaining((current) => Math.max(current - 1, 0));
+  console.log("HANDLE SWIPE:", user?._id, direction);
 
-    try {
-      const result = await sendSwipe(user._id, direction);
+  setUsers((current) => {
+    console.log("BEFORE:", current.length);
 
-      if (result.isMatch) {
-        const name = user.name || "someone";
-        setMatchBanner(`You matched with ${name}`);
-        setTimeout(() => setMatchBanner(""), 2500);
-      }
-    } catch (swipeError) {
-      setUsers((current) => [user, ...current]);
-      setRemaining((current) => current + 1);
-      setError(swipeError.message);
+    const next = current.filter(
+      (item) => item._id !== user._id
+    );
+
+    console.log("AFTER:", next.length);
+
+    return next;
+  });
+
+
+  setRemaining((current) => Math.max(current - 1, 0));
+
+  try {
+    const result = await sendSwipe(user._id, direction);
+
+    if (result.isMatch) {
+      const name = user.name || "someone";
+      setMatchBanner(`You matched with ${name}`);
+      setTimeout(() => setMatchBanner(""), 2500);
     }
-  };
+  } catch (swipeError) {
+    setUsers((current) => [user, ...current]);
+    setRemaining((current) => current + 1);
+    setError(swipeError.message);
+  }
+};
 
   return (
     <View style={styles.screen}>
@@ -143,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f7f8fc",
   },
   header: {
-    paddingTop: 58,
+    paddingTop: 16,
     paddingHorizontal: 20,
     paddingBottom: 14,
     flexDirection: "row",
