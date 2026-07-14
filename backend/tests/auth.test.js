@@ -66,6 +66,17 @@ describe("auth routes", () => {
     });
   });
 
+  it("supports the versioned /api/v1/auth/register route", async () => {
+    const payload = buildRegisterPayload({ email: "v1-auth@example.com" });
+    const response = await request(app)
+      .post("/api/v1/auth/register")
+      .send(payload);
+
+    expect(response.status).toBe(201);
+    expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body.user.email).toBe(payload.email);
+  });
+
   it("rejects duplicate email during registration", async () => {
     const payload = buildRegisterPayload({ email: "duplicate@example.com" });
 

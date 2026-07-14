@@ -8,7 +8,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
   if (!token) {
-    throw httpError(401, "Authentication token is required");
+    return next(httpError(401, "Authentication token is required"));
   }
 
   let decoded;
@@ -16,17 +16,17 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret");
   } catch (error) {
-    throw httpError(401, "Invalid or expired authentication token");
+    return next(httpError(401, "Invalid or expired authentication token"));
   }
 
   const user = await User.findById(decoded.sub);
 
   if (!user) {
-    throw httpError(401, "User no longer exists");
+    return next(httpError(401, "User no longer exists"));
   }
 
   req.user = user;
-  next();
+  return next();
 });
 
 module.exports = authMiddleware;

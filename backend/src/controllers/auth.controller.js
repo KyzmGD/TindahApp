@@ -1,7 +1,12 @@
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const asyncHandler = require("../utils/asyncHandler");
-const { hasValidationErrors, validateLoginPayload, validateRegisterPayload } = require("../utils/authValidation");
+const {
+  hasValidationErrors,
+  validateLoginPayload,
+  validateRegisterPayload,
+} = require("../utils/authValidation");
 const httpError = require("../utils/httpError");
 
 function signToken(user) {
@@ -15,23 +20,37 @@ function signToken(user) {
   );
 }
 
+function ensureDatabaseAvailable() {
+  if (mongoose.connection.readyState !== 1) {
+    throw httpError(503, "Database is unavailable. Please try again shortly.");
+  }
+}
+
 const register = asyncHandler(async (req, res) => {
+  ensureDatabaseAvailable();
+
   const { name, email, password, birthDate, gender } = req.body;
   const validationErrors = validateRegisterPayload(req.body);
 
   if (hasValidationErrors(validationErrors)) {
-    throw httpError(400, "Please fix the highlighted fields.", validationErrors);
+    throw httpError(
+      400,
+      "Please fix the highlighted fields.",
+      validationErrors,
+    );
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
-  const existingUser = await User.findOne({ email: normalizedEmail });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingUser = await User.findOne({ email: normalizedEmail }).lean();
   if (existingUser) {
-    throw httpError(409, "Email is already registered", { email: "Email is already registered." });
+    throw httpError(409, "Email is already registered", {
+      email: "Email is already registered.",
+    });
   }
 
   const passwordHash = await User.hashPassword(password);
   const user = await User.create({
-    name: name.trim(),
+    name: String(name).trim(),
     email: normalizedEmail,
     passwordHash,
     birthDate: new Date(`${birthDate}T00:00:00.000Z`),
@@ -45,14 +64,23 @@ const register = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
+  ensureDatabaseAvailable();
+
   const { email, password } = req.body;
   const validationErrors = validateLoginPayload(req.body);
 
   if (hasValidationErrors(validationErrors)) {
-    throw httpError(400, "Please fix the highlighted fields.", validationErrors);
+    throw httpError(
+      400,
+      "Please fix the highlighted fields.",
+      validationErrors,
+    );
   }
 
-  const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+passwordHash");
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+passwordHash",
+  );
   if (!user || !(await user.comparePassword(password))) {
     throw httpError(401, "Invalid email or password");
   }

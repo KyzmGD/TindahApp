@@ -8,14 +8,25 @@ const blockedTerms = [
 ];
 
 function aiFilterMiddleware(req, res, next) {
-  const text = [req.body?.text, req.body?.bio].filter(Boolean).join(" ").toLowerCase();
-  const matchedTerm = blockedTerms.find((term) => text.includes(term));
+  try {
+    const text = [req.body?.text, req.body?.bio]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const matchedTerm = blockedTerms.find((term) => text.includes(term));
 
-  if (matchedTerm) {
-    return next(httpError(422, "Message looks unsafe and needs review", { matchedTerm }));
+    if (matchedTerm) {
+      return next(
+        httpError(422, "Message looks unsafe and needs review", {
+          matchedTerm,
+        }),
+      );
+    }
+
+    return next();
+  } catch (error) {
+    return next(error);
   }
-
-  return next();
 }
 
 module.exports = aiFilterMiddleware;

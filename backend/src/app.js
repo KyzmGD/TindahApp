@@ -39,7 +39,7 @@ app.use(
   }),
 );
 
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "256kb" }));
 
 // --- CẤU HÌNH SWAGGER VÀO ĐÂY ---
 const swaggerOptions = {
@@ -97,7 +97,20 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
+app.use((req, res, next) => {
+  res.setTimeout(10000, () => {
+    if (!res.headersSent) {
+      res.status(504).json({ message: "Request timed out" });
+    }
+  });
+  next();
+});
+
 app.use((error, req, res, next) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+
   let status = error.statusCode || 500;
   const payload = {
     message: error.message || "Internal server error",
