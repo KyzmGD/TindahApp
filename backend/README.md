@@ -25,6 +25,7 @@ Required services:
 - MongoDB at `MONGO_URI`
 - Redis is optional. Leave `REDIS_URL` empty if you do not need it yet.
 - Redis swipe cache setup and performance measurement: `../docs/REDIS.md`
+- Matching engine load test (100 concurrent users for one minute): `../docs/LOAD_TESTING.md`
 
 ## Main Routes
 

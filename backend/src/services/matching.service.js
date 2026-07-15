@@ -1,19 +1,19 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
 const Match = require("../models/Match");
 const Swipe = require("../models/Swipe");
-const SwipeLock = require("../models/SwipeLock");
 const User = require("../models/User");
 const { buildGeoNearStage } = require("./geo.service");
 const {
   addExcludedSwipeId,
   getExcludedSwipeIds,
 } = require("./swipeCache.service");
+const { userExists } = require("./userExistenceCache.service");
 const httpError = require("../utils/httpError");
 
-const LOCK_TTL_MS = 5000;
-const LOCK_RETRY_MS = 25;
-const LOCK_TIMEOUT_MS = 3000;
+const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified";
+const IDEMPOTENCY_CACHE_TTL_MS = 5 * 60 * 1000;
+const swipeStateCache = new Map();
+const activeMatchCache = new Map();
 
 function isPositiveSwipe(direction) {
   return direction === "like" || direction === "superlike";
@@ -23,64 +23,107 @@ function buildParticipantsKey(userA, userB) {
   return [userA.toString(), userB.toString()].sort().join(":");
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+function isDuplicateKeyError(error) {
+  return error?.code === 11000;
+}
+
+function readCache(cache, key) {
+  const cached = cache.get(key);
+
+  if (!cached || cached.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeCache(cache, key, value) {
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + IDEMPOTENCY_CACHE_TTL_MS,
   });
 }
 
-async function acquireSwipePairLock(lockId) {
-  const owner = crypto.randomUUID();
-  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+function buildSwipeStateKey(userId, targetId) {
+  return `${userId.toString()}:${targetId.toString()}`;
+}
 
-  while (Date.now() < deadline) {
-    const expiresAt = new Date(Date.now() + LOCK_TTL_MS);
+async function upsertSwipe(userId, targetId, direction) {
+  const filter = { swiper: userId, target: targetId };
+  const cacheKey = buildSwipeStateKey(userId, targetId);
+  const cachedSwipe = readCache(swipeStateCache, cacheKey);
 
-    try {
-      await SwipeLock.create({ _id: lockId, owner, expiresAt });
-      return { lockId, owner };
-    } catch (error) {
-      if (error.code !== 11000) {
-        throw error;
-      }
+  if (cachedSwipe?.direction === direction) {
+    return cachedSwipe;
+  }
+
+  try {
+    const swipe = await Swipe.findOneAndUpdate(
+      filter,
+      { direction },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
+    ).lean();
+    writeCache(swipeStateCache, cacheKey, swipe);
+    return swipe;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
     }
 
-    const lock = await SwipeLock.findOneAndUpdate(
-      { _id: lockId, expiresAt: { $lte: new Date() } },
+    const swipe = await Swipe.findOneAndUpdate(
+      filter,
+      { direction },
+      { returnDocument: "after" },
+    ).lean();
+    writeCache(swipeStateCache, cacheKey, swipe);
+    return swipe;
+  }
+}
+
+async function upsertMatch(userId, targetId, participantsKey) {
+  const cachedMatch = readCache(activeMatchCache, participantsKey);
+  if (cachedMatch) {
+    return cachedMatch;
+  }
+
+  const existingMatch = await Match.findOne({
+    participantsKey,
+    status: "active",
+  }).populate("users", MATCH_USER_SELECT);
+
+  if (existingMatch) {
+    writeCache(activeMatchCache, participantsKey, existingMatch);
+    return existingMatch;
+  }
+
+  try {
+    const createdMatch = await Match.create({
+      users: [userId, targetId],
+      participantsKey,
+      matchedAt: new Date(),
+    });
+
+    const populatedMatch = await createdMatch.populate("users", MATCH_USER_SELECT);
+    writeCache(activeMatchCache, participantsKey, populatedMatch);
+    return populatedMatch;
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
+    }
+
+    const match = await Match.findOneAndUpdate(
+      { participantsKey },
       {
         $set: {
-          owner,
-          expiresAt: new Date(Date.now() + LOCK_TTL_MS),
+          status: "active",
+          unmatchedBy: null,
         },
       },
       { returnDocument: "after" },
-    );
-
-    if (lock?.owner === owner) {
-      return { lockId, owner };
-    }
-
-    await sleep(LOCK_RETRY_MS);
-  }
-
-  throw httpError(503, "Swipe is being processed. Please retry shortly.");
-}
-
-async function releaseSwipePairLock(lock) {
-  try {
-    await SwipeLock.deleteOne({ _id: lock.lockId, owner: lock.owner });
-  } catch (error) {
-    console.warn("Failed to release swipe lock:", error.message);
-  }
-}
-
-async function withSwipePairLock(lockId, handler) {
-  const lock = await acquireSwipePairLock(lockId);
-
-  try {
-    return await handler();
-  } finally {
-    await releaseSwipePairLock(lock);
+    ).populate("users", MATCH_USER_SELECT);
+    writeCache(activeMatchCache, participantsKey, match);
+    return match;
   }
 }
 
@@ -158,58 +201,42 @@ async function createOrUpdateSwipe(userId, targetId, direction) {
     throw httpError(400, "You cannot swipe on yourself");
   }
 
-  const target = await User.findById(targetId);
-  if (!target) {
+  if (!(await userExists(targetId))) {
     throw httpError(404, "Target user not found");
   }
 
-  const participantsKey = buildParticipantsKey(userId, targetId);
+  const swipe = await upsertSwipe(userId, targetId, direction);
+  await addExcludedSwipeId(userId, targetId);
 
-  return withSwipePairLock(participantsKey, async () => {
-    const swipe = await Swipe.findOneAndUpdate(
-      { swiper: userId, target: targetId },
-      { direction },
-      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
-    );
-    await addExcludedSwipeId(userId, targetId);
+  let match = null;
 
-    let match = null;
-
-    if (isPositiveSwipe(direction)) {
-      const reciprocalSwipe = await Swipe.findOne({
+  if (isPositiveSwipe(direction)) {
+    const reciprocalCacheKey = buildSwipeStateKey(targetId, userId);
+    const cachedReciprocalSwipe = readCache(swipeStateCache, reciprocalCacheKey);
+    const reciprocalSwipe = isPositiveSwipe(cachedReciprocalSwipe?.direction)
+      ? cachedReciprocalSwipe
+      : await Swipe.findOne({
         swiper: targetId,
         target: userId,
         direction: { $in: ["like", "superlike"] },
-      });
+      }).lean();
 
-      if (reciprocalSwipe) {
-        match = await Match.findOneAndUpdate(
-          {
-            participantsKey,
-          },
-          {
-            $setOnInsert: {
-              users: [userId, targetId],
-              participantsKey,
-              matchedAt: new Date(),
-            },
-            $set: {
-              status: "active",
-              unmatchedBy: null,
-            },
-          },
-          { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
-        ).populate("users", "name birthDate bio photos interests jobTitle school isVerified");
-      }
+    if (reciprocalSwipe) {
+      writeCache(swipeStateCache, reciprocalCacheKey, reciprocalSwipe);
     }
 
-    return { swipe, match };
-  });
+    if (reciprocalSwipe) {
+      const participantsKey = buildParticipantsKey(userId, targetId);
+      match = await upsertMatch(userId, targetId, participantsKey);
+    }
+  }
+
+  return { swipe, match };
 }
 
 async function listMatches(userId) {
   return Match.find({ users: userId, status: "active" })
-    .populate("users", "name birthDate bio photos interests jobTitle school isVerified lastActive")
+    .populate("users", `${MATCH_USER_SELECT} lastActive`)
     .sort({ updatedAt: -1 });
 }
 
@@ -218,7 +245,6 @@ module.exports = {
   createOrUpdateSwipe,
   listMatches,
   buildParticipantsKey,
-  withSwipePairLock,
   normalizeLimit,
   buildBirthDateFilter,
 };

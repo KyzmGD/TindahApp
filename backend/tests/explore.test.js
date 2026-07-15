@@ -5,11 +5,7 @@ const User = require("../src/models/User");
 
 describe("GET /api/v1/users/explore", () => {
   beforeAll(async () => {
-    try {
-      await User.collection.createIndex({ location: "2dsphere" });
-    } catch (error) {
-      // Ignore index creation issues in the test environment.
-    }
+    await User.init();
   });
 
   it("returns nearby users and excludes the requester", async () => {

@@ -5,6 +5,6 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const router = express.Router();
 
 router.get("/discover", authMiddleware, swipeController.discover);
-router.post("/", authMiddleware, swipeController.swipe);
+router.post("/", authMiddleware.idOnly, swipeController.swipe);
 
 module.exports = router;

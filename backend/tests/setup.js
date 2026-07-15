@@ -14,7 +14,11 @@ beforeAll(async () => {
   process.env.JWT_SECRET = "test-secret";
   process.env.JWT_EXPIRES_IN = "1h";
 
-  mongoServer = await MongoMemoryServer.create();
+  mongoServer = await MongoMemoryServer.create({
+    instance: {
+      args: ["--setParameter", "indexBuildMinAvailableDiskSpaceMB=0"],
+    },
+  });
   await mongoose.connect(mongoServer.getUri());
 });
 

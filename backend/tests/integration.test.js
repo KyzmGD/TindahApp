@@ -186,7 +186,8 @@ describe("v1 swipe matching engine", () => {
     expect([aliceResponse.status, bobResponse.status]).toEqual([201, 201]);
 
     const responses = [aliceResponse.body, bobResponse.body];
-    expect(responses.filter((body) => body.isMatch)).toHaveLength(1);
+    expect(responses.every((body) => body.isMatch)).toBe(true);
+    expect(new Set(responses.map((body) => body.match?._id)).size).toBe(1);
 
     const storedMatches = await Match.find().lean();
     expect(storedMatches).toHaveLength(1);

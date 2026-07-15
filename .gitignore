@@ -4,3 +4,4 @@ node_modules
 backend/.cache
 frontend/.expo
 .expo/
+load-tests/results/*.json
