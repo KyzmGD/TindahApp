@@ -5,6 +5,10 @@ const Swipe = require("../models/Swipe");
 const SwipeLock = require("../models/SwipeLock");
 const User = require("../models/User");
 const { buildGeoNearStage } = require("./geo.service");
+const {
+  addExcludedSwipeId,
+  getExcludedSwipeIds,
+} = require("./swipeCache.service");
 const httpError = require("../utils/httpError");
 
 const LOCK_TTL_MS = 5000;
@@ -108,8 +112,10 @@ function buildBirthDateFilter(ageRange = {}) {
 }
 
 async function getDiscoveryCandidates(user, limit = 20) {
-  const swipes = await Swipe.find({ swiper: user._id }).select("target");
-  const skippedIds = swipes.map((swipe) => swipe.target);
+  const excludedSwipeIds = await getExcludedSwipeIds(user._id);
+  const skippedIds = excludedSwipeIds
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
   skippedIds.push(user._id);
 
   const matchStage = {
@@ -165,6 +171,7 @@ async function createOrUpdateSwipe(userId, targetId, direction) {
       { direction },
       { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     );
+    await addExcludedSwipeId(userId, targetId);
 
     let match = null;
 

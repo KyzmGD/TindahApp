@@ -1,5 +1,7 @@
 const asyncHandler = require("../utils/asyncHandler");
+const mongoose = require("mongoose");
 const User = require("../models/User");
+const { getExcludedSwipeIds } = require("../services/swipeCache.service");
 
 const explore = asyncHandler(async (req, res) => {
   const lat = Number(req.query.lat);
@@ -15,6 +17,11 @@ const explore = asyncHandler(async (req, res) => {
   const radiusMeters = Math.max(1000, radiusKm * 1000);
 
   try {
+    const excludedSwipeIds = await getExcludedSwipeIds(req.user._id);
+    const excludedObjectIds = excludedSwipeIds
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
     const users = await User.aggregate([
       {
         $geoNear: {
@@ -29,7 +36,7 @@ const explore = asyncHandler(async (req, res) => {
       },
       {
         $match: {
-          _id: { $ne: req.user._id },
+          _id: { $nin: [req.user._id, ...excludedObjectIds] },
         },
       },
       {
