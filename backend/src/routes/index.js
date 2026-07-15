@@ -11,6 +11,7 @@ const router = express.Router();
 router.use("/auth", authRoutes);
 router.use("/v1/auth", authRoutes);
 router.use("/swipes", swipeRoutes);
+router.use("/v1/swipes", swipeRoutes);
 router.use("/matches", matchRoutes);
 router.use("/chats", chatRoutes);
 router.use("/upload", uploadRoutes);

@@ -7,11 +7,18 @@ const discover = asyncHandler(async (req, res) => {
   res.json({ users: candidates });
 });
 
+function normalizeSwipePayload(body) {
+  const targetUserId = body.targetUserId || body.targetId;
+  const direction = body.direction || (body.type === "pass" ? "nope" : body.type);
+
+  return { targetUserId, direction };
+}
+
 const swipe = asyncHandler(async (req, res) => {
-  const { targetUserId, direction } = req.body;
+  const { targetUserId, direction } = normalizeSwipePayload(req.body);
 
   if (!targetUserId || !["like", "nope", "superlike"].includes(direction)) {
-    throw httpError(400, "targetUserId and a valid direction are required");
+    throw httpError(400, "targetId and a valid type are required");
   }
 
   const result = await createOrUpdateSwipe(req.user._id, targetUserId, direction);

@@ -87,6 +87,81 @@ describe("auth integration", () => {
   });
 });
 
+describe("v1 swipe matching engine", () => {
+  it("creates exactly one match when two users like each other", async () => {
+    const alice = await registerUser({
+      name: "Alice V1",
+      email: "alice-v1@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob V1",
+      email: "bob-v1@example.com",
+    });
+
+    const firstSwipeResponse = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${alice.token}`)
+      .send({ targetId: bob.user.id, type: "like" });
+
+    expect(firstSwipeResponse.status).toBe(201);
+    expect(firstSwipeResponse.body.isMatch).toBe(false);
+    expect(firstSwipeResponse.body.match).toBeNull();
+    await expect(Match.countDocuments()).resolves.toBe(0);
+
+    const doubleLikeResponse = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${bob.token}`)
+      .send({ targetId: alice.user.id, type: "like" });
+
+    expect(doubleLikeResponse.status).toBe(201);
+    expect(doubleLikeResponse.body.isMatch).toBe(true);
+    expect(doubleLikeResponse.body.match).toMatchObject({
+      _id: expect.any(String),
+      status: "active",
+    });
+
+    const storedMatch = await Match.findById(doubleLikeResponse.body.match._id).lean();
+    expect(storedMatch.users.map((userId) => userId.toString()).sort()).toEqual(
+      [alice.user.id, bob.user.id].sort(),
+    );
+    expect(new Set(storedMatch.users.map((userId) => userId.toString())).size).toBe(2);
+    await expect(Match.countDocuments()).resolves.toBe(1);
+
+    const repeatedLikeResponse = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${bob.token}`)
+      .send({ targetId: alice.user.id, type: "like" });
+
+    expect(repeatedLikeResponse.status).toBe(201);
+    expect(repeatedLikeResponse.body.isMatch).toBe(true);
+    expect(repeatedLikeResponse.body.match._id).toBe(doubleLikeResponse.body.match._id);
+    await expect(Match.countDocuments()).resolves.toBe(1);
+  });
+
+  it("records pass swipes without creating a match", async () => {
+    const alice = await registerUser({
+      name: "Alice Pass",
+      email: "alice-pass@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob Pass",
+      email: "bob-pass@example.com",
+    });
+
+    const response = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${alice.token}`)
+      .send({ targetId: bob.user.id, type: "pass" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.isMatch).toBe(false);
+    expect(response.body.swipe).toMatchObject({
+      direction: "nope",
+    });
+    await expect(Match.countDocuments()).resolves.toBe(0);
+  });
+});
+
 describe("match-gated chat integration", () => {
   it("shows chats only after a reciprocal match and gates messages by match membership", async () => {
     const alice = await registerUser({
