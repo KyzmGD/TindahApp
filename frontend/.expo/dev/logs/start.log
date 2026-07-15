@@ -1068,3 +1068,46 @@
 {"_e":"metro:client_log","_t":1784089320500,"level":"log","data":["AFTER:","0"]}
 {"_e":"metro:client_log","_t":1784089320502,"level":"log","data":["users length:","0"]}
 {"_e":"metro:client_log","_t":1784089320502,"level":"log","data":["currentUser:","undefined"]}
+{"_e":"root:init","_t":1784102148811,"format":"v0-jsonl","version":"56.1.16"}
+{"_e":"env:mode","_t":1784102148812,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784102148819,"mode":"development","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_URL":"http://localhost:5000/api"}}
+{"_e":"devserver:start","_t":1784102149331,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784102150120,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1784102157594,"atlas":false,"workers":6,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1784102178220,"id":"1","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784102178221,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784102178228,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784102178328,"id":"1","progress":0.15196782533754669,"total":118,"current":46}
+{"_e":"metro:bundling:progress","_t":1784102178428,"id":"1","progress":0.247840182905118,"total":231,"current":115}
+{"_e":"metro:bundling:progress","_t":1784102178529,"id":"1","progress":0.3357498471482225,"total":321,"current":186}
+{"_e":"metro:bundling:progress","_t":1784102178628,"id":"1","progress":0.37708502870963495,"total":469,"current":288}
+{"_e":"metro:bundling:progress","_t":1784102178756,"id":"1","progress":0.3983297116075595,"total":591,"current":373}
+{"_e":"metro:bundling:progress","_t":1784102178856,"id":"1","progress":0.5774152123502185,"total":658,"current":500}
+{"_e":"metro:bundling:progress","_t":1784102178956,"id":"1","progress":0.6416987384699814,"total":754,"current":604}
+{"_e":"metro:bundling:progress","_t":1784102179056,"id":"1","progress":0.7301713036378648,"total":811,"current":693}
+{"_e":"metro:bundling:progress","_t":1784102179156,"id":"1","progress":0.8867700087232762,"total":926,"current":872}
+{"_e":"metro:bundling:progress","_t":1784102179256,"id":"1","progress":0.9981015666359129,"total":1053,"current":1052}
+{"_e":"metro:bundling:done","_t":1784102179335,"id":"1","total":1053,"ms":1114.3939}
+{"_e":"metro:client_log","_t":1784102179649,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784102179650,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1784102179651,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784102179651,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784102180418,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:client_log","_t":1784102180418,"level":"log","data":["users length:","4"]}
+{"_e":"metro:client_log","_t":1784102180418,"level":"log","data":["currentUser:","6a573cb8bc30b71de52d1c12"]}
+{"_e":"metro:client_log","_t":1784102183495,"level":"warn","data":["Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md"]}
+{"_e":"metro:client_log","_t":1784102194963,"level":"log","data":["HANDLE SWIPE:","6a573cb8bc30b71de52d1c12","superlike"]}
+{"_e":"metro:client_log","_t":1784102194964,"level":"log","data":["BEFORE:","4"]}
+{"_e":"metro:client_log","_t":1784102194964,"level":"log","data":["AFTER:","3"]}
+{"_e":"metro:client_log","_t":1784102194967,"level":"log","data":["users length:","3"]}
+{"_e":"metro:client_log","_t":1784102194968,"level":"log","data":["currentUser:","6a5730ae4b3de3d5e8708483"]}
+{"_e":"metro:client_log","_t":1784102196530,"level":"log","data":["HANDLE SWIPE:","6a5730ae4b3de3d5e8708483","superlike"]}
+{"_e":"metro:client_log","_t":1784102196531,"level":"log","data":["BEFORE:","3"]}
+{"_e":"metro:client_log","_t":1784102196531,"level":"log","data":["AFTER:","2"]}
+{"_e":"metro:client_log","_t":1784102196535,"level":"log","data":["users length:","2"]}
+{"_e":"metro:client_log","_t":1784102196535,"level":"log","data":["currentUser:","6a57313a4b3de3d5e8708485"]}
+{"_e":"metro:client_log","_t":1784102197930,"level":"log","data":["HANDLE SWIPE:","6a57313a4b3de3d5e8708485","superlike"]}
+{"_e":"metro:client_log","_t":1784102197931,"level":"log","data":["BEFORE:","2"]}
+{"_e":"metro:client_log","_t":1784102197931,"level":"log","data":["AFTER:","1"]}
+{"_e":"metro:client_log","_t":1784102197934,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784102197935,"level":"log","data":["currentUser:","6a5730d64b3de3d5e8708484"]}
