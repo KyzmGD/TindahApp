@@ -1,9 +1,15 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 const Match = require("../models/Match");
 const Swipe = require("../models/Swipe");
+const SwipeLock = require("../models/SwipeLock");
 const User = require("../models/User");
 const { buildGeoNearStage } = require("./geo.service");
 const httpError = require("../utils/httpError");
+
+const LOCK_TTL_MS = 5000;
+const LOCK_RETRY_MS = 25;
+const LOCK_TIMEOUT_MS = 3000;
 
 function isPositiveSwipe(direction) {
   return direction === "like" || direction === "superlike";
@@ -11,6 +17,67 @@ function isPositiveSwipe(direction) {
 
 function buildParticipantsKey(userA, userB) {
   return [userA.toString(), userB.toString()].sort().join(":");
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function acquireSwipePairLock(lockId) {
+  const owner = crypto.randomUUID();
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    const expiresAt = new Date(Date.now() + LOCK_TTL_MS);
+
+    try {
+      await SwipeLock.create({ _id: lockId, owner, expiresAt });
+      return { lockId, owner };
+    } catch (error) {
+      if (error.code !== 11000) {
+        throw error;
+      }
+    }
+
+    const lock = await SwipeLock.findOneAndUpdate(
+      { _id: lockId, expiresAt: { $lte: new Date() } },
+      {
+        $set: {
+          owner,
+          expiresAt: new Date(Date.now() + LOCK_TTL_MS),
+        },
+      },
+      { returnDocument: "after" },
+    );
+
+    if (lock?.owner === owner) {
+      return { lockId, owner };
+    }
+
+    await sleep(LOCK_RETRY_MS);
+  }
+
+  throw httpError(503, "Swipe is being processed. Please retry shortly.");
+}
+
+async function releaseSwipePairLock(lock) {
+  try {
+    await SwipeLock.deleteOne({ _id: lock.lockId, owner: lock.owner });
+  } catch (error) {
+    console.warn("Failed to release swipe lock:", error.message);
+  }
+}
+
+async function withSwipePairLock(lockId, handler) {
+  const lock = await acquireSwipePairLock(lockId);
+
+  try {
+    return await handler();
+  } finally {
+    await releaseSwipePairLock(lock);
+  }
 }
 
 function normalizeLimit(limit, fallback = 20, max = 50) {
@@ -90,45 +157,47 @@ async function createOrUpdateSwipe(userId, targetId, direction) {
     throw httpError(404, "Target user not found");
   }
 
-  const swipe = await Swipe.findOneAndUpdate(
-    { swiper: userId, target: targetId },
-    { direction },
-    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
-  );
+  const participantsKey = buildParticipantsKey(userId, targetId);
 
-  let match = null;
+  return withSwipePairLock(participantsKey, async () => {
+    const swipe = await Swipe.findOneAndUpdate(
+      { swiper: userId, target: targetId },
+      { direction },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
+    );
 
-  if (isPositiveSwipe(direction)) {
-    const reciprocalSwipe = await Swipe.findOne({
-      swiper: targetId,
-      target: userId,
-      direction: { $in: ["like", "superlike"] },
-    });
+    let match = null;
 
-    if (reciprocalSwipe) {
-      const participantsKey = buildParticipantsKey(userId, targetId);
+    if (isPositiveSwipe(direction)) {
+      const reciprocalSwipe = await Swipe.findOne({
+        swiper: targetId,
+        target: userId,
+        direction: { $in: ["like", "superlike"] },
+      });
 
-      match = await Match.findOneAndUpdate(
-        {
-          participantsKey,
-        },
-        {
-          $setOnInsert: {
-            users: [userId, targetId],
+      if (reciprocalSwipe) {
+        match = await Match.findOneAndUpdate(
+          {
             participantsKey,
-            matchedAt: new Date(),
           },
-          $set: {
-            status: "active",
-            unmatchedBy: null,
+          {
+            $setOnInsert: {
+              users: [userId, targetId],
+              participantsKey,
+              matchedAt: new Date(),
+            },
+            $set: {
+              status: "active",
+              unmatchedBy: null,
+            },
           },
-        },
-        { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
-      ).populate("users", "name birthDate bio photos interests jobTitle school isVerified");
+          { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
+        ).populate("users", "name birthDate bio photos interests jobTitle school isVerified");
+      }
     }
-  }
 
-  return { swipe, match };
+    return { swipe, match };
+  });
 }
 
 async function listMatches(userId) {
@@ -142,6 +211,7 @@ module.exports = {
   createOrUpdateSwipe,
   listMatches,
   buildParticipantsKey,
+  withSwipePairLock,
   normalizeLimit,
   buildBirthDateFilter,
 };

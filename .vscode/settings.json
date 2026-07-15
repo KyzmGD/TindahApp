@@ -4,5 +4,6 @@
       "name": "Preset Connection",
       "connectionString": "mongodb://ad:z7len0dRTijDcbt2@ac-ccweaol-shard-00-00.3coysqk.mongodb.net:27017,ac-ccweaol-shard-00-01.3coysqk.mongodb.net:27017,ac-ccweaol-shard-00-02.3coysqk.mongodb.net:27017/?ssl=true&replicaSet=atlas-s35oe0-shard-0&authSource=admin&appName=TinderApp"
     }
-  ]
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

@@ -2,6 +2,7 @@ const request = require("supertest");
 const app = require("../src/app");
 const Match = require("../src/models/Match");
 const Message = require("../src/models/Message");
+const Swipe = require("../src/models/Swipe");
 const User = require("../src/models/User");
 
 async function registerUser(overrides = {}) {
@@ -159,6 +160,46 @@ describe("v1 swipe matching engine", () => {
       direction: "nope",
     });
     await expect(Match.countDocuments()).resolves.toBe(0);
+  });
+
+  it("creates one match when both users like each other at the same time", async () => {
+    const alice = await registerUser({
+      name: "Alice Race",
+      email: "alice-race@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob Race",
+      email: "bob-race@example.com",
+    });
+
+    const [aliceResponse, bobResponse] = await Promise.all([
+      request(app)
+        .post("/api/v1/swipes")
+        .set("Authorization", `Bearer ${alice.token}`)
+        .send({ targetId: bob.user.id, type: "like" }),
+      request(app)
+        .post("/api/v1/swipes")
+        .set("Authorization", `Bearer ${bob.token}`)
+        .send({ targetId: alice.user.id, type: "like" }),
+    ]);
+
+    expect([aliceResponse.status, bobResponse.status]).toEqual([201, 201]);
+
+    const responses = [aliceResponse.body, bobResponse.body];
+    expect(responses.filter((body) => body.isMatch)).toHaveLength(1);
+
+    const storedMatches = await Match.find().lean();
+    expect(storedMatches).toHaveLength(1);
+    expect(storedMatches[0].users.map((userId) => userId.toString()).sort()).toEqual(
+      [alice.user.id, bob.user.id].sort(),
+    );
+
+    await expect(
+      Swipe.countDocuments({
+        swiper: { $in: [alice.user.id, bob.user.id] },
+        target: { $in: [alice.user.id, bob.user.id] },
+      }),
+    ).resolves.toBe(2);
   });
 });
 
