@@ -27,6 +27,7 @@ const createMessage = asyncHandler(async (req, res) => {
     senderId: req.user._id,
     text: req.body.text,
     imageUrl: req.body.imageUrl,
+    clientMessageId: req.body.clientMessageId,
   });
 
   req.app.get("io")?.to(req.params.matchId).emit("message:new", message);

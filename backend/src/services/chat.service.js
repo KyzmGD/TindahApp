@@ -58,26 +58,61 @@ async function listMessages(matchId, userId, options = {}) {
   };
 }
 
-async function sendMessage({ matchId, senderId, text, imageUrl }) {
+async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId }) {
   const trimmedText = typeof text === "string" ? text.trim() : "";
   const trimmedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
+  const normalizedClientMessageId = typeof clientMessageId === "string"
+    ? clientMessageId.trim().slice(0, 120)
+    : "";
 
   if (!trimmedText && !trimmedImageUrl) {
     throw httpError(400, "Message text or image is required");
   }
 
   const match = await assertUserInActiveMatch(matchId, senderId);
+
+  if (normalizedClientMessageId) {
+    const existingMessage = await Message.findOne({
+      sender: senderId,
+      clientMessageId: normalizedClientMessageId,
+    }).populate("sender", "name photos");
+
+    if (existingMessage) {
+      return existingMessage;
+    }
+  }
+
   const receiverId = match.users.find(
     (userId) => userId.toString() !== senderId.toString(),
   );
-  const message = await Message.create({
-    match: matchId,
-    sender: senderId,
-    receiver: receiverId,
-    text: trimmedText,
-    imageUrl: trimmedImageUrl,
-    readBy: [senderId],
-  });
+  let message;
+
+  try {
+    message = await Message.create({
+      match: matchId,
+      sender: senderId,
+      receiver: receiverId,
+      clientMessageId: normalizedClientMessageId || undefined,
+      text: trimmedText,
+      imageUrl: trimmedImageUrl,
+      readBy: [senderId],
+    });
+  } catch (error) {
+    if (error.code !== 11000 || !normalizedClientMessageId) {
+      throw error;
+    }
+
+    const existingMessage = await Message.findOne({
+      sender: senderId,
+      clientMessageId: normalizedClientMessageId,
+    }).populate("sender", "name photos");
+
+    if (existingMessage) {
+      return existingMessage;
+    }
+
+    throw error;
+  }
 
   match.lastMessage = {
     text: trimmedText || "Photo",

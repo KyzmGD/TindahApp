@@ -159,20 +159,24 @@ describe("chat socket realtime", () => {
     });
 
     const bobReceivePromise = waitForEvent(bobSocket, "receive_message");
+    const clientMessageId = "offline-retry-client-message-1";
     const ack = await emitWithAck(aliceSocket, "send_message", {
       matchId: aliceBobMatch._id,
       text: "Hello from realtime",
+      clientMessageId,
     });
     const receivedMessage = await bobReceivePromise;
 
     expect(ack).toMatchObject({
       ok: true,
       message: {
+        clientMessageId,
         text: "Hello from realtime",
       },
     });
     expect(receivedMessage).toMatchObject({
       _id: ack.message._id,
+      clientMessageId,
       text: "Hello from realtime",
     });
 
@@ -181,10 +185,26 @@ describe("chat socket realtime", () => {
 
     const storedMessage = await Message.findById(ack.message._id).lean();
     expect(storedMessage).toMatchObject({
+      clientMessageId,
       text: "Hello from realtime",
     });
     expect(storedMessage.match.toString()).toBe(aliceBobMatch._id);
     expect(storedMessage.sender.toString()).toBe(alice.user.id);
     expect(storedMessage.receiver.toString()).toBe(bob.user.id);
+
+    const duplicateAck = await emitWithAck(aliceSocket, "send_message", {
+      matchId: aliceBobMatch._id,
+      text: "Hello from realtime",
+      clientMessageId,
+    });
+
+    expect(duplicateAck).toMatchObject({
+      ok: true,
+      message: {
+        _id: ack.message._id,
+        clientMessageId,
+      },
+    });
+    await expect(Message.countDocuments({ clientMessageId })).resolves.toBe(1);
   });
 });

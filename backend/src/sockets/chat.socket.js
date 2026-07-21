@@ -53,6 +53,7 @@ function registerChatSocket(server, app) {
           senderId: socket.user._id,
           text: payload.text,
           imageUrl: payload.imageUrl,
+          clientMessageId: payload.clientMessageId,
         });
 
         socket.join(payload.matchId);

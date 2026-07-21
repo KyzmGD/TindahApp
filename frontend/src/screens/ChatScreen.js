@@ -6,9 +6,33 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { getMessages } from "../services/swipe.api";
 
+function createClientMessageId(matchId) {
+  return `local-${matchId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isMessageInMatch(message, matchId) {
+  return message.match === matchId || message.match?._id === matchId || message.matchId === matchId;
+}
+
+function mergeMessage(currentMessages, nextMessage) {
+  const clientMessageId = nextMessage.clientMessageId;
+  const existingIndex = currentMessages.findIndex(
+    (item) => item._id === nextMessage._id
+      || (clientMessageId && item.clientMessageId === clientMessageId),
+  );
+
+  if (existingIndex === -1) {
+    return [...currentMessages, nextMessage];
+  }
+
+  return currentMessages.map((item, index) => (
+    index === existingIndex ? { ...item, ...nextMessage, status: nextMessage.status } : item
+  ));
+}
+
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
-  const { socket, joinMatch, sendMessageRealtime, setTyping } = useSocket();
+  const { socket, isConnected, joinMatch, sendMessageRealtime, setTyping } = useSocket();
   const { match, user: recipient } = route.params || {};
   const [messages, setMessages] = useState([]);
   const [typingUserId, setTypingUserId] = useState(null);
@@ -53,17 +77,17 @@ export default function ChatScreen({ navigation, route }) {
   }, [joinMatch, match, matchId, navigation, recipient]);
 
   useEffect(() => {
+    if (isConnected && matchId) {
+      joinMatch(matchId);
+    }
+  }, [isConnected, joinMatch, matchId]);
+
+  useEffect(() => {
     if (!socket) return undefined;
 
     const onReceiveMessage = (message) => {
-      if (message.match === matchId || message.match?._id === matchId) {
-        setMessages((current) => {
-          if (current.some((item) => item._id === message._id)) {
-            return current;
-          }
-
-          return [...current, message];
-        });
+      if (isMessageInMatch(message, matchId)) {
+        setMessages((current) => mergeMessage(current, message));
       }
     };
 
@@ -83,7 +107,29 @@ export default function ChatScreen({ navigation, route }) {
   }, [currentUser?.id, matchId, socket]);
 
   const handleSend = async (text) => {
-    await sendMessageRealtime({ matchId, text });
+    const clientMessageId = createClientMessageId(matchId);
+    const pendingMessage = {
+      _id: clientMessageId,
+      clientMessageId,
+      match: matchId,
+      matchId,
+      sender: currentUser?.id,
+      text,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((current) => mergeMessage(current, pendingMessage));
+
+    try {
+      const result = await sendMessageRealtime({ matchId, text, clientMessageId });
+
+      if (result?.status !== "pending") {
+        setMessages((current) => mergeMessage(current, result));
+      }
+    } catch {
+      setMessages((current) => mergeMessage(current, { ...pendingMessage, status: "pending" }));
+    }
   };
 
   return (

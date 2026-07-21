@@ -5,6 +5,9 @@ export default function ChatBubble({ message, isMine }) {
     <View style={[styles.row, isMine ? styles.mineRow : styles.theirRow]}>
       <View style={[styles.bubble, isMine ? styles.mine : styles.their]}>
         <Text style={[styles.text, isMine ? styles.mineText : styles.theirText]}>{message.text}</Text>
+        {isMine && message.status === "pending" ? (
+          <Text style={styles.pendingText}>Sending...</Text>
+        ) : null}
       </View>
     </View>
   );
@@ -44,5 +47,10 @@ const styles = StyleSheet.create({
   },
   theirText: {
     color: "#202433",
+  },
+  pendingText: {
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 11,
+    marginTop: 4,
   },
 });
