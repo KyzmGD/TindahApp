@@ -92,7 +92,18 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data.user;
   }, []);
+const refreshUser = useCallback(async () => {
+  const response = await authApi.getMe();
 
+  setUser(response.user);
+
+  await AsyncStorage.setItem(
+    USER_KEY,
+    JSON.stringify(response.user)
+  );
+
+  return response.user;
+}, []);
   const value = useMemo(
     () => ({
       token,
@@ -103,8 +114,18 @@ export function AuthProvider({ children }) {
       signUp,
       signOut,
       updateProfile,
+      refreshUser,
     }),
-    [isBootstrapping, signIn, signOut, signUp, token, updateProfile, user],
+    [
+  isBootstrapping,
+  signIn,
+  signOut,
+  signUp,
+  token,
+  updateProfile,
+  refreshUser,
+  user,
+],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

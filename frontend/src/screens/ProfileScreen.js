@@ -1,11 +1,38 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+} from "react-native";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import { useAuth } from "../context/AuthContext";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "react-native";
+import {
+  uploadImage,
+  saveProfilePhoto,
+} from "../services/upload.api";
+const getAvatar = (user) => {
+  if (!user?.photos?.length) return null;
 
+  const primary = user.photos.find(
+    (photo) => photo.isPrimary
+  );
+
+  return primary?.url || user.photos[0]?.url;
+};
 export default function ProfileScreen() {
-  const { user, signOut, updateProfile } = useAuth();
+  const {
+  user,
+  signOut,
+  updateProfile,
+  refreshUser,
+} = useAuth();
   const [form, setForm] = useState({
     name: user?.name || "",
     bio: user?.bio || "",
@@ -19,7 +46,36 @@ export default function ProfileScreen() {
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
+  const pickAvatar = async () => {
+  const result =
+    await ImagePicker.launchImageLibraryAsync({
+      mediaTypes:
+        ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
 
+  if (result.canceled) return;
+
+  try {
+    setMessage("Uploading...");
+
+    const imageUri =
+      result.assets[0].uri;
+
+    const url =
+      await uploadImage(imageUri);
+
+    await saveProfilePhoto(url);
+
+await refreshUser();
+
+    setMessage("Avatar updated");
+  } catch (error) {
+    setMessage(error.message);
+  }
+};
   const save = async () => {
     setSaving(true);
     setMessage("");
@@ -47,9 +103,23 @@ export default function ProfileScreen() {
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.[0] || "U"}</Text>
-          </View>
+          <Pressable
+  style={styles.avatar}
+  onPress={pickAvatar}
+>
+  {getAvatar(user) ? (
+    <Image
+      source={{
+        uri: getAvatar(user),
+      }}
+      style={styles.avatarImage}
+    />
+  ) : (
+    <Text style={styles.avatarText}>
+      {user?.name?.[0] || "U"}
+    </Text>
+  )}
+</Pressable>
           <Text style={styles.title}>{user?.name || "Your profile"}</Text>
           <Text style={styles.email}>{user?.email}</Text>
         </View>
@@ -114,6 +184,11 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "900",
   },
+  avatarImage: {
+  width: "100%",
+  height: "100%",
+  borderRadius: 46,
+},
   email: {
     color: "#777b8d",
     fontWeight: "600",
