@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +17,14 @@ import {
   uploadImage,
   saveProfilePhoto,
 } from "../services/upload.api";
+
+const GENDER_OPTIONS = [
+  { label: "Women", value: "woman" },
+  { label: "Men", value: "man" },
+  { label: "Nonbinary", value: "nonbinary" },
+  { label: "Other", value: "other" },
+];
+
 const getAvatar = (user) => {
   if (!user?.photos?.length) return null;
 
@@ -26,6 +34,13 @@ const getAvatar = (user) => {
 
   return primary?.url || user.photos[0]?.url;
 };
+
+const getSearchFilters = (user) => ({
+  genderPreference: user?.genderPreference || user?.interestedIn || [],
+  minAge: String(user?.minAge || user?.preferences?.ageRange?.min || 18),
+  maxAge: String(user?.maxAge || user?.preferences?.ageRange?.max || 60),
+});
+
 export default function ProfileScreen() {
   const {
   user,
@@ -39,12 +54,42 @@ export default function ProfileScreen() {
     jobTitle: user?.jobTitle || "",
     school: user?.school || "",
     interests: (user?.interests || []).join(", "),
+    genderPreference: getSearchFilters(user).genderPreference,
+    minAge: getSearchFilters(user).minAge,
+    maxAge: getSearchFilters(user).maxAge,
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  useEffect(() => {
+    const searchFilters = getSearchFilters(user);
+    setForm({
+      name: user?.name || "",
+      bio: user?.bio || "",
+      jobTitle: user?.jobTitle || "",
+      school: user?.school || "",
+      interests: (user?.interests || []).join(", "),
+      genderPreference: searchFilters.genderPreference,
+      minAge: searchFilters.minAge,
+      maxAge: searchFilters.maxAge,
+    });
+  }, [user]);
+
+  const toggleGenderPreference = (value) => {
+    setForm((current) => {
+      const selected = current.genderPreference.includes(value)
+        ? current.genderPreference.filter((item) => item !== value)
+        : [...current.genderPreference, value];
+
+      return {
+        ...current,
+        genderPreference: selected,
+      };
+    });
   };
   const pickAvatar = async () => {
   const result =
@@ -90,6 +135,9 @@ await refreshUser();
           .split(",")
           .map((interest) => interest.trim())
           .filter(Boolean),
+        genderPreference: form.genderPreference,
+        minAge: Number(form.minAge),
+        maxAge: Number(form.maxAge),
       });
       setMessage("Profile saved");
     } catch (error) {
@@ -140,6 +188,43 @@ await refreshUser();
           onChangeText={(value) => updateField("interests", value)}
           placeholder="Coffee, travel, music"
         />
+        <View style={styles.filterSection}>
+          <Text style={styles.sectionTitle}>Search filters</Text>
+          <Text style={styles.label}>Interested in</Text>
+          <View style={styles.genderGrid}>
+            {GENDER_OPTIONS.map((option) => {
+              const selected = form.genderPreference.includes(option.value);
+
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.genderChip, selected && styles.genderChipSelected]}
+                  onPress={() => toggleGenderPreference(option.value)}
+                >
+                  <Text style={[styles.genderChipText, selected && styles.genderChipTextSelected]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.ageRow}>
+            <Input
+              label="Min age"
+              value={form.minAge}
+              onChangeText={(value) => updateField("minAge", value)}
+              keyboardType="numeric"
+              style={styles.ageInput}
+            />
+            <Input
+              label="Max age"
+              value={form.maxAge}
+              onChangeText={(value) => updateField("maxAge", value)}
+              keyboardType="numeric"
+              style={styles.ageInput}
+            />
+          </View>
+        </View>
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
@@ -202,5 +287,50 @@ const styles = StyleSheet.create({
     color: "#ff4458",
     fontWeight: "800",
     textAlign: "center",
+  },
+  filterSection: {
+    gap: 12,
+    paddingTop: 6,
+  },
+  sectionTitle: {
+    color: "#171a25",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  label: {
+    color: "#606473",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  genderGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  genderChip: {
+    borderWidth: 1,
+    borderColor: "#e3e4eb",
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: "#fff",
+  },
+  genderChipSelected: {
+    borderColor: "#ff4458",
+    backgroundColor: "#fff0f2",
+  },
+  genderChipText: {
+    color: "#606473",
+    fontWeight: "800",
+  },
+  genderChipTextSelected: {
+    color: "#ff4458",
+  },
+  ageRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  ageInput: {
+    flex: 1,
   },
 });

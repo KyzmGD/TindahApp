@@ -5,5 +5,6 @@ const userController = require("../controllers/user.controller");
 const router = express.Router();
 
 router.get("/explore", authMiddleware, userController.explore);
+router.put("/profile", authMiddleware, userController.updateProfile);
 
 module.exports = router;

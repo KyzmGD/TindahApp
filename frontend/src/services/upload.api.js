@@ -22,3 +22,8 @@ export async function uploadImage(imageUri) {
 
   return response.data.url;
 }
+
+export async function saveProfilePhoto(url, publicId) {
+  const response = await api.post("/upload/save-profile-photo", { url, publicId });
+  return response.data.photos;
+}

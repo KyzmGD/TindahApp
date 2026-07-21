@@ -16,6 +16,6 @@ export async function getMe() {
 }
 
 export async function updateMe(payload) {
-  const response = await api.patch("/auth/me", payload);
+  const response = await api.put("/v1/users/profile", payload);
   return response.data;
 }
