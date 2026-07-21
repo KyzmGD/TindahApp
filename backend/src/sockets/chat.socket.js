@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { assertUserInActiveMatch } = require("../services/chat.service");
+const { assertUserInActiveMatch, sendMessage } = require("../services/chat.service");
 
 function registerChatSocket(server, app) {
   const io = new Server(server, {
@@ -41,6 +41,23 @@ function registerChatSocket(server, app) {
         await assertUserInActiveMatch(matchId, socket.user._id);
         socket.join(matchId);
         callback?.({ ok: true });
+      } catch (error) {
+        callback?.({ ok: false, message: error.message });
+      }
+    });
+
+    socket.on("send_message", async (payload = {}, callback) => {
+      try {
+        const message = await sendMessage({
+          matchId: payload.matchId,
+          senderId: socket.user._id,
+          text: payload.text,
+          imageUrl: payload.imageUrl,
+        });
+
+        socket.join(payload.matchId);
+        io.to(payload.matchId).emit("receive_message", message);
+        callback?.({ ok: true, message });
       } catch (error) {
         callback?.({ ok: false, message: error.message });
       }

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const request = require("supertest");
 const app = require("../src/app");
 const Match = require("../src/models/Match");
@@ -25,6 +26,43 @@ async function registerUser(overrides = {}) {
     user: response.body.user,
     response,
   };
+}
+
+async function createReciprocalMatch(userA, userB) {
+  await request(app)
+    .post("/api/v1/swipes")
+    .set("Authorization", `Bearer ${userA.token}`)
+    .send({ targetId: userB.user.id, type: "like" })
+    .expect(201);
+
+  const response = await request(app)
+    .post("/api/v1/swipes")
+    .set("Authorization", `Bearer ${userB.token}`)
+    .send({ targetId: userA.user.id, type: "like" })
+    .expect(201);
+
+  expect(response.body.isMatch).toBe(true);
+  return response.body.match;
+}
+
+async function seedMessages({ matchId, senderIds, prefix, count }) {
+  const baseDate = new Date("2026-01-01T00:00:00.000Z");
+  const docs = Array.from({ length: count }, (_, index) => {
+    const createdAt = new Date(baseDate.getTime() + index * 1000);
+    const senderId = senderIds[index % senderIds.length];
+
+    return {
+      match: new mongoose.Types.ObjectId(matchId),
+      sender: new mongoose.Types.ObjectId(senderId),
+      text: `${prefix} ${index + 1}`,
+      readBy: [new mongoose.Types.ObjectId(senderId)],
+      createdAt,
+      updatedAt: createdAt,
+    };
+  });
+
+  await Message.collection.insertMany(docs);
+  return docs;
 }
 
 describe("auth integration", () => {
@@ -201,6 +239,118 @@ describe("v1 swipe matching engine", () => {
         target: { $in: [alice.user.id, bob.user.id] },
       }),
     ).resolves.toBe(2);
+  });
+});
+
+describe("v1 message history pagination", () => {
+  it("returns only messages for the requested match sorted by newest first", async () => {
+    const alice = await registerUser({
+      name: "Alice History",
+      email: "alice-history@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob History",
+      email: "bob-history@example.com",
+    });
+    const casey = await registerUser({
+      name: "Casey History",
+      email: "casey-history@example.com",
+    });
+
+    const aliceBobMatch = await createReciprocalMatch(alice, bob);
+    const aliceCaseyMatch = await createReciprocalMatch(alice, casey);
+
+    await seedMessages({
+      matchId: aliceBobMatch._id,
+      senderIds: [alice.user.id, bob.user.id],
+      prefix: "AB",
+      count: 25,
+    });
+    await seedMessages({
+      matchId: aliceCaseyMatch._id,
+      senderIds: [alice.user.id, casey.user.id],
+      prefix: "AC",
+      count: 3,
+    });
+
+    const response = await request(app)
+      .get(`/api/v1/messages/${aliceBobMatch._id}`)
+      .query({ page: 2, limit: 10 })
+      .set("Authorization", `Bearer ${alice.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.pagination).toEqual({
+      page: 2,
+      limit: 10,
+      total: 25,
+      totalPages: 3,
+      hasNextPage: true,
+      hasPrevPage: true,
+    });
+    expect(response.body.messages).toHaveLength(10);
+    expect(response.body.messages.map((message) => message.text)).toEqual([
+      "AB 15",
+      "AB 14",
+      "AB 13",
+      "AB 12",
+      "AB 11",
+      "AB 10",
+      "AB 9",
+      "AB 8",
+      "AB 7",
+      "AB 6",
+    ]);
+    expect(response.body.messages.every((message) => message.text.startsWith("AB"))).toBe(true);
+
+    const timestamps = response.body.messages.map((message) => new Date(message.createdAt).getTime());
+    expect(timestamps).toEqual([...timestamps].sort((a, b) => b - a));
+  });
+
+  it("uses a default limit of 20 and blocks users outside the match", async () => {
+    const alice = await registerUser({
+      name: "Alice Default History",
+      email: "alice-default-history@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob Default History",
+      email: "bob-default-history@example.com",
+    });
+    const outsider = await registerUser({
+      name: "Outsider History",
+      email: "outsider-history@example.com",
+    });
+
+    const match = await createReciprocalMatch(alice, bob);
+
+    await seedMessages({
+      matchId: match._id,
+      senderIds: [alice.user.id, bob.user.id],
+      prefix: "Default",
+      count: 21,
+    });
+
+    const response = await request(app)
+      .get(`/api/v1/messages/${match._id}`)
+      .set("Authorization", `Bearer ${alice.token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.messages).toHaveLength(20);
+    expect(response.body.pagination).toMatchObject({
+      page: 1,
+      limit: 20,
+      total: 21,
+      totalPages: 2,
+      hasNextPage: true,
+      hasPrevPage: false,
+    });
+    expect(response.body.messages[0].text).toBe("Default 21");
+
+    const blockedResponse = await request(app)
+      .get(`/api/v1/messages/${match._id}`)
+      .set("Authorization", `Bearer ${outsider.token}`);
+
+    expect(blockedResponse.status).toBe(404);
+    expect(blockedResponse.body.message).toBe("Match not found");
   });
 });
 

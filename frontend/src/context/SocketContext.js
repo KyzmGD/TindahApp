@@ -47,14 +47,35 @@ export function SocketProvider({ children }) {
     [socket],
   );
 
+  const sendMessageRealtime = useCallback(
+    ({ matchId, text, imageUrl }) =>
+      new Promise((resolve, reject) => {
+        if (!socket || !matchId) {
+          reject(new Error("Realtime connection is not available"));
+          return;
+        }
+
+        socket.emit("send_message", { matchId, text, imageUrl }, (response) => {
+          if (response?.ok) {
+            resolve(response.message);
+            return;
+          }
+
+          reject(new Error(response?.message || "Could not send message"));
+        });
+      }),
+    [socket],
+  );
+
   const value = useMemo(
     () => ({
       socket,
       isConnected: Boolean(socket?.connected),
       joinMatch,
       setTyping,
+      sendMessageRealtime,
     }),
-    [joinMatch, setTyping, socket],
+    [joinMatch, sendMessageRealtime, setTyping, socket],
   );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

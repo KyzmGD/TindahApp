@@ -17,14 +17,45 @@ async function assertUserInActiveMatch(matchId, userId) {
   return match;
 }
 
-async function listMessages(matchId, userId, limit = 50) {
-  await assertUserInActiveMatch(matchId, userId);
-  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+function normalizeMessagePagination(options = {}) {
+  const defaultLimit = Number(options.defaultLimit) || 20;
+  const parsedPage = Number(options.page);
+  const parsedLimit = Number(options.limit);
+  const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const limit = Number.isInteger(parsedLimit) && parsedLimit > 0
+    ? Math.min(parsedLimit, 100)
+    : defaultLimit;
 
-  return Message.find({ match: matchId })
-    .populate("sender", "name photos")
-    .sort({ createdAt: -1 })
-    .limit(safeLimit);
+  return { page, limit };
+}
+
+async function listMessages(matchId, userId, options = {}) {
+  await assertUserInActiveMatch(matchId, userId);
+  const { page, limit } = normalizeMessagePagination(options);
+  const skip = (page - 1) * limit;
+
+  const [messages, total] = await Promise.all([
+    Message.find({ match: matchId })
+      .populate("sender", "name photos")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Message.countDocuments({ match: matchId }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    messages,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
 }
 
 async function sendMessage({ matchId, senderId, text, imageUrl }) {
@@ -36,9 +67,13 @@ async function sendMessage({ matchId, senderId, text, imageUrl }) {
   }
 
   const match = await assertUserInActiveMatch(matchId, senderId);
+  const receiverId = match.users.find(
+    (userId) => userId.toString() !== senderId.toString(),
+  );
   const message = await Message.create({
     match: matchId,
     sender: senderId,
+    receiver: receiverId,
     text: trimmedText,
     imageUrl: trimmedImageUrl,
     readBy: [senderId],
@@ -58,4 +93,5 @@ module.exports = {
   listMessages,
   sendMessage,
   assertUserInActiveMatch,
+  normalizeMessagePagination,
 };

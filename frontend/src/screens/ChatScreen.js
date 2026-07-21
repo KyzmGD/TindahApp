@@ -4,11 +4,11 @@ import ChatBubble from "../components/chat/ChatBubble";
 import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
-import { getMessages, sendMessage } from "../services/swipe.api";
+import { getMessages } from "../services/swipe.api";
 
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
-  const { socket, joinMatch, setTyping } = useSocket();
+  const { socket, joinMatch, sendMessageRealtime, setTyping } = useSocket();
   const { match, user: recipient } = route.params || {};
   const [messages, setMessages] = useState([]);
   const [typingUserId, setTypingUserId] = useState(null);
@@ -55,7 +55,7 @@ export default function ChatScreen({ navigation, route }) {
   useEffect(() => {
     if (!socket) return undefined;
 
-    const onNewMessage = (message) => {
+    const onReceiveMessage = (message) => {
       if (message.match === matchId || message.match?._id === matchId) {
         setMessages((current) => {
           if (current.some((item) => item._id === message._id)) {
@@ -73,18 +73,17 @@ export default function ChatScreen({ navigation, route }) {
       }
     };
 
-    socket.on("message:new", onNewMessage);
+    socket.on("receive_message", onReceiveMessage);
     socket.on("typing", onTyping);
 
     return () => {
-      socket.off("message:new", onNewMessage);
+      socket.off("receive_message", onReceiveMessage);
       socket.off("typing", onTyping);
     };
   }, [currentUser?.id, matchId, socket]);
 
   const handleSend = async (text) => {
-    const createdMessage = await sendMessage(matchId, text);
-    setMessages((current) => [...current, createdMessage]);
+    await sendMessageRealtime({ matchId, text });
   };
 
   return (
