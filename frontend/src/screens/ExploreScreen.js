@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import CardStack from "../components/swipe/CardStack";
 import { discover, sendSwipe } from "../services/swipe.api";
+import MatchModal from "../components/common/MatchModal";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ExploreScreen() {
   const [users, setUsers] = useState([]);
@@ -25,7 +27,13 @@ export default function ExploreScreen() {
     setUsers(candidates);
     setRemaining(candidates.length);
   }, []);
+  const navigation = useNavigation();
 
+const [showMatchModal, setShowMatchModal] =
+  useState(false);
+
+const [matchedUser, setMatchedUser] =
+  useState(null);
   useEffect(() => {
     loadProfiles()
       .catch(() => {
@@ -46,7 +54,17 @@ export default function ExploreScreen() {
       setRefreshing(false);
     }
   };
+  const openChat = () => {
+  setShowMatchModal(false);
 
+  navigation.navigate(
+    "ChatScreen",
+    {
+      matchId: matchedUser?._id,
+      user: matchedUser,
+    }
+  );
+};
   const handleSwipe = async (user, direction) => {
   console.log("HANDLE SWIPE:", user?._id, direction);
 
@@ -69,9 +87,9 @@ export default function ExploreScreen() {
     const result = await sendSwipe(user._id, direction);
 
     if (result.isMatch) {
-      const name = user.name || "someone";
-      setMatchBanner(`You matched with ${name}`);
-      setTimeout(() => setMatchBanner(""), 2500);
+  setMatchedUser(user);
+  setShowMatchModal(true);
+      console.log(result);
     }
   } catch (swipeError) {
     setUsers((current) => [user, ...current]);
@@ -126,7 +144,13 @@ export default function ExploreScreen() {
           />
         )}
       </ScrollView>
-
+      <MatchModal
+  visible={showMatchModal}
+  currentUser={null}
+  matchedUser={matchedUser}
+  onClose={() => setShowMatchModal(false)}
+  onMessage={openChat}
+/>
       <View style={styles.actions}>
         <Pressable
           style={[styles.actionButton, styles.nope]}

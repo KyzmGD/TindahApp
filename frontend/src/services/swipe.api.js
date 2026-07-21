@@ -1,5 +1,4 @@
 import api from "./api";
-
 export async function discover(limit = 20) {
   const response = await api.get("/swipes/discover", { params: { limit } });
   return response.data.users;

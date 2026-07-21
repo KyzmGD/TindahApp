@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Image,
+} from "react-native";
 import ChatBubble from "../components/chat/ChatBubble";
 import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../context/AuthContext";
@@ -29,7 +37,17 @@ function mergeMessage(currentMessages, nextMessage) {
     index === existingIndex ? { ...item, ...nextMessage, status: nextMessage.status } : item
   ));
 }
+const getAvatar = (user) => {
+  if (!user?.photos?.length) {
+    return "https://i.pravatar.cc/300";
+  }
 
+  const primary = user.photos.find(
+    (photo) => photo.isPrimary
+  );
+
+  return primary?.url || user.photos[0]?.url;
+};
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
   const { socket, isConnected, joinMatch, sendMessageRealtime, setTyping } = useSocket();
@@ -138,10 +156,23 @@ export default function ChatScreen({ navigation, route }) {
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>{"<"}</Text>
         </Pressable>
-        <View>
-          <Text style={styles.title}>{title}</Text>
-          {typingUserId ? <Text style={styles.typing}>typing...</Text> : null}
-        </View>
+        <>
+  <Image
+    source={{
+      uri: getAvatar(recipient),
+    }}
+    style={styles.avatar}
+  />
+
+  <View>
+    <Text style={styles.title}>{title}</Text>
+    {typingUserId ? (
+      <Text style={styles.typing}>
+        typing...
+      </Text>
+    ) : null}
+  </View>
+</>
       </View>
 
       {loading ? (
@@ -175,6 +206,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  avatar: {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+},
   header: {
     paddingTop: 54,
     paddingHorizontal: 14,

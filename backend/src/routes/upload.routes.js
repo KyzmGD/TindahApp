@@ -6,7 +6,9 @@ const { uploadImageToCloudinary } = require("../utils/cloudinary");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
-
+console.log("HEADERS:", req.headers["content-type"]);
+console.log("FILE:", req.file);
+console.log("BODY:", req.body);
 router.post(
   "/image",
   upload.single("image"),

@@ -64,7 +64,12 @@ export default function ChatListScreen({ navigation }) {
           return (
             <Pressable style={styles.row} onPress={() => navigation.navigate("Chat", { match: item, user: otherUser })}>
               <View style={styles.avatar}>
-                {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{otherUser?.name?.[0] || "M"}</Text>}
+                {photoUrl ? <Image source={{ uri: photoUrl }} style={styles.avatarImage} /> : <Image
+  source={{
+    uri: "https://i.pravatar.cc/300",
+  }}
+  style={styles.avatarImage}
+/>}
               </View>
               <View style={styles.rowContent}>
                 <Text style={styles.name}>{otherUser?.name || "Match"}</Text>
