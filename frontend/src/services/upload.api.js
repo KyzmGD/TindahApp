@@ -22,22 +22,10 @@ export async function uploadImage(imageUri) {
     }
   );
 
-
-  return result.data.url;
+  return response.data.url;
 }
 
-
-
-export async function saveProfilePhoto(url){
-
-  const response = await api.post(
-    "/upload/save-profile-photo",
-    {
-      url,
-    }
-  );
-
-
-  return response.data;
-
+export async function saveProfilePhoto(url, publicId) {
+  const response = await api.post("/upload/save-profile-photo", { url, publicId });
+  return response.data.photos;
 }

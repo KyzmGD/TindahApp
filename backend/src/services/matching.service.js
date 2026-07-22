@@ -12,6 +12,7 @@ const httpError = require("../utils/httpError");
 
 const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified";
 const IDEMPOTENCY_CACHE_TTL_MS = 5 * 60 * 1000;
+const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const swipeStateCache = new Map();
 const activeMatchCache = new Map();
 
@@ -154,6 +155,40 @@ function buildBirthDateFilter(ageRange = {}) {
   };
 }
 
+function buildDiscoveryMatchStage(user, skippedIds = []) {
+  return {
+    _id: { $nin: skippedIds },
+    gender: { $in: user.interestedIn?.length ? user.interestedIn : ALLOWED_GENDERS },
+    interestedIn: user.gender,
+    birthDate: buildBirthDateFilter(user.preferences?.ageRange),
+  };
+}
+
+function calculateAge(birthDate) {
+  if (!birthDate) {
+    return null;
+  }
+
+  return Math.abs(new Date(Date.now() - birthDate.getTime()).getUTCFullYear() - 1970);
+}
+
+function formatDiscoveryCandidate(user) {
+  const id = user._id.toString();
+
+  return {
+    ...user,
+    _id: id,
+    id,
+    age: calculateAge(user.birthDate),
+    distanceMeters: user.distanceMeters !== undefined
+      ? Math.round(user.distanceMeters)
+      : undefined,
+    distanceKm: user.distanceMeters !== undefined
+      ? Number((user.distanceMeters / 1000).toFixed(2))
+      : user.distanceKm,
+  };
+}
+
 async function getDiscoveryCandidates(user, limit = 20) {
   const excludedSwipeIds = await getExcludedSwipeIds(user._id);
   const skippedIds = excludedSwipeIds
@@ -161,12 +196,7 @@ async function getDiscoveryCandidates(user, limit = 20) {
     .map((id) => new mongoose.Types.ObjectId(id));
   skippedIds.push(user._id);
 
-  const matchStage = {
-    _id: { $nin: skippedIds },
-    gender: { $in: user.interestedIn?.length ? user.interestedIn : ["woman", "man", "nonbinary", "other"] },
-    interestedIn: user.gender,
-    birthDate: buildBirthDateFilter(user.preferences?.ageRange),
-  };
+  const matchStage = buildDiscoveryMatchStage(user, skippedIds);
 
   const geoStage = buildGeoNearStage(user, user.preferences?.maxDistanceKm);
   const pipeline = [];
@@ -189,7 +219,8 @@ async function getDiscoveryCandidates(user, limit = 20) {
     },
   );
 
-  return User.aggregate(pipeline);
+  const candidates = await User.aggregate(pipeline);
+  return candidates.map(formatDiscoveryCandidate);
 }
 
 async function createOrUpdateSwipe(userId, targetId, direction) {
@@ -247,4 +278,7 @@ module.exports = {
   buildParticipantsKey,
   normalizeLimit,
   buildBirthDateFilter,
+  buildDiscoveryMatchStage,
+  calculateAge,
+  formatDiscoveryCandidate,
 };
