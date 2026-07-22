@@ -1,24 +1,43 @@
 import api from "./api";
 
+
 export async function uploadImage(imageUri) {
+
+  const response = await fetch(imageUri);
+
+  const blob = await response.blob();
+
   const formData = new FormData();
 
-  formData.append("image", {
-    uri: imageUri,
-    name: "avatar.jpg",
-    type: "image/jpeg",
-  });
+  formData.append("image", blob, "avatar.jpg");
 
-  const response = await api.post(
+
+  const result = await api.post(
     "/upload/image",
     formData,
     {
-      transformRequest: (data) => data,
-      headers: {
-        "Content-Type": "multipart/form-data",
+      headers:{
+        "Content-Type":"multipart/form-data",
       },
     }
   );
 
-  return response.data.url;
+
+  return result.data.url;
+}
+
+
+
+export async function saveProfilePhoto(url){
+
+  const response = await api.post(
+    "/upload/save-profile-photo",
+    {
+      url,
+    }
+  );
+
+
+  return response.data;
+
 }

@@ -6,51 +6,29 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-async function uploadImageToCloudinary(
-  fileBufferOrDataUrl,
-  folder = "tinder-app",
-) {
-  if (
-    !process.env.CLOUDINARY_CLOUD_NAME ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
-    throw new Error("Cloudinary environment variables are not configured");
-  }
+console.log({
+  name: process.env.CLOUDINARY_CLOUD_NAME,
+  key: process.env.CLOUDINARY_API_KEY,
+  secret: process.env.CLOUDINARY_API_SECRET ? "OK" : "MISSING",
+});
 
-  const uploadInput =
-    fileBufferOrDataUrl instanceof Buffer
-      ? `data:${detectMimeType(fileBufferOrDataUrl)};base64,${fileBufferOrDataUrl.toString("base64")}`
-      : fileBufferOrDataUrl;
-
-  const uploadResult = await new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(uploadInput, { folder }, (error, result) => {
-      if (error) {
-        reject(error);
-        return;
+function uploadImageToCloudinary(buffer, folder) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result.secure_url);
+        }
       }
+    );
 
-      resolve(result);
-    });
+    stream.end(buffer);
   });
-
-  return uploadResult.secure_url;
-}
-
-function detectMimeType(buffer) {
-  if (buffer.subarray(0, 3).toString("hex") === "89504e") {
-    return "image/png";
-  }
-
-  if (buffer.subarray(0, 2).toString("hex") === "ffd8") {
-    return "image/jpeg";
-  }
-
-  if (buffer.subarray(0, 4).toString("hex") === "474946") {
-    return "image/gif";
-  }
-
-  return "application/octet-stream";
 }
 
 module.exports = {

@@ -47,34 +47,40 @@ export default function ProfileScreen() {
     setForm((current) => ({ ...current, [field]: value }));
   };
   const pickAvatar = async () => {
-  const result =
-    await ImagePicker.launchImageLibraryAsync({
-      mediaTypes:
-        ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-
-  if (result.canceled) return;
 
   try {
-    setMessage("Uploading...");
 
-    const imageUri =
-      result.assets[0].uri;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality:0.8,
+    });
 
-    const url =
-      await uploadImage(imageUri);
+
+    if(result.canceled){
+      return;
+    }
+
+
+    const imageUri = result.assets[0].uri;
+
+
+    const url = await uploadImage(imageUri);
+
 
     await saveProfilePhoto(url);
 
 await refreshUser();
 
-    setMessage("Avatar updated");
-  } catch (error) {
+setMessage("Avatar updated");
+
+
+  } catch(error){
+
+    console.log(error);
     setMessage(error.message);
+
   }
+
 };
   const save = async () => {
     setSaving(true);
@@ -115,9 +121,30 @@ await refreshUser();
       style={styles.avatarImage}
     />
   ) : (
-    <Text style={styles.avatarText}>
-      {user?.name?.[0] || "U"}
-    </Text>
+    <Pressable
+  style={styles.avatar}
+  onPress={pickAvatar}
+>
+
+{
+ user?.photos?.length > 0 ?
+
+ <Image
+   source={{
+     uri:user.photos[0].url
+   }}
+   style={styles.avatarImage}
+ />
+
+ :
+
+ <Text style={styles.avatarText}>
+   {user?.name?.[0] || "U"}
+ </Text>
+
+}
+
+</Pressable>
   )}
 </Pressable>
           <Text style={styles.title}>{user?.name || "Your profile"}</Text>

@@ -92,17 +92,21 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data.user;
   }, []);
+  
+
 const refreshUser = useCallback(async () => {
   const response = await authApi.getMe();
 
-  setUser(response.user);
+  const freshUser = response.user;
+
+  setUser(freshUser);
 
   await AsyncStorage.setItem(
     USER_KEY,
-    JSON.stringify(response.user)
+    JSON.stringify(freshUser)
   );
 
-  return response.user;
+  return freshUser;
 }, []);
   const value = useMemo(
     () => ({

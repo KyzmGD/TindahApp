@@ -1,0 +1,74 @@
+{"_e":"root:init","_t":1784657841391,"format":"v0-jsonl","version":"56.1.20"}
+{"_e":"env:mode","_t":1784657841392,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784657841395,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1784657841910,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784657842382,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1784657847189,"atlas":false,"workers":10,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1784657851086,"id":"1","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784657851087,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784657851090,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784657851199,"id":"1","progress":0.07582440663726107,"total":69,"current":19}
+{"_e":"metro:bundling:progress","_t":1784657851301,"id":"1","progress":0.1040582726326743,"total":155,"current":50}
+{"_e":"metro:bundling:progress","_t":1784657851405,"id":"1","progress":0.2457447585652714,"total":234,"current":116}
+{"_e":"metro:bundling:progress","_t":1784657851505,"id":"1","progress":0.3209941626968532,"total":323,"current":183}
+{"_e":"metro:bundling:progress","_t":1784657851605,"id":"1","progress":0.36158764967299967,"total":454,"current":273}
+{"_e":"metro:bundling:progress","_t":1784657851707,"id":"1","progress":0.38751189884091297,"total":551,"current":343}
+{"_e":"metro:bundling:progress","_t":1784657851834,"id":"1","progress":0.4703224687616943,"total":662,"current":454}
+{"_e":"metro:bundling:progress","_t":1784657851934,"id":"1","progress":0.5816287907462641,"total":771,"current":588}
+{"_e":"metro:bundling:progress","_t":1784657852034,"id":"1","progress":0.6980396326434235,"total":851,"current":711}
+{"_e":"metro:bundling:progress","_t":1784657852134,"id":"1","progress":0.8067922691803319,"total":953,"current":856}
+{"_e":"metro:bundling:progress","_t":1784657852234,"id":"1","progress":0.9417037218584783,"total":1014,"current":984}
+{"_e":"metro:bundling:done","_t":1784657852360,"id":"1","total":1014,"ms":1273.8282}
+{"_e":"metro:client_log","_t":1784657852658,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784657852658,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1784657852658,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784657852659,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784657852691,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:client_log","_t":1784657852695,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657852695,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657852740,"level":"log","data":["users length:","0"]}
+{"_e":"metro:client_log","_t":1784657852741,"level":"log","data":["currentUser:","undefined"]}
+{"_e":"metro:client_log","_t":1784657852742,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657852742,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657874764,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657874765,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657874789,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784657874789,"level":"log","data":["currentUser:","6a5fab49be87706a36b58cc7"]}
+{"_e":"metro:client_log","_t":1784657874791,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657874791,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657880739,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
+{"_e":"metro:client_log","_t":1784657903123,"level":"log","data":["[Error: Cannot read properties of undefined (reading 'toProfileJSON')]"]}
+{"_e":"metro:bundling:started","_t":1784657977732,"id":"3","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784657977732,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1784657977786,"id":"3","total":1,"ms":53.6273}
+{"_e":"metro:client_log","_t":1784657978087,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784657978087,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1784657978087,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784657978088,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784657978122,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:client_log","_t":1784657978125,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657978125,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657978158,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784657978158,"level":"log","data":["currentUser:","6a5fab49be87706a36b58cc7"]}
+{"_e":"metro:client_log","_t":1784657978161,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784657978161,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784657980463,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
+{"_e":"metro:client_log","_t":1784657984884,"level":"log","data":["[Error: Cannot read properties of undefined (reading 'toProfileJSON')]"]}
+{"_e":"metro:client_log","_t":1784658108272,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
+{"_e":"metro:client_log","_t":1784658112612,"level":"log","data":["[Error: Cannot read properties of undefined (reading 'photos')]"]}
+{"_e":"metro:bundling:failed","_t":1784658227210,"id":null,"message":"SyntaxError: D:\\tinnda\\frontend\\src\\context\\AuthContext.js: Identifier 'refreshUser' has already been declared. (110:6)\n\n  108 | }, []);\n  109 |\n> 110 | const refreshUser = useCallback(async (nextUser) => {\n      |       ^\n  111 |   setUser(nextUser);\n  112 |\n  113 |   await AsyncStorage.setItem(","importStack":null,"filename":"src\\context\\AuthContext.js","targetModuleName":null,"originModulePath":null}
+{"_e":"metro:client_log","_t":1784658227213,"level":"error","data":["[TransformError: SyntaxError: D:\\tinnda\\frontend\\src\\context\\AuthContext.js: Identifier 'refreshUser' has already been declared. (110:6)\n\n  108 | }, []);\n  109 |\n> 110 | const refreshUser = useCallback(async (nextUser) => {\n      |       ^\n  111 |   setUser(nextUser);\n  112 |\n  113 |   await AsyncStorage.setItem(]"]}
+{"_e":"metro:client_log","_t":1784658228620,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784658228620,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784658228686,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784658228686,"level":"log","data":["currentUser:","6a5fab49be87706a36b58cc7"]}
+{"_e":"metro:client_log","_t":1784658228688,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784658228689,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784658233616,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784658233616,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784658233650,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784658233651,"level":"log","data":["currentUser:","6a5fab49be87706a36b58cc7"]}
+{"_e":"metro:client_log","_t":1784658233653,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784658233653,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784658299662,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
+{"_e":"metro:client_log","_t":1784658303388,"level":"log","data":["[Error: Cannot read properties of undefined (reading 'photos')]"]}
