@@ -1,473 +1,1312 @@
-# Tindah
+# Tindah - Tinder Clone App
 
-A mobile dating application inspired by Tinder, built with **React Native (Expo)**, **Node.js**, **Express.js**, **MongoDB**, and **Socket.IO**.
+Tindah is a Tinder-style mobile dating application built with React Native Expo,
+Node.js, Express, MongoDB, Redis, and Socket.IO.
 
-The project allows users to create profiles, discover other users, swipe left or right, match with compatible users, and communicate through real-time messaging.
-
----
-
-## Features
-
-### Authentication
-
-* User registration
-* User login
-* JWT-based authentication
-* Protected API endpoints
-
-### User Profile
-
-* Create and update profile
-* Manage personal information
-* Set preferences and interests
-
-### Matching System
-
-* Swipe left to reject
-* Swipe right to like
-* Automatic match detection
-* Match history
-
-### Real-Time Chat
-
-* Instant messaging
-* Socket.IO integration
-* Conversation management
-
-### Mobile Experience
-
-* Responsive mobile UI
-* React Native + Expo
-* Cross-platform support
+The app currently supports account registration, profile management, discovery,
+swiping, automatic matching, chat history, real-time chat, offline message retry,
+Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
 
 ---
 
-## Technology Stack
+## Current Progress
 
-### Frontend
+| Module | Status | Notes |
+| --- | --- | --- |
+| Authentication | Done | Register, login, JWT auth, current user profile |
+| User profile | Done | Update name, bio, birth date, interests, job, school |
+| Search filters | Done | Gender preference and min/max age are saved and applied to Explore |
+| Explore | Done | Filters by distance, gender preference, age range, mutual interest, and excluded swipe history |
+| Swipe API | Done | `like`, `pass`, idempotent upsert, reciprocal like creates match |
+| Race condition handling | Done | Unique indexes and idempotent logic prevent duplicate matches |
+| Redis cache | Done | Stores excluded swipe IDs with 24h TTL, MongoDB fallback when Redis is down |
+| Load testing | Done | k6 script for 100 concurrent VUs during 1 minute |
+| Match list | Done | Get active matches, unmatch |
+| Message history | Done | Paginated message API sorted by `createdAt: -1` |
+| Real-time chat | Done | Socket.IO room per `matchId`, `send_message`, `receive_message`, typing event |
+| Network resilience | Done | Frontend queues pending messages and flushes after reconnect |
+| Image upload | Partially done | Cloudinary upload and save profile photo endpoint exist; Cloudinary env is required |
+| Push notification FCM #40 | Deferred | Firebase Console setup, native build, token storage, and FCM backend are planned for later |
 
-| Technology       | Purpose                 |
-| ---------------- | ----------------------- |
-| React Native     | Mobile application      |
-| Expo             | Development platform    |
-| Axios            | API communication       |
-| React Navigation | Navigation management   |
-| Socket.IO Client | Real-time communication |
+---
+
+## Tech Stack
 
 ### Backend
 
-| Technology | Purpose                 |
-| ---------- | ----------------------- |
-| Node.js    | Runtime environment     |
-| Express.js | REST API server         |
-| MongoDB    | Database                |
-| Mongoose   | ODM                     |
-| JWT        | Authentication          |
-| Socket.IO  | Real-time communication |
+| Tool | Purpose |
+| --- | --- |
+| Node.js | Runtime |
+| Express | REST API |
+| MongoDB Atlas or local MongoDB | Main database |
+| Mongoose | ODM |
+| JWT | Authentication |
+| Redis | Swipe exclusion cache |
+| Socket.IO | Realtime chat |
+| Cloudinary | Image upload |
+| Jest + Supertest | Integration testing |
+| k6 | Load testing |
 
----
+### Frontend
 
-## System Architecture
-
-```text
-Mobile App (React Native)
-           │
-           ▼
-      REST API
-    (Express.js)
-           │
-           ▼
-       MongoDB
-
-Real-time Chat
-React Native
-      │
-      ▼
- Socket.IO
-      │
-      ▼
- Socket Server
-```
+| Tool | Purpose |
+| --- | --- |
+| React Native | Mobile UI |
+| Expo | Mobile development workflow |
+| Axios | REST API client |
+| Socket.IO Client | Realtime chat client |
+| React Navigation | Screen navigation |
+| AsyncStorage | Local session storage |
 
 ---
 
 ## Project Structure
 
 ```text
-TindahApp/
-│
-├── frontend/
-│   ├── src/
-│   ├── assets/
-│   ├── screens/
-│   ├── components/
-│   └── services/
-│
-├── backend/
-│   ├── src/
-│   ├── controllers/
-│   ├── models/
-│   ├── routes/
-│   ├── middleware/
-│   └── services/
-│
-├── docs/
-├── README.md
-└── CHANGELOG.md
+TinderApp/
+  backend/
+    src/
+      app.js
+      server.js
+      config/
+      controllers/
+      middlewares/
+      models/
+      routes/
+      services/
+      sockets/
+      utils/
+    tests/
+  frontend/
+    src/
+      components/
+      context/
+      hooks/
+      navigation/
+      screens/
+      services/
+  docs/
+  load-tests/
+  README.md
 ```
 
 ---
 
-## Installation
+## Local Setup
 
-### Prerequisites
+### Requirements
 
-* Node.js 20+
-* MongoDB 7+
-* Git
-* Expo CLI
+- Node.js 20+
+- MongoDB local or MongoDB Atlas
+- Redis 7.x, optional but recommended
+- Expo CLI / Expo Go for app testing
+- k6, only needed for load testing
 
----
-
-## Clone Repository
-
-```bash
-git clone https://github.com/KyzmGD/TindahApp.git
-
-cd TindahApp
-```
-
----
-
-## Backend Setup
-
-Navigate to backend folder:
+### Backend
 
 ```bash
 cd backend
-```
-
-Install dependencies:
-
-```bash
 npm install
-```
-
-Create environment file:
-
-```bash
-cp .env.example .env
-```
-
-Example configuration:
-
-```env
-PORT=5000
-
-MONGO_URI=mongodb://localhost:27017/tinderapp
-
-JWT_SECRET=your_secret_key
-
-CLIENT_URL=http://localhost:8081
-```
-
-Start development server:
-
-```bash
+copy .env.example .env
 npm run dev
 ```
 
-Backend should be running on:
+Backend default URL:
 
 ```text
 http://localhost:5000
 ```
 
----
-
-## Frontend Setup
-
-Navigate to frontend folder:
-
-```bash
-cd frontend
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Start Expo:
-
-```bash
-npm start
-```
-
-or
-
-```bash
-npx expo start
-```
-
----
-
-## API Overview
-
-### Authentication
-
-#### Register
-
-```http
-POST /api/auth/register
-```
-
-#### Login
-
-```http
-POST /api/auth/login
-```
-
----
-
-### User
-
-#### Get Profile
-
-```http
-GET /api/users/profile
-```
-
-#### Update Profile
-
-```http
-PUT /api/users/profile
-```
-
----
-
-### Matching
-
-#### Swipe
-
-```http
-POST /api/swipes
-```
-
-#### Get Matches
-
-```http
-GET /api/matches
-```
-
----
-
-### Chat
-
-#### Get Conversations
-
-```http
-GET /api/chats
-```
-
-#### Send Message
-
-```http
-POST /api/chats/message
-```
-
----
-
-## Environment Variables
-
-### Backend
+Example `backend/.env`:
 
 ```env
-PORT=
-MONGO_URI=
-JWT_SECRET=
-CLIENT_URL=
+NODE_ENV=development
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/tinderapp
+JWT_SECRET=your_secret_key
+JWT_EXPIRES_IN=7d
+CLIENT_ORIGIN=http://localhost:8081
+REDIS_URL=redis://localhost:6379
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
 ```
+
+If Redis is not running, Explore still works by falling back to MongoDB.
 
 ### Frontend
 
+```bash
+cd frontend
+npm install
+npm start
+```
+
+If testing on a real phone, set the API URL to your computer LAN IP:
+
 ```env
-EXPO_PUBLIC_API_URL=
-EXPO_PUBLIC_SOCKET_URL=
+EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api
 ```
 
----
-
-## Screenshots
-
-### Login Screen
-
-<img width="1918" height="964" alt="image" src="https://github.com/user-attachments/assets/846e3e9c-c7a3-4e1d-9994-62a75d95d70b" />
-
-
-
-### Matching Screen
-
-<img width="1916" height="964" alt="image" src="https://github.com/user-attachments/assets/b4fa57dd-4799-4f7e-9180-b86247c026e1" />
-
-
-
-### Chat Screen
-
-<img width="1919" height="962" alt="image" src="https://github.com/user-attachments/assets/a65a1c67-b20a-4448-863f-fc50ea264469" />
-
-
-
-### Profile Screen
-
-<img width="1917" height="964" alt="image" src="https://github.com/user-attachments/assets/d31a49dc-1c5e-4a80-9c00-232beafe1811" />
-
-
+The frontend derives Socket.IO URL from the API URL by removing `/api`.
 
 ---
 
-## Development Workflow
+## Run Tests
 
-Create a feature branch:
+Backend tests:
 
 ```bash
-git checkout -b feature/feature-name
-```
-
-Commit changes:
-
-```bash
-git commit -m "feat: add new feature"
-```
-
-Push changes:
-
-```bash
-git push origin feature/feature-name
-```
-
-Create a Pull Request on GitHub.
-
----
-
-## Coding Standards
-
-### Commit Convention
-
-```text
-feat: add feature
-fix: resolve bug
-docs: update documentation
-refactor: improve structure
-test: add tests
-chore: maintenance tasks
-```
-
-### Branch Naming
-
-```text
-feature/user-authentication
-feature/chat-system
-fix/login-validation
-docs/update-readme
-```
-
----
-
-## Roadmap
-
-### v0.2.0
-
-* Image upload
-* Profile photos
-* Enhanced matching algorithm
-* Better search filters
-
-### v0.3.0
-
-* Push notifications
-* Premium features
-* User verification
-
-### v1.0.0
-
-* Production-ready release
-* Complete test coverage
-* CI/CD pipeline
-* Performance optimization
-
----
-
-## Known Limitations
-
-* Push notifications are not implemented.
-* Media storage optimization is incomplete.
-* API contracts may change before v1.0.0.
-
----
-
-## Testing
-
-Backend:
-
-```bash
+cd backend
 npm test
 ```
 
-Frontend:
+Load test:
 
 ```bash
-npm test
+k6 run load-tests/swipes-load-test.js
+```
+
+Detailed load testing guide:
+
+```text
+docs/LOAD_TESTING.md
 ```
 
 ---
 
-## Contributing
+## Postman Setup
 
-Contributions are welcome.
+Create a Postman environment with these variables:
 
-Please read:
+| Variable | Initial value |
+| --- | --- |
+| `baseUrl` | `http://localhost:5000` |
+| `token` | empty |
+| `aliceToken` | empty |
+| `bobToken` | empty |
+| `caseyToken` | empty |
+| `aliceId` | empty |
+| `bobId` | empty |
+| `caseyId` | empty |
+| `matchId` | empty |
 
-* CONTRIBUTING.md
-* CODE_OF_CONDUCT.md
+Default headers for JSON APIs:
 
-before submitting Pull Requests.
+```http
+Content-Type: application/json
+Authorization: Bearer {{token}}
+```
+
+For login/register, do not send `Authorization`.
+
+Recommended Postman Tests script after login/register:
+
+```js
+const body = pm.response.json();
+
+if (body.token) {
+  pm.environment.set("token", body.token);
+}
+
+if (body.user?.id) {
+  pm.environment.set("currentUserId", body.user.id);
+}
+```
 
 ---
 
-## License
+## REST API Reference
 
-This project is licensed under the MIT License.
+Prefer `/api/v1/...` for newer endpoints when available. Some legacy endpoints
+without `/v1` are still mounted for compatibility.
 
-See the LICENSE file for details.
+### Health
+
+#### GET `/health`
+
+Checks whether the API server is alive.
+
+Response:
+
+```json
+{
+  "status": "ok",
+  "service": "tinder-clone-api",
+  "timestamp": "2026-07-22T00:00:00.000Z"
+}
+```
+
+---
+
+## Authentication APIs
+
+Available prefixes:
+
+```text
+/api/auth
+/api/v1/auth
+```
+
+### Register
+
+#### POST `/api/auth/register`
+
+Body:
+
+```json
+{
+  "name": "Alice",
+  "email": "alice@example.com",
+  "password": "password123",
+  "birthDate": "1998-01-01",
+  "gender": "woman"
+}
+```
+
+Allowed gender values:
+
+```text
+woman, man, nonbinary, other
+```
+
+Expected response: `201`
+
+```json
+{
+  "token": "JWT_TOKEN",
+  "user": {
+    "id": "USER_ID",
+    "name": "Alice",
+    "email": "alice@example.com"
+  }
+}
+```
+
+Common errors:
+
+| Status | Meaning |
+| --- | --- |
+| 400 | Invalid name, email, password, birthday, or gender |
+| 409 | Email is already registered |
+| 503 | Database unavailable |
+
+### Login
+
+#### POST `/api/auth/login`
+
+Body:
+
+```json
+{
+  "email": "alice@example.com",
+  "password": "password123"
+}
+```
+
+Expected response: `200`
+
+Save `token` to Postman environment.
+
+### Get Current User
+
+#### GET `/api/auth/me`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+Expected response:
+
+```json
+{
+  "user": {
+    "id": "USER_ID",
+    "name": "Alice",
+    "email": "alice@example.com"
+  }
+}
+```
+
+### Update Current User - Legacy Flexible API
+
+#### PATCH `/api/auth/me`
+
+This endpoint updates broader raw user fields. It is useful in Postman for
+setting location test data.
+
+Body example:
+
+```json
+{
+  "location": {
+    "type": "Point",
+    "coordinates": [106.660172, 10.762622]
+  },
+  "preferences": {
+    "maxDistanceKm": 50,
+    "ageRange": {
+      "min": 18,
+      "max": 45
+    }
+  },
+  "interestedIn": ["woman", "man"]
+}
+```
+
+Important: Geo coordinates use MongoDB order:
+
+```text
+[longitude, latitude]
+```
+
+---
+
+## User APIs
+
+Available prefixes:
+
+```text
+/api/users
+/api/v1/users
+```
+
+### Update Profile And Search Filters
+
+#### PUT `/api/v1/users/profile`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "name": "Alice Updated",
+  "bio": "Coffee, travel, music",
+  "birthDate": "1998-01-01",
+  "interests": ["coffee", "travel", "music"],
+  "jobTitle": "Software Engineer",
+  "school": "HCM University",
+  "genderPreference": ["man"],
+  "minAge": 24,
+  "maxAge": 35
+}
+```
+
+Aliases supported:
+
+```json
+{
+  "interests": "coffee, travel, music",
+  "interestedIn": ["man"],
+  "preferences": {
+    "ageRange": {
+      "min": 24,
+      "max": 35
+    }
+  }
+}
+```
+
+Expected response:
+
+```json
+{
+  "message": "Profile updated successfully",
+  "user": {
+    "id": "USER_ID",
+    "name": "Alice Updated",
+    "genderPreference": ["man"],
+    "minAge": 24,
+    "maxAge": 35,
+    "searchFilters": {
+      "genderPreference": ["man"],
+      "minAge": 24,
+      "maxAge": 35,
+      "maxDistanceKm": 50
+    }
+  }
+}
+```
+
+Validation rules:
+
+| Field | Rule |
+| --- | --- |
+| `name` | 2-80 characters |
+| `bio` | max 500 characters |
+| `interests` | max 20 items, each max 40 characters |
+| `genderPreference` | one or more of `woman`, `man`, `nonbinary`, `other` |
+| `minAge`, `maxAge` | integer from 18 to 100, `minAge <= maxAge` |
+
+### Explore Users
+
+#### GET `/api/v1/users/explore?lat=10.762622&lng=106.660172&radiusKm=50`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+Query params:
+
+| Param | Required | Example | Meaning |
+| --- | --- | --- | --- |
+| `lat` | yes | `10.762622` | Current latitude |
+| `lng` | yes | `106.660172` | Current longitude |
+| `radiusKm` | no | `50` | Search radius |
+
+Expected response:
+
+```json
+{
+  "users": [
+    {
+      "_id": "USER_ID",
+      "id": "USER_ID",
+      "name": "Bob",
+      "gender": "man",
+      "age": 28,
+      "bio": "Hello",
+      "photos": [],
+      "distanceMeters": 1200,
+      "distanceKm": 1.2
+    }
+  ]
+}
+```
+
+Explore applies:
+
+- Current user's `genderPreference`
+- Current user's `preferences.ageRange`
+- Candidate's mutual `interestedIn`
+- Distance radius
+- Already-swiped excluded IDs from Redis or MongoDB fallback
+
+Common error:
+
+```json
+{
+  "message": "lat and lng query parameters are required and must be numbers"
+}
+```
+
+---
+
+## Swipe And Discovery APIs
+
+Available prefixes:
+
+```text
+/api/swipes
+/api/v1/swipes
+```
+
+### Discover Candidates
+
+#### GET `/api/v1/swipes/discover?limit=20`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+This is an older discovery endpoint used by swipe cards. It uses stored user
+location and preferences.
+
+Expected response:
+
+```json
+{
+  "users": []
+}
+```
+
+### Swipe
+
+#### POST `/api/v1/swipes`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body for like:
+
+```json
+{
+  "targetId": "{{bobId}}",
+  "type": "like"
+}
+```
+
+Body for pass:
+
+```json
+{
+  "targetId": "{{caseyId}}",
+  "type": "pass"
+}
+```
+
+Legacy body is also supported:
+
+```json
+{
+  "targetUserId": "{{bobId}}",
+  "direction": "like"
+}
+```
+
+Allowed directions:
+
+```text
+like, pass, nope, superlike
+```
+
+Note: `pass` is normalized internally to `nope`.
+
+Response when no match:
+
+```json
+{
+  "swipe": {
+    "swiper": "ALICE_ID",
+    "target": "BOB_ID",
+    "direction": "like"
+  },
+  "match": null,
+  "isMatch": false,
+  "matchedUser": null
+}
+```
+
+Response when reciprocal like creates match:
+
+```json
+{
+  "swipe": {
+    "swiper": "BOB_ID",
+    "target": "ALICE_ID",
+    "direction": "like"
+  },
+  "match": {
+    "_id": "MATCH_ID",
+    "users": []
+  },
+  "isMatch": true,
+  "matchedUser": {}
+}
+```
+
+DoD notes:
+
+- A reciprocal double like creates exactly one active match.
+- Match contains exactly 2 users.
+- Duplicate swipes do not create duplicate matches.
+- Redis key is written as `swipe:excluded:{userId}` with TTL 24h when Redis is online.
+
+---
+
+## Match APIs
+
+Available prefix:
+
+```text
+/api/matches
+```
+
+### Get Matches
+
+#### GET `/api/matches`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+Response:
+
+```json
+{
+  "matches": [
+    {
+      "_id": "MATCH_ID",
+      "users": [],
+      "status": "active",
+      "lastMessage": {
+        "text": "Hello",
+        "sender": "USER_ID",
+        "sentAt": "2026-07-22T00:00:00.000Z"
+      }
+    }
+  ]
+}
+```
+
+### Unmatch
+
+#### PATCH `/api/matches/:matchId/unmatch`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+Response:
+
+```json
+{
+  "match": {
+    "_id": "MATCH_ID",
+    "status": "unmatched",
+    "unmatchedBy": "USER_ID"
+  }
+}
+```
+
+---
+
+## Message And Chat APIs
+
+### Paginated Message History
+
+Available prefix:
+
+```text
+/api/v1/messages
+```
+
+#### GET `/api/v1/messages/:matchId?page=1&limit=20`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+```
+
+Response is sorted by newest first:
+
+```json
+{
+  "messages": [
+    {
+      "_id": "MESSAGE_ID",
+      "match": "MATCH_ID",
+      "sender": {
+        "_id": "USER_ID",
+        "name": "Alice",
+        "photos": []
+      },
+      "receiver": "USER_ID",
+      "text": "Hello",
+      "clientMessageId": "client-123",
+      "createdAt": "2026-07-22T00:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  }
+}
+```
+
+### Legacy Chat Message List
+
+Available prefix:
+
+```text
+/api/chats
+```
+
+#### GET `/api/chats/:matchId/messages?limit=50`
+
+Returns recent messages in chronological order for the chat UI.
+
+### Create Message By REST
+
+#### POST `/api/chats/:matchId/messages`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "text": "Hello from Postman",
+  "clientMessageId": "postman-message-001"
+}
+```
+
+Image message body:
+
+```json
+{
+  "imageUrl": "https://example.com/photo.jpg",
+  "clientMessageId": "postman-image-001"
+}
+```
+
+Response:
+
+```json
+{
+  "message": {
+    "_id": "MESSAGE_ID",
+    "match": "MATCH_ID",
+    "sender": {
+      "_id": "USER_ID",
+      "name": "Alice",
+      "photos": []
+    },
+    "receiver": "USER_ID",
+    "text": "Hello from Postman",
+    "clientMessageId": "postman-message-001"
+  }
+}
+```
+
+Notes:
+
+- User must belong to the active match.
+- `text` or `imageUrl` is required.
+- `clientMessageId` makes retries idempotent.
+- The REST endpoint also emits `receive_message` through Socket.IO.
+
+---
+
+## Upload APIs
+
+Available prefixes:
+
+```text
+/api/upload
+/api/v1/upload
+```
+
+Cloudinary environment variables are required.
+
+### Upload Image To Cloudinary
+
+#### POST `/api/v1/upload/image`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+```
+
+Postman Body:
+
+- Select `form-data`
+- Key: `image`
+- Type: `File`
+- Value: choose an image file
+
+Expected response:
+
+```json
+{
+  "message": "Image uploaded successfully",
+  "url": "https://res.cloudinary.com/..."
+}
+```
+
+### Save Profile Photo
+
+#### POST `/api/v1/upload/save-profile-photo`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
+  "publicId": "optional-public-id"
+}
+```
+
+Expected response:
+
+```json
+{
+  "message": "Profile photo saved successfully",
+  "photos": [
+    {
+      "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
+      "publicId": "optional-public-id",
+      "isPrimary": true
+    }
+  ]
+}
+```
+
+---
+
+## Socket.IO Events
+
+Socket.IO is not a normal REST API, so it is not tested like JSON requests in
+Postman. Use the mobile app or a Socket.IO client.
+
+Server URL:
+
+```text
+http://localhost:5000
+```
+
+Client auth:
+
+```js
+io("http://localhost:5000", {
+  transports: ["websocket"],
+  auth: { token: "JWT_TOKEN" }
+});
+```
+
+Events:
+
+| Event | Direction | Payload |
+| --- | --- | --- |
+| `match:join` | client -> server | `matchId` |
+| `send_message` | client -> server | `{ matchId, text, imageUrl, clientMessageId }` |
+| `receive_message` | server -> client | saved message |
+| `typing` | both | `{ matchId, isTyping, userId }` |
+| `match:new` | server -> client | match |
+
+Realtime DoD:
+
+- Only users in the same `matchId` room receive `receive_message`.
+- Message is saved to MongoDB before realtime emit.
+- Offline frontend messages are queued and sent after reconnect.
+
+---
+
+## Postman Test Scenarios
+
+### Scenario 1 - Register Three Users
+
+Register Alice:
+
+```http
+POST {{baseUrl}}/api/auth/register
+```
+
+```json
+{
+  "name": "Alice",
+  "email": "alice@example.com",
+  "password": "password123",
+  "birthDate": "1998-01-01",
+  "gender": "woman"
+}
+```
+
+Register Bob:
+
+```json
+{
+  "name": "Bob",
+  "email": "bob@example.com",
+  "password": "password123",
+  "birthDate": "1996-01-01",
+  "gender": "man"
+}
+```
+
+Register Casey:
+
+```json
+{
+  "name": "Casey",
+  "email": "casey@example.com",
+  "password": "password123",
+  "birthDate": "1997-01-01",
+  "gender": "other"
+}
+```
+
+Save each user's `token` and `user.id`.
+
+### Scenario 2 - Prepare Location And Preferences
+
+Login Alice, set `token = aliceToken`, then:
+
+```http
+PATCH {{baseUrl}}/api/auth/me
+```
+
+```json
+{
+  "location": {
+    "type": "Point",
+    "coordinates": [106.660172, 10.762622]
+  },
+  "interestedIn": ["man"],
+  "preferences": {
+    "maxDistanceKm": 50,
+    "ageRange": {
+      "min": 24,
+      "max": 35
+    }
+  }
+}
+```
+
+Login Bob, set `token = bobToken`, then:
+
+```json
+{
+  "location": {
+    "type": "Point",
+    "coordinates": [106.661, 10.763]
+  },
+  "interestedIn": ["woman"],
+  "preferences": {
+    "maxDistanceKm": 50,
+    "ageRange": {
+      "min": 18,
+      "max": 40
+    }
+  }
+}
+```
+
+### Scenario 3 - Test Explore
+
+Use Alice token:
+
+```http
+GET {{baseUrl}}/api/v1/users/explore?lat=10.762622&lng=106.660172&radiusKm=50
+```
+
+Expected:
+
+- Bob appears if he matches Alice's filters.
+- Users Alice already swiped are excluded.
+- Redis online or offline should not break the API.
+
+### Scenario 4 - Test Pass
+
+Use Alice token:
+
+```http
+POST {{baseUrl}}/api/v1/swipes
+```
+
+```json
+{
+  "targetId": "{{caseyId}}",
+  "type": "pass"
+}
+```
+
+Expected:
+
+```json
+{
+  "isMatch": false,
+  "match": null
+}
+```
+
+### Scenario 5 - Test Match
+
+Alice likes Bob:
+
+```http
+POST {{baseUrl}}/api/v1/swipes
+Authorization: Bearer {{aliceToken}}
+```
+
+```json
+{
+  "targetId": "{{bobId}}",
+  "type": "like"
+}
+```
+
+Expected:
+
+```json
+{
+  "isMatch": false
+}
+```
+
+Bob likes Alice:
+
+```http
+POST {{baseUrl}}/api/v1/swipes
+Authorization: Bearer {{bobToken}}
+```
+
+```json
+{
+  "targetId": "{{aliceId}}",
+  "type": "like"
+}
+```
+
+Expected:
+
+```json
+{
+  "isMatch": true,
+  "match": {
+    "_id": "MATCH_ID"
+  }
+}
+```
+
+Save `match._id` into `matchId`.
+
+### Scenario 6 - Test Duplicate Like Idempotency
+
+Send Bob likes Alice again with the same or repeated body.
+
+Expected:
+
+- HTTP `201`
+- Still only one match in MongoDB for the two users
+- `isMatch: true`
+- No duplicate active match
+
+### Scenario 7 - Test Match List
+
+```http
+GET {{baseUrl}}/api/matches
+Authorization: Bearer {{aliceToken}}
+```
+
+Expected:
+
+```json
+{
+  "matches": [
+    {
+      "_id": "{{matchId}}",
+      "status": "active"
+    }
+  ]
+}
+```
+
+### Scenario 8 - Send Message By REST
+
+```http
+POST {{baseUrl}}/api/chats/{{matchId}}/messages
+Authorization: Bearer {{aliceToken}}
+```
+
+```json
+{
+  "text": "Hello Bob from Postman",
+  "clientMessageId": "postman-alice-001"
+}
+```
+
+Expected:
+
+```json
+{
+  "message": {
+    "text": "Hello Bob from Postman",
+    "clientMessageId": "postman-alice-001"
+  }
+}
+```
+
+### Scenario 9 - Get Paginated Message History
+
+```http
+GET {{baseUrl}}/api/v1/messages/{{matchId}}?page=1&limit=20
+Authorization: Bearer {{aliceToken}}
+```
+
+Expected:
+
+- Messages belong to `matchId`
+- Newest messages first
+- `pagination` object exists
+
+### Scenario 10 - Unmatch
+
+```http
+PATCH {{baseUrl}}/api/matches/{{matchId}}/unmatch
+Authorization: Bearer {{aliceToken}}
+```
+
+Expected:
+
+```json
+{
+  "match": {
+    "status": "unmatched"
+  }
+}
+```
+
+After unmatch, chat APIs for that match should return `404 Match not found`.
+
+---
+
+## Redis Verification
+
+After a swipe, check Redis if Redis is online:
+
+```bash
+redis-cli
+SMEMBERS swipe:excluded:<userId>
+TTL swipe:excluded:<userId>
+```
+
+Expected TTL:
+
+```text
+close to 86400 seconds
+```
+
+If Redis is offline:
+
+- Swipe API still works.
+- Explore API falls back to MongoDB.
+- API must not return 500 only because Redis is unavailable.
+
+---
+
+## Load Testing Summary
+
+Script:
+
+```text
+load-tests/swipes-load-test.js
+```
+
+Command:
+
+```bash
+k6 run load-tests/swipes-load-test.js
+```
+
+Acceptance criteria:
+
+| Metric | Target |
+| --- | --- |
+| HTTP 500 rate | `0%` |
+| HTTP error rate | `0%` |
+| Average swipe response time | `<= 200 ms` |
+
+Latest recorded manual result:
+
+```text
+Average swipe response: 75.71 ms
+HTTP error rate: 0.00%
+HTTP 500 rate: 0.00%
+HTTP 503 rate: 0.00%
+VUs: 100
+Duration: 1 minute
+Result: PASS
+```
+
+---
+
+## Known Limitations And Notes
+
+- FCM push notification issue #40 is intentionally deferred.
+- Redis is optional in local development because fallback to MongoDB exists.
+- Cloudinary upload requires valid Cloudinary environment variables.
+- Socket.IO events are best tested with the mobile app or a Socket.IO client, not normal Postman REST requests.
+- The root `package.json` is not the main app package. Use `backend/package.json` and `frontend/package.json`.
+- MongoDB Atlas works. Make sure your IP address is allowed in Atlas Network Access.
+
+---
+
+## Common Problems
+
+### `Route not found`
+
+Check the exact mounted path. Important current paths:
+
+```text
+POST /api/v1/swipes
+PUT  /api/v1/users/profile
+GET  /api/v1/users/explore
+GET  /api/v1/messages/:matchId
+GET  /api/matches
+POST /api/chats/:matchId/messages
+```
+
+### `Authentication token is required`
+
+Add:
+
+```http
+Authorization: Bearer <token>
+```
+
+### Explore returns empty list
+
+Check:
+
+- Candidate location is near the query `lat/lng`
+- Current user's `genderPreference`
+- Candidate's `interestedIn` includes current user's gender
+- Candidate age is inside current user's min/max age
+- User was not already swiped
+
+### MongoDB Atlas cannot connect
+
+Check:
+
+- `MONGO_URI` in `backend/.env`
+- Atlas username/password
+- Database user permissions
+- Atlas Network Access IP whitelist
+
+### Redis command not found or Docker unavailable
+
+Redis is optional for local dev. The app should still work through MongoDB fallback.
 
 ---
 
 ## Contributors
 
-* Vu Tuan Dat
-* Vu Duc
-* Project Team Members
+- Vu Tuan Dat
+- Vu Duc
+- Project Team Members
 
 ---
 
-## Release Information
-
-Current Version:
-
-```text
-v0.1.0
-```
-
-Status:
-
-```text
-Pre-release
-```
-
-This project is currently under active development and may introduce breaking changes before version 1.0.0.
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License. See `LICENSE` for details.
