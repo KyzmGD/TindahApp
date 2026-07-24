@@ -5,7 +5,7 @@ export default function Input({ label, error, style, inputStyle, ...props }) {
     <View style={[styles.wrapper, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
-        placeholderTextColor="#8c8f9f"
+        placeholderTextColor="#777171"
         autoCapitalize="none"
         style={[styles.input, error && styles.inputError, inputStyle]}
         {...props}
@@ -20,18 +20,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: "#606473",
+    color: "#bfb8b8",
     fontSize: 13,
     fontWeight: "700",
   },
   input: {
     minHeight: 52,
     borderWidth: 1,
-    borderColor: "#e3e4eb",
+    borderColor: "#3a3434",
     borderRadius: 14,
     paddingHorizontal: 16,
-    color: "#171a25",
-    backgroundColor: "#fff",
+    color: "#ffffff",
+    backgroundColor: "#1d1a1a",
     fontSize: 16,
   },
   inputError: {

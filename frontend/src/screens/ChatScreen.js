@@ -241,14 +241,15 @@ export default function ChatScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#000000",
   },
   header: {
     paddingTop: 54,
     paddingHorizontal: 14,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#ececf2",
+    borderBottomColor: "#272020",
+    backgroundColor: "#101010",
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -269,18 +270,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#ffedf0",
+    backgroundColor: "#1d1a1a",
   },
   headerCopy: {
     flex: 1,
   },
   title: {
-    color: "#171a25",
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "800",
   },
   statusText: {
-    color: "#8c8f9f",
+    color: "#bfb8b8",
     fontSize: 12,
     fontWeight: "700",
     marginTop: 2,
@@ -304,12 +305,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyChatTitle: {
-    color: "#171a25",
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "800",
   },
   emptyChatText: {
-    color: "#777b8d",
+    color: "#bfb8b8",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   sendingHint: {
-    color: "#8c8f9f",
+    color: "#bfb8b8",
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",

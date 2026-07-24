@@ -17,9 +17,9 @@ export default function UserCard({ user, style, remaining = 0 }) {
     ];
   const matchScore = user?.matchScore ?? 92;
   const interests = (
-    user?.interests || ["Hẹn hò", "Cà phê", "Nhạc indie"]
+    user?.interests || ["Dating", "Coffee", "Indie music"]
   ).slice(0, 3);
-  const extraTags = ["KHÔNG HÚT THUỐC"];
+  const extraTags = ["NON-SMOKER"];
 
   return (
     <View style={[styles.card, style]}>
@@ -27,6 +27,7 @@ export default function UserCard({ user, style, remaining = 0 }) {
         source={{ uri: imageUrl }}
         style={styles.image}
         imageStyle={styles.imageRadius}
+        resizeMode="cover"
       >
         <View style={styles.scrim} />
 
@@ -36,7 +37,7 @@ export default function UserCard({ user, style, remaining = 0 }) {
           </View>
           <View style={styles.matchBadge}>
             <Text selectable={false} style={styles.matchScore}>{matchScore}%</Text>
-            <Text selectable={false} style={styles.matchLabel}>TƯƠNG HỢP</Text>
+            <Text selectable={false} style={styles.matchLabel}>MATCH</Text>
           </View>
         </View>
 
@@ -73,10 +74,10 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
         <View style={styles.promptCard}>
           <Text selectable={false} style={styles.promptText} numberOfLines={2}>
-            {user?.bio || "Chưa có giới thiệu, hãy thử bắt chuyện!"}
+            {user?.bio || "No bio yet. Start the conversation."}
           </Text>
           <View style={styles.commentButton}>
-            <Text selectable={false} style={styles.commentText}>Bình luận...</Text>
+            <Text selectable={false} style={styles.commentText}>Comment...</Text>
           </View>
         </View>
       </ImageBackground>
@@ -86,28 +87,28 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
 const styles = StyleSheet.create({
   card: {
-  borderRadius: 22,
-  backgroundColor: "#111",
-  overflow: "hidden",
-  shadowColor: "#1b1d28",
-  shadowOpacity: 0.18,
-  shadowRadius: 18,
-  shadowOffset: { width: 0, height: 12 },
-  elevation: 8,
-
-  // Web fixes
-  userSelect: "none",
+    borderRadius: 22,
+    backgroundColor: "#111111",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+    userSelect: "none",
   },
   image: {
     flex: 1,
     justifyContent: "space-between",
   },
   imageRadius: {
-    borderRadius: 22,
+    borderRadius: 21,
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.28)",
+    backgroundColor: "rgba(0,0,0,0.32)",
   },
   topOverlay: {
     flexDirection: "row",
@@ -116,38 +117,39 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   headerBadge: {
-  backgroundColor: "rgba(255,255,255,0.35)",
-  borderRadius: 14,
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-
-  alignSelf: "flex-start",
-},
- badgeText: {
-  color: "#fff",
-  fontWeight: "800",
-  fontSize: 13,
-},
+    backgroundColor: "rgba(16,16,16,0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+  },
+  badgeText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 13,
+  },
   matchBadge: {
-  backgroundColor: "rgba(255,255,255,0.35)",
-  borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.2)",
-  borderRadius: 18,
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  alignItems: "center",
-},
+    backgroundColor: "rgba(16,16,16,0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: "center",
+  },
   matchScore: {
-  color: "#fff",
-  fontWeight: "900",
-  fontSize: 16,
-},
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 16,
+  },
   matchLabel: {
-  color: "rgba(255,255,255,0.85)",
-  fontSize: 11,
-  fontWeight: "700",
-  marginTop: 2,
-},
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+  },
   content: {
     paddingHorizontal: 22,
     paddingBottom: 14,
@@ -158,12 +160,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   name: {
-    color: "#fff",
-    fontSize: 34,
-    fontWeight: "900",
+    color: "#ffffff",
+    fontSize: 36,
+    fontWeight: "800",
   },
   age: {
-    fontWeight: "600",
+    fontWeight: "500",
   },
   meta: {
     color: "#f3f4f8",
@@ -181,29 +183,35 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagBubble: {
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(16,16,16,0.64)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   tagBubbleText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 12,
     fontWeight: "700",
   },
   tagBubbleSecondary: {
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(16,16,16,0.64)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   tagBubbleSecondaryText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 12,
     fontWeight: "700",
   },
   promptCard: {
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: "rgba(16,16,16,0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
     margin: 20,
     borderRadius: 20,
     padding: 16,
@@ -213,18 +221,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   promptText: {
-    color: "#1d2233",
+    color: "#ffffff",
     fontSize: 14,
     flex: 1,
   },
   commentButton: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.14)",
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   commentText: {
-    color: "#fff",
+    color: "#ffffff",
     fontWeight: "800",
     fontSize: 12,
   },

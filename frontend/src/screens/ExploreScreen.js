@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,6 +21,7 @@ export default function ExploreScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [matchBanner, setMatchBanner] = useState("");
   const [error, setError] = useState("");
+  const pulse = useRef(new Animated.Value(0)).current;
 
   const loadProfiles = useCallback(async () => {
     setError("");
@@ -34,6 +36,27 @@ const [showMatchModal, setShowMatchModal] =
 
 const [matchedUser, setMatchedUser] =
   useState(null);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1300,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [pulse]);
+
   useEffect(() => {
     loadProfiles()
       .catch(() => {
@@ -95,7 +118,14 @@ const [matchedUser, setMatchedUser] =
     <View style={styles.screen}>
       <View style={styles.header}>
         <Text style={styles.logo}>tindah</Text>
-        <Pressable style={styles.filterButton} onPress={refresh}>
+        <Pressable
+          style={({ hovered, pressed }) => [
+            styles.filterButton,
+            hovered && styles.filterButtonHover,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={refresh}
+        >
           <Text style={styles.filterText}>Filters</Text>
         </Pressable>
       </View>
@@ -108,6 +138,7 @@ const [matchedUser, setMatchedUser] =
 
       <ScrollView
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -123,7 +154,14 @@ const [matchedUser, setMatchedUser] =
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={refresh}>
+            <Pressable
+              style={({ hovered, pressed }) => [
+                styles.retryButton,
+                hovered && styles.retryButtonHover,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={refresh}
+            >
               <Text style={styles.retryText}>Try again</Text>
             </Pressable>
           </View>
@@ -146,22 +184,69 @@ const [matchedUser, setMatchedUser] =
 />
       <View style={styles.actions}>
         <Pressable
-          style={[styles.actionButton, styles.nope]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.nope,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "nope")}
         >
-          <Text style={styles.nopeText}>✕</Text>
+          <Text style={styles.nopeText}>X</Text>
         </Pressable>
         <Pressable
-          style={[styles.actionButton, styles.superLike]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.superLike,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "superlike")}
         >
-          <Text style={styles.superLikeText}>★</Text>
+          <Animated.Text
+            style={[
+              styles.superLikeText,
+              {
+                transform: [
+                  {
+                    scale: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.08],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            ★
+          </Animated.Text>
         </Pressable>
         <Pressable
-          style={[styles.actionButton, styles.like]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.like,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "like")}
         >
-          <Text style={styles.likeText}>♥</Text>
+          <Animated.Text
+            style={[
+              styles.likeText,
+              {
+                transform: [
+                  {
+                    scale: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            ♥
+          </Animated.Text>
         </Pressable>
       </View>
     </View>
@@ -171,7 +256,7 @@ const [matchedUser, setMatchedUser] =
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f7f8fc",
+    backgroundColor: "#000000",
   },
   header: {
     paddingTop: 16,
@@ -180,7 +265,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#fff",
+    backgroundColor: "#101010",
   },
   logo: {
     color: "#ff4458",
@@ -190,16 +275,21 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: "#f4f5f8",
+    backgroundColor: "#1d1a1a",
     borderRadius: 18,
   },
+  filterButtonHover: {
+    backgroundColor: "#282222",
+    transform: [{ translateY: -1 }],
+  },
   filterText: {
-    color: "#626678",
+    color: "#ffffff",
     fontWeight: "800",
   },
   content: {
     flexGrow: 1,
     padding: 16,
+    paddingBottom: 24,
   },
   loading: {
     flex: 1,
@@ -214,7 +304,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     borderRadius: 18,
-    backgroundColor: "#202433",
+    backgroundColor: "#1d1a1a",
     padding: 14,
     alignItems: "center",
   },
@@ -240,7 +330,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 20,
     paddingBottom: 16,
-    backgroundColor: "#f7f8fc",
+    backgroundColor: "#000000",
   },
   actionButton: {
     width: 70,
@@ -248,24 +338,32 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
-    shadowColor: "#1b1d28",
-    shadowOpacity: 0.12,
+    backgroundColor: "#1d1a1a",
+    shadowColor: "#000000",
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
+  actionHover: {
+    backgroundColor: "#282222",
+    transform: [{ translateY: -2 }, { scale: 1.04 }],
+  },
+  actionPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.94 }],
+  },
   nope: {
     borderWidth: 1,
-    borderColor: "#ffd5dc",
+    borderColor: "#ffffff",
   },
   superLike: {
     borderWidth: 1,
-    borderColor: "#ccedff",
+    borderColor: "#2ba7ff",
   },
   like: {
     borderWidth: 1,
-    borderColor: "#cef4df",
+    borderColor: "#ff253a",
   },
   retryButton: {
     marginTop: 12,
@@ -275,22 +373,31 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#ff4458",
   },
+  retryButtonHover: {
+    backgroundColor: "#ff5f70",
+    transform: [{ translateY: -1 }],
+  },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
+  },
   retryText: {
     color: "#fff",
     fontWeight: "800",
   },
   nopeText: {
-    color: "#ff4458",
+    color: "#ffffff",
     fontSize: 28,
     fontWeight: "900",
   },
   superLikeText: {
     color: "#2ba7ff",
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "900",
   },
   likeText: {
-    color: "#20c970",
-    fontSize: 28,
+    color: "#ff253a",
+    fontSize: 32,
+    fontWeight: "900",
   },
 });

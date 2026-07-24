@@ -10,6 +10,24 @@ const photoSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const profileDetailsSchema = new mongoose.Schema(
+  {
+    looking: { type: String, trim: true, maxlength: 80, default: "" },
+    languages: [{ type: String, trim: true, maxlength: 40 }],
+    zodiac: { type: String, trim: true, maxlength: 40, default: "" },
+    education: { type: String, trim: true, maxlength: 80, default: "" },
+    family: { type: String, trim: true, maxlength: 80, default: "" },
+    communication: { type: String, trim: true, maxlength: 80, default: "" },
+    love: { type: String, trim: true, maxlength: 80, default: "" },
+    pets: [{ type: String, trim: true, maxlength: 40 }],
+    drinking: { type: String, trim: true, maxlength: 80, default: "" },
+    smoking: { type: String, trim: true, maxlength: 80, default: "" },
+    workout: { type: String, trim: true, maxlength: 80, default: "" },
+    social: { type: String, trim: true, maxlength: 80, default: "" },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -34,6 +52,7 @@ const userSchema = new mongoose.Schema(
     },
     bio: { type: String, maxlength: 500, default: "" },
     interests: [{ type: String, trim: true, maxlength: 40 }],
+    profileDetails: { type: profileDetailsSchema, default: () => ({}) },
     jobTitle: { type: String, trim: true, maxlength: 80 },
     school: { type: String, trim: true, maxlength: 120 },
     photos: { type: [photoSchema], default: [] },
@@ -76,6 +95,7 @@ userSchema.methods.toProfileJSON = function toProfileJSON() {
     interestedIn: this.interestedIn,
     bio: this.bio,
     interests: this.interests,
+    profileDetails: this.profileDetails,
     jobTitle: this.jobTitle,
     school: this.school,
     photos: this.photos,

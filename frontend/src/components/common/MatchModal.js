@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: "85%",
-    backgroundColor: "#fff",
+    backgroundColor: "#101010",
     borderRadius: 24,
     padding: 24,
     alignItems: "center",
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 10,
     textAlign: "center",
-    color: "#666",
+    color: "#bfb8b8",
   },
   avatarRow: {
     flexDirection: "row",
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   continueText: {
-    color: "#666",
+    color: "#bfb8b8",
     fontWeight: "700",
   },
 });

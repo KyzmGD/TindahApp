@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 6,
   },
   their: {
-    backgroundColor: "#f0f1f6",
+    backgroundColor: "#1d1a1a",
     borderBottomLeftRadius: 6,
   },
   text: {
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   theirText: {
-    color: "#202433",
+    color: "#ffffff",
   },
   pendingText: {
     color: "rgba(255,255,255,0.78)",
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   timeText: {
     alignSelf: "flex-end",
@@ -109,6 +109,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.78)",
   },
   theirMetaText: {
-    color: "#8c8f9f",
+    color: "#bfb8b8",
   },
 });

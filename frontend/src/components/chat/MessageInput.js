@@ -21,7 +21,7 @@ export default function MessageInput({ disabled = false, onSend, onTyping }) {
           onTyping?.(value.length > 0);
         }}
         placeholder="Message"
-        placeholderTextColor="#8c8f9f"
+        placeholderTextColor="#777171"
         editable={!disabled}
         style={[styles.input, disabled && styles.inputDisabled]}
         multiline
@@ -29,8 +29,9 @@ export default function MessageInput({ disabled = false, onSend, onTyping }) {
       <Pressable
         onPress={submit}
         disabled={disabled || !text.trim()}
-        style={({ pressed }) => [
+        style={({ hovered, pressed }) => [
           styles.send,
+          hovered && styles.hovered,
           (pressed || disabled || !text.trim()) && styles.pressed,
         ]}
       >
@@ -47,18 +48,18 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: "#ececf2",
-    backgroundColor: "#fff",
+    borderTopColor: "#272020",
+    backgroundColor: "#101010",
   },
   input: {
     flex: 1,
     maxHeight: 110,
     minHeight: 44,
     borderRadius: 22,
-    backgroundColor: "#f4f5f9",
+    backgroundColor: "#1d1a1a",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    color: "#171a25",
+    color: "#ffffff",
     fontSize: 15,
   },
   inputDisabled: {
@@ -74,6 +75,10 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+    transform: [{ scale: 0.96 }],
+  },
+  hovered: {
+    transform: [{ translateY: -1 }],
   },
   sendText: {
     color: "#fff",

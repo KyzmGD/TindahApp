@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
@@ -251,7 +251,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fafbff",
+    backgroundColor: "#000000",
   },
   content: {
     flexGrow: 1,
@@ -274,12 +274,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   title: {
-    color: "#171a25",
-    fontSize: 34,
-    fontWeight: "900",
+    color: "#ffffff",
+    fontSize: 36,
+    fontWeight: "800",
   },
   subtitle: {
-    color: "#6d7180",
+    color: "#bfb8b8",
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 8,

@@ -15,6 +15,19 @@ const MAX_ALLOWED_AGE = 100;
 const MIN_DISTANCE_KM = 2;
 const MAX_DISTANCE_KM = 100;
 const MAX_PROFILE_PHOTOS = 6;
+const PROFILE_DETAIL_ARRAY_FIELDS = ["languages", "pets"];
+const PROFILE_DETAIL_STRING_FIELDS = [
+  "looking",
+  "zodiac",
+  "education",
+  "family",
+  "communication",
+  "love",
+  "drinking",
+  "smoking",
+  "workout",
+  "social",
+];
 
 function getAgeFromBirthDateString(birthDate) {
   const birthday = new Date(`${birthDate}T00:00:00.000Z`);
@@ -58,6 +71,32 @@ function normalizeStringList(value) {
 
 function normalizeInterests(interests) {
   return normalizeStringList(interests);
+}
+
+function getPlainObject(value) {
+  return value?.toObject?.() || value || {};
+}
+
+function normalizeProfileDetails(profileDetails) {
+  if (profileDetails === undefined) {
+    return undefined;
+  }
+
+  const normalized = {};
+
+  PROFILE_DETAIL_STRING_FIELDS.forEach((field) => {
+    if (profileDetails[field] !== undefined) {
+      normalized[field] = String(profileDetails[field]).trim();
+    }
+  });
+
+  PROFILE_DETAIL_ARRAY_FIELDS.forEach((field) => {
+    if (profileDetails[field] !== undefined) {
+      normalized[field] = normalizeStringList(profileDetails[field]);
+    }
+  });
+
+  return normalized;
 }
 
 function getRequestedAgeRange(payload, user) {
@@ -195,6 +234,54 @@ function validateProfilePayload(payload, user) {
     }
   }
 
+  if (payload.profileDetails !== undefined) {
+    if (
+      !payload.profileDetails ||
+      typeof payload.profileDetails !== "object" ||
+      Array.isArray(payload.profileDetails)
+    ) {
+      errors.profileDetails = "Profile details must be an object.";
+    } else {
+      PROFILE_DETAIL_STRING_FIELDS.forEach((field) => {
+        if (
+          payload.profileDetails[field] !== undefined &&
+          typeof payload.profileDetails[field] !== "string"
+        ) {
+          errors[`profileDetails.${field}`] = `${field} must be text.`;
+          return;
+        }
+
+        const value = String(payload.profileDetails[field] || "").trim();
+        if (value.length > 80) {
+          errors[`profileDetails.${field}`] = `${field} must be 80 characters or less.`;
+        }
+      });
+
+      PROFILE_DETAIL_ARRAY_FIELDS.forEach((field) => {
+        if (
+          payload.profileDetails[field] !== undefined &&
+          !isStringOrStringArray(payload.profileDetails[field])
+        ) {
+          errors[`profileDetails.${field}`] = `${field} must be an array or comma-separated text.`;
+          return;
+        }
+
+        const normalizedValues = normalizeStringList(payload.profileDetails[field]);
+        if (normalizedValues === undefined) {
+          return;
+        }
+
+        const tooLongValue = normalizedValues.find((value) => value.length > 40);
+
+        if (normalizedValues.length > 10) {
+          errors[`profileDetails.${field}`] = `${field} can contain at most 10 items.`;
+        } else if (tooLongValue) {
+          errors[`profileDetails.${field}`] = `Each ${field} item must be 40 characters or less.`;
+        }
+      });
+    }
+  }
+
   const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
 
   if (requestedMaxDistanceKm !== undefined) {
@@ -316,6 +403,14 @@ function mapProfilePayloadToUser(user, payload) {
     user.interests = normalizedInterests;
   }
 
+  const normalizedProfileDetails = normalizeProfileDetails(payload.profileDetails);
+  if (normalizedProfileDetails !== undefined) {
+    user.profileDetails = {
+      ...getPlainObject(user.profileDetails),
+      ...normalizedProfileDetails,
+    };
+  }
+
   const normalizedPhotos = normalizePhotos(payload.photos);
   if (normalizedPhotos !== undefined) {
     user.photos = normalizedPhotos;
@@ -333,7 +428,7 @@ function mapSearchFilterPayloadToUser(user, payload) {
   const { requestedMinAge, requestedMaxAge } = getRequestedAgeRange(payload, user);
 
   if (requestedMinAge !== undefined || requestedMaxAge !== undefined) {
-    const currentPreferences = user.preferences?.toObject?.() || user.preferences || {};
+    const currentPreferences = getPlainObject(user.preferences);
     user.preferences = {
       ...currentPreferences,
       ageRange: {
@@ -350,7 +445,7 @@ function mapSearchFilterPayloadToUser(user, payload) {
   const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
 
   if (requestedMaxDistanceKm !== undefined) {
-    const currentPreferences = user.preferences?.toObject?.() || user.preferences || {};
+    const currentPreferences = getPlainObject(user.preferences);
     user.preferences = {
       ...currentPreferences,
       maxDistanceKm: Number(requestedMaxDistanceKm),

@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Slider from "@react-native-community/slider";
@@ -22,8 +26,213 @@ const MAX_DISTANCE_KM = 100;
 const MIN_AGE = 18;
 const MAX_AGE = 100;
 const SCREEN_PADDING = 18;
-const PHOTO_GAP = 10;
-const PHOTO_SIZE = (Dimensions.get("window").width - SCREEN_PADDING * 2 - PHOTO_GAP * 2) / 3;
+const CONTENT_PADDING = 18;
+const PHOTO_GAP = 8;
+
+const DETAIL_CONFIGS = {
+  interests: {
+    icon: "TAG",
+    label: "Interests",
+    mode: "multi",
+    options: [
+      "Football",
+      "Gaming",
+      "Surfing",
+      "Travel",
+      "Coffee",
+      "Music",
+      "Movies",
+      "Gym",
+      "Photography",
+      "Cooking",
+      "Dancing",
+      "Reading",
+      "Hiking",
+      "Karaoke",
+      "Art",
+      "Technology",
+      "Basketball",
+      "Yoga",
+      "Pets",
+      "Foodie",
+    ],
+  },
+  looking: {
+    icon: "EYE",
+    label: "Looking for",
+    mode: "single",
+    options: [
+      "Long-term partner",
+      "Long-term, open to short",
+      "Short-term fun",
+      "New friends",
+      "Still figuring it out",
+    ],
+  },
+  languages: {
+    icon: "A",
+    label: "Languages",
+    mode: "multi",
+    options: [
+      "English",
+      "Vietnamese",
+      "Korean",
+      "Japanese",
+      "Chinese",
+      "French",
+      "Spanish",
+      "Thai",
+    ],
+  },
+  zodiac: {
+    icon: "MOON",
+    label: "Zodiac",
+    mode: "single",
+    options: [
+      "Aries",
+      "Taurus",
+      "Gemini",
+      "Cancer",
+      "Leo",
+      "Virgo",
+      "Libra",
+      "Scorpio",
+      "Sagittarius",
+      "Capricorn",
+      "Aquarius",
+      "Pisces",
+    ],
+  },
+  education: {
+    icon: "EDU",
+    label: "Education",
+    mode: "single",
+    options: [
+      "High school",
+      "College",
+      "Bachelor's degree",
+      "Master's degree",
+      "PhD",
+      "Trade school",
+      "Prefer not to say",
+    ],
+  },
+  family: {
+    icon: "FAM",
+    label: "Family plans",
+    mode: "single",
+    options: [
+      "Want children",
+      "Open to children",
+      "Do not want children",
+      "Have children",
+      "Not sure yet",
+    ],
+  },
+  communication: {
+    icon: "CHAT",
+    label: "Communication style",
+    mode: "single",
+    options: [
+      "Big texter",
+      "Phone caller",
+      "Video chatter",
+      "Better in person",
+      "Slow replies",
+    ],
+  },
+  love: {
+    icon: "LOVE",
+    label: "Love language",
+    mode: "single",
+    options: [
+      "Quality time",
+      "Words of affirmation",
+      "Physical touch",
+      "Acts of service",
+      "Receiving gifts",
+    ],
+  },
+  pets: {
+    icon: "PET",
+    label: "Pets",
+    mode: "multi",
+    options: [
+      "Dog",
+      "Cat",
+      "Fish",
+      "Bird",
+      "Reptile",
+      "No pets",
+      "Want pets",
+      "Pet-free",
+    ],
+  },
+  drinking: {
+    icon: "BAR",
+    label: "Drinking",
+    mode: "single",
+    options: [
+      "Not for me",
+      "Sober",
+      "On special occasions",
+      "Socially on weekends",
+      "Most nights",
+    ],
+  },
+  smoking: {
+    icon: "SMK",
+    label: "Smoking",
+    mode: "single",
+    options: [
+      "Non-smoker",
+      "Social smoker",
+      "Smoker",
+      "Trying to quit",
+      "Prefer not to say",
+    ],
+  },
+  workout: {
+    icon: "FIT",
+    label: "Workout",
+    mode: "single",
+    options: [
+      "Every day",
+      "Often",
+      "Sometimes",
+      "Almost never",
+      "Prefer not to say",
+    ],
+  },
+  social: {
+    icon: "@",
+    label: "Social media",
+    mode: "single",
+    options: [
+      "Influencer",
+      "Very active",
+      "Socially active",
+      "Passive scroller",
+      "Off the grid",
+    ],
+  },
+};
+
+const DETAIL_ROW_IDS = [
+  "interests",
+  "looking",
+  "languages",
+  "zodiac",
+  "education",
+  "family",
+  "communication",
+  "love",
+  "pets",
+  "drinking",
+  "smoking",
+  "workout",
+  "social",
+];
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -54,7 +263,29 @@ function buildPhotoSlots(photos) {
   return slots;
 }
 
+function getInitialProfileDetails(user) {
+  const profileDetails = user?.profileDetails || {};
+
+  return {
+    interests: user?.interests || [],
+    looking: profileDetails.looking || "",
+    languages: profileDetails.languages || [],
+    zodiac: profileDetails.zodiac || "",
+    education: profileDetails.education || user?.school || "",
+    family: profileDetails.family || "",
+    communication: profileDetails.communication || "",
+    love: profileDetails.love || "",
+    pets: profileDetails.pets || [],
+    drinking: profileDetails.drinking || "",
+    smoking: profileDetails.smoking || "",
+    workout: profileDetails.workout || "",
+    social: profileDetails.social || "",
+  };
+}
+
 function getSettingsFromUser(user) {
+  const bio = user?.bio || "";
+
   return {
     maxDistanceKm: clamp(
       Number(user?.preferences?.maxDistanceKm || 50),
@@ -64,21 +295,67 @@ function getSettingsFromUser(user) {
     minAge: clamp(Number(user?.preferences?.ageRange?.min || 18), MIN_AGE, MAX_AGE),
     maxAge: clamp(Number(user?.preferences?.ageRange?.max || 60), MIN_AGE, MAX_AGE),
     photos: normalizePhotos(user?.photos),
+    includeBio: Boolean(bio.trim()),
+    bio,
+    profileDetails: getInitialProfileDetails(user),
   };
 }
 
+function normalizeSelection(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return value ? [value] : [];
+}
+
+function formatSelectionValue(value) {
+  const selected = normalizeSelection(value);
+
+  if (!selected.length) {
+    return "Select";
+  }
+
+  if (selected.length <= 2) {
+    return selected.join(", ");
+  }
+
+  return `${selected.length} selected`;
+}
+
 export function buildProfileSettingsPayload(settings) {
+  const profileDetails = settings.profileDetails || {};
+
   return {
     maxDistanceKm: settings.maxDistanceKm,
     minAge: settings.minAge,
     maxAge: settings.maxAge,
     photos: normalizePhotos(settings.photos),
+    bio: settings.includeBio ? settings.bio.trim() : "",
+    interests: normalizeSelection(settings.profileDetails?.interests).slice(0, 20),
+    profileDetails: {
+      looking: profileDetails.looking || "",
+      languages: normalizeSelection(profileDetails.languages),
+      zodiac: profileDetails.zodiac || "",
+      education: profileDetails.education || "",
+      family: profileDetails.family || "",
+      communication: profileDetails.communication || "",
+      love: profileDetails.love || "",
+      pets: normalizeSelection(profileDetails.pets),
+      drinking: profileDetails.drinking || "",
+      smoking: profileDetails.smoking || "",
+      workout: profileDetails.workout || "",
+      social: profileDetails.social || "",
+    },
   };
 }
 
 export default function ProfileSettingsScreen({ navigation }) {
   const { user, updateProfile } = useAuth();
+  const { width: windowWidth } = useWindowDimensions();
   const [settings, setSettings] = useState(() => getSettingsFromUser(user));
+  const [photoGridWidth, setPhotoGridWidth] = useState(0);
+  const [activeDetailId, setActiveDetailId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -90,6 +367,18 @@ export default function ProfileSettingsScreen({ navigation }) {
   }, [user]);
 
   const photoSlots = useMemo(() => buildPhotoSlots(settings.photos), [settings.photos]);
+  const photoSize = useMemo(() => {
+    const fallbackWidth = windowWidth - SCREEN_PADDING * 2 - CONTENT_PADDING * 2;
+    const availableWidth = photoGridWidth || fallbackWidth;
+    return Math.max(72, Math.floor((availableWidth - PHOTO_GAP * 2) / 3));
+  }, [photoGridWidth, windowWidth]);
+
+  const handlePhotoGridLayout = useCallback((event) => {
+    const nextWidth = Math.floor(event.nativeEvent.layout.width);
+    setPhotoGridWidth((currentWidth) => (
+      Math.abs(currentWidth - nextWidth) < 1 ? currentWidth : nextWidth
+    ));
+  }, []);
   const savedPayload = useMemo(
     () => buildProfileSettingsPayload(getSettingsFromUser(user)),
     [user],
@@ -102,6 +391,33 @@ export default function ProfileSettingsScreen({ navigation }) {
     () => JSON.stringify(savedPayload) !== JSON.stringify(currentPayload),
     [currentPayload, savedPayload],
   );
+  const activeConfig = activeDetailId ? DETAIL_CONFIGS[activeDetailId] : null;
+  const activeSelection = activeDetailId
+    ? settings.profileDetails?.[activeDetailId]
+    : null;
+
+  const profileRows = useMemo(
+    () =>
+      DETAIL_ROW_IDS.map((id) => ({
+        id,
+        ...DETAIL_CONFIGS[id],
+        value: formatSelectionValue(settings.profileDetails?.[id]),
+      })),
+    [settings.profileDetails],
+  );
+
+  const completionPercent = useMemo(() => {
+    const completed = [
+      Boolean(user?.name),
+      Boolean(currentPayload.bio),
+      Boolean(settings.profileDetails?.interests?.length),
+      Boolean(settings.photos.length),
+      Boolean(settings.profileDetails?.education),
+      Boolean(settings.profileDetails?.looking),
+    ].filter(Boolean).length;
+
+    return Math.round((completed / 6) * 100);
+  }, [currentPayload.bio, settings.photos.length, settings.profileDetails, user]);
 
   const saveAndLeave = useCallback(async (action) => {
     if (uploading) {
@@ -156,6 +472,35 @@ export default function ProfileSettingsScreen({ navigation }) {
     }));
   };
 
+  const updateProfileDetail = (detailId, value) => {
+    setMessage("");
+    setSettings((current) => ({
+      ...current,
+      profileDetails: {
+        ...current.profileDetails,
+        [detailId]: value,
+      },
+    }));
+  };
+
+  const toggleDetailOption = (option) => {
+    if (!activeDetailId || !activeConfig) {
+      return;
+    }
+
+    if (activeConfig.mode === "multi") {
+      const selected = normalizeSelection(activeSelection);
+      const nextSelection = selected.includes(option)
+        ? selected.filter((item) => item !== option)
+        : [...selected, option];
+
+      updateProfileDetail(activeDetailId, nextSelection);
+      return;
+    }
+
+    updateProfileDetail(activeDetailId, option);
+  };
+
   const updateMinAge = (value) => {
     const nextMinAge = Math.round(value);
     setMessage("");
@@ -173,6 +518,14 @@ export default function ProfileSettingsScreen({ navigation }) {
       ...current,
       minAge: Math.min(current.minAge, nextMaxAge),
       maxAge: nextMaxAge,
+    }));
+  };
+
+  const toggleBio = (value) => {
+    setMessage("");
+    setSettings((current) => ({
+      ...current,
+      includeBio: value,
     }));
   };
 
@@ -229,137 +582,337 @@ export default function ProfileSettingsScreen({ navigation }) {
     }));
   };
 
-  const renderPhotoSlot = ({ item, drag, isActive }) => (
-    <ScaleDecorator activeScale={1.04}>
-      {item.type === "photo" ? (
-        <Pressable
-          disabled={isActive}
-          onLongPress={drag}
-          delayLongPress={180}
-          style={[styles.photoSlot, isActive && styles.photoSlotActive]}
-        >
-          <Image source={{ uri: item.url }} style={styles.photo} />
-          <View style={styles.photoBadge}>
-            <Text style={styles.photoBadgeText}>
-              {item.isPrimary ? "Primary" : "Hold"}
+  const renderPhotoSlot = ({ item, drag, isActive, getIndex, index }) => {
+    const itemIndex = typeof index === "number" ? index : getIndex?.() || 0;
+    const isLastColumn = itemIndex % 3 === 2;
+    const slotSpacing = {
+      width: photoSize,
+      marginRight: isLastColumn ? 0 : PHOTO_GAP,
+    };
+
+    return (
+      <ScaleDecorator activeScale={1.04}>
+        {item.type === "photo" ? (
+          <Pressable
+            disabled={isActive}
+            onLongPress={drag}
+            delayLongPress={180}
+            style={({ hovered, pressed }) => [
+              styles.photoSlot,
+              slotSpacing,
+              hovered && styles.photoSlotHover,
+              pressed && styles.photoSlotPressed,
+              isActive && styles.photoSlotActive,
+            ]}
+          >
+            <Image source={{ uri: item.url }} style={styles.photo} />
+            <View style={styles.photoBadge}>
+              <Text style={styles.photoBadgeText}>
+                {item.isPrimary ? "Primary" : "Hold"}
+              </Text>
+            </View>
+            <Pressable
+              style={({ hovered, pressed }) => [
+                styles.removeButton,
+                hovered && styles.removeButtonHover,
+                pressed && styles.removeButtonPressed,
+              ]}
+              onPress={() => removePhoto(item.url)}
+            >
+              <Text style={styles.removeButtonText}>x</Text>
+            </Pressable>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={({ hovered, pressed }) => [
+              styles.emptySlot,
+              slotSpacing,
+              hovered && styles.emptySlotHover,
+              pressed && styles.emptySlotPressed,
+            ]}
+            onPress={pickPhoto}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#ff4458" />
+            ) : (
+              <>
+                <Text style={styles.emptyPlus}>+</Text>
+                <Text style={styles.emptyLabel}>Add</Text>
+              </>
+            )}
+          </Pressable>
+        )}
+      </ScaleDecorator>
+    );
+  };
+
+  const renderSettingRow = (row) => (
+    <Pressable
+      key={row.id}
+      style={({ hovered, pressed }) => [
+        styles.detailRow,
+        hovered && styles.detailRowHover,
+        pressed && styles.detailRowPressed,
+      ]}
+      onPress={() => setActiveDetailId(row.id)}
+    >
+      {({ hovered }) => (
+        <>
+          <View style={styles.rowIcon}>
+            <Text style={[styles.rowIconText, hovered && styles.rowIconTextHover]}>
+              {row.icon}
             </Text>
           </View>
-          <Pressable
-            style={styles.removeButton}
-            onPress={() => removePhoto(item.url)}
+          <Text
+            style={[styles.rowLabel, hovered && styles.rowLabelHover]}
+            numberOfLines={1}
           >
-            <Text style={styles.removeButtonText}>x</Text>
-          </Pressable>
-        </Pressable>
-      ) : (
-        <Pressable
-          style={styles.emptySlot}
-          onPress={pickPhoto}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <ActivityIndicator color="#ff4458" />
-          ) : (
-            <>
-              <Text style={styles.emptyPlus}>+</Text>
-              <Text style={styles.emptyLabel}>Add</Text>
-            </>
-          )}
-        </Pressable>
+            {row.label}
+          </Text>
+          <Text
+            style={[styles.rowValue, hovered && styles.rowValueHover]}
+            numberOfLines={1}
+          >
+            {row.value}
+          </Text>
+          <Text style={[styles.chevron, hovered && styles.chevronHover]}>
+            {">"}
+          </Text>
+        </>
       )}
-    </ScaleDecorator>
+    </Pressable>
   );
+
+  const renderSelector = () => {
+    if (!activeConfig) {
+      return null;
+    }
+
+    const selected = normalizeSelection(activeSelection);
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent
+        visible={Boolean(activeConfig)}
+        onRequestClose={() => setActiveDetailId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalDismissArea}
+            onPress={() => setActiveDetailId(null)}
+          />
+          <View style={styles.selectorSheet}>
+            <View style={styles.selectorHeader}>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.selectorHeaderButtonHover,
+                  pressed && styles.selectorHeaderButtonPressed,
+                ]}
+                onPress={() => {
+                  updateProfileDetail(
+                    activeDetailId,
+                    activeConfig.mode === "multi" ? [] : "",
+                  );
+                }}
+              >
+                <Text style={styles.clearText}>Clear</Text>
+              </Pressable>
+              <Text style={styles.selectorTitle}>{activeConfig.label}</Text>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.selectorHeaderButtonHover,
+                  pressed && styles.selectorHeaderButtonPressed,
+                ]}
+                onPress={() => setActiveDetailId(null)}
+              >
+                <Text style={styles.doneText}>Done</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.selectorHint}>
+              {activeConfig.mode === "multi"
+                ? "Choose all that apply."
+                : "Choose one option."}
+            </Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.optionList}
+            >
+              {activeConfig.options.map((option) => {
+                const isSelected = selected.includes(option);
+
+                return (
+                  <Pressable
+                    key={option}
+                    style={({ hovered, pressed }) => [
+                      styles.optionRow,
+                      isSelected && styles.optionRowSelected,
+                      hovered && styles.optionRowHover,
+                      pressed && styles.optionRowPressed,
+                    ]}
+                    onPress={() => toggleDetailOption(option)}
+                  >
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                      {option}
+                    </Text>
+                    <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
+                      {isSelected ? <Text style={styles.checkText}>OK</Text> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   return (
     <View style={styles.screen}>
+      <View style={styles.topHandle} />
       <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.title}>Settings</Text>
         <Pressable
           disabled={saving}
-          style={[styles.backButton, saving && styles.backButtonDisabled]}
           onPress={() => navigation.goBack()}
+          style={({ hovered, pressed }) => [
+            styles.doneButton,
+            hovered && styles.doneButtonHover,
+            pressed && styles.doneButtonPressed,
+          ]}
         >
-          <Text style={styles.backText}>{"<"}</Text>
+          {saving ? (
+            <ActivityIndicator color="#4c9dff" />
+          ) : (
+            <Text style={styles.doneText}>Done</Text>
+          )}
         </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>
-            {saving ? "Saving before you leave" : "Photos and discovery controls"}
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.completionBlock}>
+          <View style={styles.completionTrack}>
+            <View
+              style={[
+                styles.completionFill,
+                { width: `${completionPercent}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.completionText}>
+            Complete your profile {completionPercent}% so more people can discover you.
           </Text>
         </View>
-        {saving ? <ActivityIndicator color="#ff4458" /> : null}
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Discovery distance</Text>
-          <Text style={styles.valueText}>{settings.maxDistanceKm} km</Text>
+        <View style={styles.section} onLayout={handlePhotoGridLayout}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Profile photos</Text>
+            <Text style={styles.valueText}>{settings.photos.length}/6</Text>
+          </View>
+          <Text style={styles.helperText}>Hold and drag photos to reorder your profile.</Text>
+          <DraggableFlatList
+            data={photoSlots}
+            keyExtractor={(item) => item.key}
+            numColumns={3}
+            scrollEnabled={false}
+            activationDistance={8}
+            containerStyle={styles.photoGrid}
+            renderItem={renderPhotoSlot}
+            onDragEnd={handleDragEnd}
+          />
         </View>
-        <Slider
-          minimumValue={MIN_DISTANCE_KM}
-          maximumValue={MAX_DISTANCE_KM}
-          step={1}
-          value={settings.maxDistanceKm}
-          minimumTrackTintColor="#ff4458"
-          maximumTrackTintColor="#e4e6ee"
-          thumbTintColor="#ff4458"
-          onValueChange={(value) => updateSetting("maxDistanceKm", Math.round(value))}
-        />
-        <View style={styles.sliderBounds}>
-          <Text style={styles.boundText}>2 km</Text>
-          <Text style={styles.boundText}>100 km</Text>
-        </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Age range</Text>
-          <Text style={styles.valueText}>
-            {settings.minAge} - {settings.maxAge}
-          </Text>
+        <View style={styles.section}>
+          <View style={styles.bioHeader}>
+            <Text style={styles.sectionTitle}>Show bio</Text>
+            <Switch
+              value={settings.includeBio}
+              onValueChange={toggleBio}
+              trackColor={{ false: "#5e5a5a", true: "#ff4458" }}
+              thumbColor="#ffffff"
+            />
+          </View>
+          {settings.includeBio ? (
+            <TextInput
+              value={settings.bio}
+              onChangeText={(value) => updateSetting("bio", value)}
+              placeholder="Add a short introduction"
+              placeholderTextColor="#777171"
+              multiline
+              maxLength={500}
+              style={styles.bioInput}
+            />
+          ) : null}
         </View>
-        <Text style={styles.sliderLabel}>Minimum age</Text>
-        <Slider
-          minimumValue={MIN_AGE}
-          maximumValue={MAX_AGE}
-          step={1}
-          value={settings.minAge}
-          minimumTrackTintColor="#ff4458"
-          maximumTrackTintColor="#e4e6ee"
-          thumbTintColor="#ff4458"
-          onValueChange={updateMinAge}
-        />
-        <Text style={styles.sliderLabel}>Maximum age</Text>
-        <Slider
-          minimumValue={MIN_AGE}
-          maximumValue={MAX_AGE}
-          step={1}
-          value={settings.maxAge}
-          minimumTrackTintColor="#ff4458"
-          maximumTrackTintColor="#e4e6ee"
-          thumbTintColor="#ff4458"
-          onValueChange={updateMaxAge}
-        />
-      </View>
 
-      <View style={[styles.section, styles.photoSection]}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Profile photos</Text>
-          <Text style={styles.valueText}>{settings.photos.length}/6</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Maximum distance</Text>
+            <Text style={styles.valueText}>{settings.maxDistanceKm} km</Text>
+          </View>
+          <Slider
+            minimumValue={MIN_DISTANCE_KM}
+            maximumValue={MAX_DISTANCE_KM}
+            step={1}
+            value={settings.maxDistanceKm}
+            minimumTrackTintColor="#ff4458"
+            maximumTrackTintColor="#3a3434"
+            thumbTintColor="#ffffff"
+            onValueChange={(value) => updateSetting("maxDistanceKm", Math.round(value))}
+          />
+          <View style={styles.sliderBounds}>
+            <Text style={styles.boundText}>2 km</Text>
+            <Text style={styles.boundText}>100 km</Text>
+          </View>
         </View>
-        <Text style={styles.helperText}>Hold a photo and drag it to reorder.</Text>
-        <DraggableFlatList
-          data={photoSlots}
-          keyExtractor={(item) => item.key}
-          numColumns={3}
-          scrollEnabled={false}
-          activationDistance={8}
-          containerStyle={styles.photoGrid}
-          renderItem={renderPhotoSlot}
-          onDragEnd={handleDragEnd}
-        />
-      </View>
 
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Age range</Text>
+            <Text style={styles.valueText}>
+              {settings.minAge} - {settings.maxAge}
+            </Text>
+          </View>
+          <Text style={styles.sliderLabel}>Minimum age</Text>
+          <Slider
+            minimumValue={MIN_AGE}
+            maximumValue={MAX_AGE}
+            step={1}
+            value={settings.minAge}
+            minimumTrackTintColor="#ff4458"
+            maximumTrackTintColor="#3a3434"
+            thumbTintColor="#ffffff"
+            onValueChange={updateMinAge}
+          />
+          <Text style={styles.sliderLabel}>Maximum age</Text>
+          <Slider
+            minimumValue={MIN_AGE}
+            maximumValue={MAX_AGE}
+            step={1}
+            value={settings.maxAge}
+            minimumTrackTintColor="#ff4458"
+            maximumTrackTintColor="#3a3434"
+            thumbTintColor="#ffffff"
+            onValueChange={updateMaxAge}
+          />
+        </View>
+
+        <View style={styles.listSection}>
+          {profileRows.map(renderSettingRow)}
+        </View>
+
+        {message ? <Text style={styles.message}>{message}</Text> : null}
+      </ScrollView>
+
+      {renderSelector()}
     </View>
   );
 }
@@ -367,53 +920,89 @@ export default function ProfileSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fafbff",
+    backgroundColor: "#000000",
     paddingHorizontal: 18,
-    paddingTop: 58,
+    paddingTop: 44,
+  },
+  topHandle: {
+    alignSelf: "center",
+    width: 54,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#1d1a1a",
+    marginBottom: 10,
   },
   header: {
+    minHeight: 72,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262020",
+    backgroundColor: "#101010",
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginBottom: 18,
+    paddingHorizontal: 18,
   },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
-  backButtonDisabled: {
-    opacity: 0.55,
-  },
-  backText: {
-    color: "#ff4458",
-    fontSize: 30,
-    fontWeight: "900",
-  },
-  headerCopy: {
-    flex: 1,
+  headerSpacer: {
+    width: 64,
   },
   title: {
-    color: "#171a25",
-    fontSize: 30,
-    fontWeight: "900",
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: "500",
+    textAlign: "center",
   },
-  subtitle: {
-    color: "#777b8d",
-    fontSize: 14,
+  doneButton: {
+    width: 64,
+    minHeight: 44,
+    borderRadius: 999,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingRight: 8,
+  },
+  doneButtonHover: {
+    backgroundColor: "rgba(76,157,255,0.12)",
+    transform: [{ translateY: -1 }],
+  },
+  doneButtonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.96 }],
+  },
+  doneText: {
+    color: "#4c9dff",
+    fontSize: 18,
     fontWeight: "600",
-    marginTop: 4,
+  },
+  content: {
+    backgroundColor: "#101010",
+    paddingHorizontal: CONTENT_PADDING,
+    paddingBottom: 36,
+  },
+  completionBlock: {
+    paddingVertical: 18,
+    gap: 12,
+  },
+  completionTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+    backgroundColor: "#262020",
+  },
+  completionFill: {
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: "#ff253a",
+  },
+  completionText: {
+    color: "#bfb8b8",
+    fontSize: 15,
+    fontWeight: "700",
   },
   section: {
     borderBottomWidth: 1,
-    borderBottomColor: "#eceef5",
-    paddingVertical: 16,
-  },
-  photoSection: {
-    borderBottomWidth: 0,
+    borderBottomColor: "#272020",
+    paddingVertical: 18,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -422,50 +1011,50 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionTitle: {
-    color: "#171a25",
-    fontSize: 17,
-    fontWeight: "900",
+    color: "#ffffff",
+    fontSize: 21,
+    fontWeight: "500",
   },
   valueText: {
-    color: "#ff4458",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  sliderBounds: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  boundText: {
-    color: "#8c8f9f",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  sliderLabel: {
-    color: "#777b8d",
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 8,
+    color: "#c8c0c0",
+    fontSize: 17,
+    fontWeight: "500",
   },
   helperText: {
-    color: "#777b8d",
-    fontSize: 13,
+    color: "#908888",
+    fontSize: 14,
     fontWeight: "600",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   photoGrid: {
-    minHeight: 244,
+    width: "100%",
+    minHeight: 268,
+    overflow: "hidden",
   },
   photoSlot: {
-    width: PHOTO_SIZE,
     aspectRatio: 0.78,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#fff",
-    marginRight: PHOTO_GAP,
-    marginBottom: 10,
+    backgroundColor: "#242020",
+    marginBottom: PHOTO_GAP,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   photoSlotActive: {
     opacity: 0.86,
+  },
+  photoSlotHover: {
+    borderColor: "#ffffff",
+    shadowColor: "#ffffff",
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    transform: [{ translateY: -3 }, { scale: 1.015 }],
+  },
+  photoSlotPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
   photo: {
     width: "100%",
@@ -476,12 +1065,12 @@ const styles = StyleSheet.create({
     left: 6,
     bottom: 6,
     borderRadius: 6,
-    backgroundColor: "rgba(23,26,37,0.72)",
+    backgroundColor: "rgba(0,0,0,0.68)",
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
   photoBadgeText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 10,
     fontWeight: "900",
   },
@@ -494,40 +1083,264 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(23,26,37,0.72)",
+    backgroundColor: "rgba(0,0,0,0.68)",
+  },
+  removeButtonHover: {
+    backgroundColor: "#ff4458",
+    transform: [{ scale: 1.08 }],
+  },
+  removeButtonPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.94 }],
   },
   removeButtonText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 15,
     fontWeight: "900",
   },
   emptySlot: {
-    width: PHOTO_SIZE,
     aspectRatio: 0.78,
     borderRadius: 8,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#d7dae5",
-    backgroundColor: "#fff",
-    marginRight: PHOTO_GAP,
-    marginBottom: 10,
+    borderColor: "#4a4242",
+    backgroundColor: "#242020",
+    marginBottom: PHOTO_GAP,
     alignItems: "center",
     justifyContent: "center",
   },
+  emptySlotHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#2f2929",
+    shadowColor: "#ffffff",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    transform: [{ translateY: -3 }, { scale: 1.015 }],
+  },
+  emptySlotPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
+  },
   emptyPlus: {
-    color: "#ff4458",
+    color: "#ffffff",
     fontSize: 28,
     fontWeight: "900",
   },
   emptyLabel: {
-    color: "#8c8f9f",
+    color: "#ffffff",
     fontSize: 12,
     fontWeight: "800",
+  },
+  bioHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  bioInput: {
+    minHeight: 104,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: "#ffffff",
+    backgroundColor: "#1d1a1a",
+    borderWidth: 1,
+    borderColor: "#2f2929",
+    fontSize: 16,
+    textAlignVertical: "top",
+  },
+  sliderBounds: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  boundText: {
+    color: "#8f8787",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sliderLabel: {
+    color: "#9f9797",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  listSection: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#272020",
+  },
+  detailRow: {
+    minHeight: 66,
+    borderTopWidth: 1,
+    borderTopColor: "#272020",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  detailRowHover: {
+    backgroundColor: "#171313",
+    paddingHorizontal: 8,
+    transform: [{ translateX: 4 }],
+  },
+  detailRowPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.99 }],
+  },
+  rowIcon: {
+    width: 58,
+  },
+  rowIconText: {
+    color: "#bdb5b5",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  rowIconTextHover: {
+    color: "#ffffff",
+  },
+  rowLabel: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "400",
+    paddingRight: 10,
+  },
+  rowLabelHover: {
+    color: "#ffffff",
+  },
+  rowValue: {
+    maxWidth: 126,
+    color: "#bfb8b8",
+    fontSize: 18,
+    fontWeight: "500",
+    textAlign: "right",
+  },
+  rowValueHover: {
+    color: "#ffffff",
+  },
+  chevron: {
+    color: "#5f5858",
+    fontSize: 28,
+    marginLeft: 8,
+  },
+  chevronHover: {
+    color: "#ffffff",
   },
   message: {
     color: "#ff4458",
     fontWeight: "800",
     textAlign: "center",
-    marginTop: 8,
+    marginTop: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.58)",
+    justifyContent: "flex-end",
+  },
+  modalDismissArea: {
+    flex: 1,
+  },
+  selectorSheet: {
+    maxHeight: "78%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#101010",
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 30,
+  },
+  selectorHeader: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  selectorHeaderButton: {
+    width: 72,
+    minHeight: 44,
+    borderRadius: 999,
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  selectorHeaderButtonHover: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    transform: [{ translateY: -1 }],
+  },
+  selectorHeaderButtonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.96 }],
+  },
+  clearText: {
+    color: "#bfb8b8",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  selectorTitle: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 23,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  selectorHint: {
+    color: "#908888",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  optionList: {
+    paddingBottom: 12,
+    gap: 8,
+  },
+  optionRow: {
+    minHeight: 54,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2f2929",
+    backgroundColor: "#1b1717",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+  },
+  optionRowSelected: {
+    borderColor: "#ff4458",
+    backgroundColor: "#2a171b",
+  },
+  optionRowHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#211c1c",
+    transform: [{ translateX: 4 }],
+  },
+  optionRowPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.99 }],
+  },
+  optionText: {
+    color: "#ffffff",
+    fontSize: 17,
+    fontWeight: "600",
+    flex: 1,
+    paddingRight: 12,
+  },
+  optionTextSelected: {
+    color: "#ff6b7b",
+  },
+  checkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#5f5858",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkCircleSelected: {
+    borderColor: "#ff4458",
+    backgroundColor: "#ff4458",
+  },
+  checkText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "900",
   },
 });

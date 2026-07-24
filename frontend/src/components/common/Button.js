@@ -5,9 +5,10 @@ export default function Button({ title, onPress, variant = "primary", disabled =
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      style={({ hovered, pressed }) => [
         styles.base,
         styles[variant],
+        hovered && styles.hovered,
         (pressed || disabled || loading) && styles.pressed,
         style,
       ]}
@@ -30,15 +31,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#ff4458",
   },
   secondary: {
-    backgroundColor: "#fff",
+    backgroundColor: "#1d1a1a",
     borderWidth: 1,
-    borderColor: "#e8e8ef",
+    borderColor: "#3a3434",
   },
   ghost: {
     backgroundColor: "transparent",
   },
   pressed: {
     opacity: 0.72,
+    transform: [{ scale: 0.98 }],
+  },
+  hovered: {
+    transform: [{ translateY: -1 }],
   },
   text: {
     fontSize: 16,
@@ -48,7 +53,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   secondaryText: {
-    color: "#1d2233",
+    color: "#ffffff",
   },
   ghostText: {
     color: "#ff4458",
