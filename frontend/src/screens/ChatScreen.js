@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
-  Image,
 } from "react-native";
 import ChatBubble from "../components/chat/ChatBubble";
 import MessageInput from "../components/chat/MessageInput";
@@ -18,6 +20,10 @@ function createClientMessageId(matchId) {
   return `local-${matchId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function getMessageId(message) {
+  return message._id || message.clientMessageId;
+}
+
 function isMessageInMatch(message, matchId) {
   return message.match === matchId || message.match?._id === matchId || message.matchId === matchId;
 }
@@ -25,7 +31,7 @@ function isMessageInMatch(message, matchId) {
 function mergeMessage(currentMessages, nextMessage) {
   const clientMessageId = nextMessage.clientMessageId;
   const existingIndex = currentMessages.findIndex(
-    (item) => item._id === nextMessage._id
+    (item) => getMessageId(item) === getMessageId(nextMessage)
       || (clientMessageId && item.clientMessageId === clientMessageId),
   );
 
@@ -34,20 +40,19 @@ function mergeMessage(currentMessages, nextMessage) {
   }
 
   return currentMessages.map((item, index) => (
-    index === existingIndex ? { ...item, ...nextMessage, status: nextMessage.status } : item
+    index === existingIndex ? { ...item, ...nextMessage } : item
   ));
 }
-const getAvatar = (user) => {
+
+function getAvatar(user) {
   if (!user?.photos?.length) {
     return "https://i.pravatar.cc/300";
   }
 
-  const primary = user.photos.find(
-    (photo) => photo.isPrimary
-  );
-
+  const primary = user.photos.find((photo) => photo.isPrimary);
   return primary?.url || user.photos[0]?.url;
-};
+}
+
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
   const { socket, isConnected, joinMatch, sendMessageRealtime, setTyping } = useSocket();
@@ -55,9 +60,13 @@ export default function ChatScreen({ navigation, route }) {
   const [messages, setMessages] = useState([]);
   const [typingUserId, setTypingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [sendingCount, setSendingCount] = useState(0);
+  const listRef = useRef(null);
 
   const matchId = match?._id;
   const title = useMemo(() => recipient?.name || "Chat", [recipient?.name]);
+  const inputDisabled = !matchId || loading;
 
   useEffect(() => {
     if (!match || !recipient) {
@@ -69,6 +78,7 @@ export default function ChatScreen({ navigation, route }) {
 
     const loadChat = async () => {
       setLoading(true);
+      setError("");
 
       try {
         await joinMatch(matchId);
@@ -76,9 +86,10 @@ export default function ChatScreen({ navigation, route }) {
         if (isMounted) {
           setMessages(fetchedMessages);
         }
-      } catch {
+      } catch (loadError) {
         if (isMounted) {
           setMessages([]);
+          setError(loadError.message || "Unable to load messages.");
         }
       } finally {
         if (isMounted) {
@@ -124,6 +135,18 @@ export default function ChatScreen({ navigation, route }) {
     };
   }, [currentUser?.id, matchId, socket]);
 
+  useEffect(() => {
+    if (!messages.length) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      listRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+
+    return () => clearTimeout(timeout);
+  }, [messages.length]);
+
   const handleSend = async (text) => {
     const clientMessageId = createClientMessageId(matchId);
     const pendingMessage = {
@@ -137,6 +160,8 @@ export default function ChatScreen({ navigation, route }) {
       createdAt: new Date().toISOString(),
     };
 
+    setError("");
+    setSendingCount((current) => current + 1);
     setMessages((current) => mergeMessage(current, pendingMessage));
 
     try {
@@ -145,34 +170,31 @@ export default function ChatScreen({ navigation, route }) {
       if (result?.status !== "pending") {
         setMessages((current) => mergeMessage(current, result));
       }
-    } catch {
-      setMessages((current) => mergeMessage(current, { ...pendingMessage, status: "pending" }));
+    } catch (sendError) {
+      setMessages((current) => mergeMessage(current, { ...pendingMessage, status: "failed" }));
+      setError(sendError.message || "Unable to send message.");
+    } finally {
+      setSendingCount((current) => Math.max(current - 1, 0));
     }
   };
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+    >
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>{"<"}</Text>
         </Pressable>
-        <>
-  <Image
-    source={{
-      uri: getAvatar(recipient),
-    }}
-    style={styles.avatar}
-  />
-
-  <View>
-    <Text style={styles.title}>{title}</Text>
-    {typingUserId ? (
-      <Text style={styles.typing}>
-        typing...
-      </Text>
-    ) : null}
-  </View>
-</>
+        <Image source={{ uri: getAvatar(recipient) }} style={styles.avatar} />
+        <View style={styles.headerCopy}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.statusText}>
+            {typingUserId ? "typing..." : isConnected ? "online" : "reconnecting..."}
+          </Text>
+        </View>
       </View>
 
       {loading ? (
@@ -181,23 +203,38 @@ export default function ChatScreen({ navigation, route }) {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={messages}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.messages}
+          keyExtractor={(item) => getMessageId(item)}
+          contentContainerStyle={[
+            styles.messages,
+            !messages.length && styles.emptyMessages,
+          ]}
           ListEmptyComponent={
             <View style={styles.emptyChat}>
-              <Text style={styles.emptyChatText}>No messages yet. Say hello!</Text>
+              <Text style={styles.emptyChatTitle}>No messages yet</Text>
+              <Text style={styles.emptyChatText}>Say hello and start the conversation.</Text>
             </View>
           }
           renderItem={({ item }) => {
             const senderId = item.sender?._id || item.sender;
             return <ChatBubble message={item} isMine={senderId === currentUser?.id} />;
           }}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
       )}
 
-      <MessageInput onSend={handleSend} onTyping={(value) => setTyping(matchId, value)} />
-    </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {sendingCount > 0 && !error ? (
+        <Text style={styles.sendingHint}>Sending...</Text>
+      ) : null}
+
+      <MessageInput
+        disabled={inputDisabled}
+        onSend={handleSend}
+        onTyping={(value) => setTyping(matchId, value)}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -206,11 +243,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  avatar: {
-  width: 48,
-  height: 48,
-  borderRadius: 24,
-},
   header: {
     paddingTop: 54,
     paddingHorizontal: 14,
@@ -233,16 +265,67 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: "700",
   },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffedf0",
+  },
+  headerCopy: {
+    flex: 1,
+  },
   title: {
     color: "#171a25",
     fontSize: 20,
     fontWeight: "900",
   },
-  typing: {
+  statusText: {
     color: "#8c8f9f",
     fontSize: 12,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   messages: {
     paddingVertical: 12,
+  },
+  emptyMessages: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyChat: {
+    alignItems: "center",
+    paddingHorizontal: 28,
+    gap: 8,
+  },
+  emptyChatTitle: {
+    color: "#171a25",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  emptyChatText: {
+    color: "#777b8d",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  errorText: {
+    color: "#ff4458",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  sendingHint: {
+    color: "#8c8f9f",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    paddingBottom: 6,
   },
 });

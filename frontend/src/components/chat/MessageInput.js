@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-export default function MessageInput({ onSend, onTyping }) {
+export default function MessageInput({ disabled = false, onSend, onTyping }) {
   const [text, setText] = useState("");
 
   const submit = () => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || disabled) return;
     onSend(trimmed);
     setText("");
     onTyping?.(false);
@@ -22,10 +22,18 @@ export default function MessageInput({ onSend, onTyping }) {
         }}
         placeholder="Message"
         placeholderTextColor="#8c8f9f"
-        style={styles.input}
+        editable={!disabled}
+        style={[styles.input, disabled && styles.inputDisabled]}
         multiline
       />
-      <Pressable onPress={submit} style={({ pressed }) => [styles.send, pressed && styles.pressed]}>
+      <Pressable
+        onPress={submit}
+        disabled={disabled || !text.trim()}
+        style={({ pressed }) => [
+          styles.send,
+          (pressed || disabled || !text.trim()) && styles.pressed,
+        ]}
+      >
         <Text style={styles.sendText}>Send</Text>
       </Pressable>
     </View>
@@ -52,6 +60,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: "#171a25",
     fontSize: 15,
+  },
+  inputDisabled: {
+    opacity: 0.65,
   },
   send: {
     minWidth: 64,
