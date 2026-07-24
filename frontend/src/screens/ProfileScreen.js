@@ -41,7 +41,7 @@ const getSearchFilters = (user) => ({
   maxAge: String(user?.maxAge || user?.preferences?.ageRange?.max || 60),
 });
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const {
   user,
   signOut,
@@ -121,7 +121,6 @@ setMessage("Avatar updated");
 
   } catch(error){
 
-    console.log(error);
     setMessage(error.message);
 
   }
@@ -255,6 +254,11 @@ setMessage("Avatar updated");
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
+        <Button
+          title="Settings"
+          variant="secondary"
+          onPress={() => navigation.navigate("ProfileSettings")}
+        />
         <Button title="Save profile" loading={saving} onPress={save} />
         <Button title="Log out" variant="secondary" onPress={signOut} />
       </ScrollView>

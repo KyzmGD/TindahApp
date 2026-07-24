@@ -29,20 +29,17 @@ const swipe = asyncHandler(async (req, res) => {
       io?.to(`user:${user._id.toString()}`).emit("match:new", result.match);
     });
   }
-console.log("MATCH:", result.match);
-console.log("IS MATCH:", Boolean(result.match));
+
   res.status(201).json({
-  swipe: result.swipe,
-  match: result.match,
-  isMatch: Boolean(result.match),
-  matchedUser: result.match
-    ? result.match.users.find(
-        (u) =>
-          u._id.toString() !==
-          req.user._id.toString()
+    swipe: result.swipe,
+    match: result.match,
+    isMatch: Boolean(result.match),
+    matchedUser: result.match
+      ? result.match.users.find(
+        (u) => u._id.toString() !== req.user._id.toString(),
       )
-    : null,
-});
+      : null,
+  });
 });
 
 module.exports = {

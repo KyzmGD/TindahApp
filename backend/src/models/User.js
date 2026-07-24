@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] },
     },
     preferences: {
-      maxDistanceKm: { type: Number, default: 50, min: 1, max: 500 },
+      maxDistanceKm: { type: Number, default: 50, min: 2, max: 100 },
       ageRange: {
         min: { type: Number, default: 18, min: 18, max: 100 },
         max: { type: Number, default: 60, min: 18, max: 100 },

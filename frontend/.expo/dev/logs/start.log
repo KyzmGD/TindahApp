@@ -72,3 +72,50 @@
 {"_e":"metro:client_log","_t":1784658233653,"level":"log","data":["matchedUser","null"]}
 {"_e":"metro:client_log","_t":1784658299662,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
 {"_e":"metro:client_log","_t":1784658303388,"level":"log","data":["[Error: Cannot read properties of undefined (reading 'photos')]"]}
+{"_e":"root:init","_t":1784704220130,"format":"v0-jsonl","version":"56.1.20"}
+{"_e":"env:mode","_t":1784704220131,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784704220138,"mode":"development","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_URL":"http://localhost:5000/api"}}
+{"_e":"devserver:start","_t":1784704220666,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784704221333,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1784704229334,"atlas":false,"workers":6,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1784704235730,"id":"1","platform":"web","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1784704235732,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784704235743,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1784704235890,"id":"1","progress":0.12755102040816327,"total":14,"current":5}
+{"_e":"metro:bundling:progress","_t":1784704236023,"id":"1","progress":0.12755102040816327,"total":25,"current":6}
+{"_e":"metro:bundling:progress","_t":1784704236122,"id":"1","progress":0.12755102040816327,"total":59,"current":10}
+{"_e":"metro:bundling:progress","_t":1784704236239,"id":"1","progress":0.12755102040816327,"total":116,"current":19}
+{"_e":"metro:bundling:progress","_t":1784704236339,"id":"1","progress":0.12755102040816327,"total":170,"current":47}
+{"_e":"metro:bundling:progress","_t":1784704236455,"id":"1","progress":0.17572186511580448,"total":198,"current":83}
+{"_e":"metro:bundling:progress","_t":1784704236554,"id":"1","progress":0.2218313550536407,"total":293,"current":138}
+{"_e":"metro:bundling:progress","_t":1784704236655,"id":"1","progress":0.3155555816121335,"total":413,"current":232}
+{"_e":"metro:bundling:progress","_t":1784704236756,"id":"1","progress":0.3795852094993617,"total":534,"current":329}
+{"_e":"metro:bundling:progress","_t":1784704236857,"id":"1","progress":0.5612465184953188,"total":598,"current":448}
+{"_e":"metro:bundling:progress","_t":1784704236957,"id":"1","progress":0.5877054870570914,"total":707,"current":542}
+{"_e":"metro:bundling:progress","_t":1784704237057,"id":"1","progress":0.7005854118608228,"total":816,"current":683}
+{"_e":"metro:bundling:progress","_t":1784704237159,"id":"1","progress":0.757749919987739,"total":942,"current":820}
+{"_e":"metro:bundling:progress","_t":1784704237259,"id":"1","progress":0.9520550115987695,"total":989,"current":965}
+{"_e":"metro:bundling:progress","_t":1784704237376,"id":"1","progress":0.999,"total":1106,"current":1106}
+{"_e":"metro:bundling:done","_t":1784704237456,"id":"1","total":1106,"ms":1725.2173}
+{"_e":"metro:client_log","_t":1784704237935,"level":"info","data":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"]}
+{"_e":"metro:client_log","_t":1784704237936,"level":"warn","data":["[Reanimated] Reduced motion setting is enabled on this device. This warning is visible only in the development mode. Some animations will be disabled by default. You can override the behavior for individual animations, see https://docs.swmansion.com/react-native-reanimated/docs/guides/troubleshooting#reduced-motion-setting-is-enabled-on-this-device."]}
+{"_e":"metro:client_log","_t":1784704237937,"level":"warn","data":["\"shadow*\" style props are deprecated. Use \"boxShadow\"."]}
+{"_e":"metro:client_log","_t":1784704237937,"level":"log","data":["Running application \"main\" with appParams:\n","{\"hydrate\": undefined, \"rootTag\": \"#root\"}","\nDevelopment-level warnings: ON.\nPerformance optimizations: OFF."]}
+{"_e":"metro:client_log","_t":1784704238121,"level":"warn","data":["props.pointerEvents is deprecated. Use style.pointerEvents"]}
+{"_e":"metro:client_log","_t":1784704238130,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784704238130,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784704238426,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784704238426,"level":"log","data":["currentUser:","6a606cc9bcbe80e36b5ee033"]}
+{"_e":"metro:client_log","_t":1784704238432,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784704238433,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784704290577,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784704290577,"level":"log","data":["matchedUser","null"]}
+{"_e":"metro:client_log","_t":1784704290782,"level":"log","data":["users length:","1"]}
+{"_e":"metro:client_log","_t":1784704290782,"level":"log","data":["currentUser:","6a606cc9bcbe80e36b5ee033"]}
+{"_e":"metro:client_log","_t":1784704290784,"level":"log","data":["currentUser","null"]}
+{"_e":"metro:client_log","_t":1784704290785,"level":"log","data":["matchedUser","null"]}
+{"_e":"root:init","_t":1784866954928,"format":"v0-jsonl","version":"56.1.20"}
+{"_e":"env:mode","_t":1784866954929,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1784866954935,"mode":"development","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_URL":"http://localhost:5000/api"}}
+{"_e":"devserver:start","_t":1784866955436,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1784866956005,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}

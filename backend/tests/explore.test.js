@@ -253,6 +253,7 @@ describe("PUT /api/v1/users/profile", () => {
         genderPreference: ["man", "nonbinary"],
         minAge: 24,
         maxAge: 36,
+        maxDistanceKm: 72,
       });
 
     expect(response.status).toBe(200);
@@ -268,7 +269,9 @@ describe("PUT /api/v1/users/profile", () => {
       genderPreference: ["man", "nonbinary"],
       minAge: 24,
       maxAge: 36,
+      maxDistanceKm: 72,
       preferences: {
+        maxDistanceKm: 72,
         ageRange: {
           min: 24,
           max: 36,
@@ -278,6 +281,7 @@ describe("PUT /api/v1/users/profile", () => {
         genderPreference: ["man", "nonbinary"],
         minAge: 24,
         maxAge: 36,
+        maxDistanceKm: 72,
       },
     });
 
@@ -295,6 +299,79 @@ describe("PUT /api/v1/users/profile", () => {
       min: 24,
       max: 36,
     });
+    expect(storedUser.preferences.maxDistanceKm).toBe(72);
+  });
+
+  it("syncs settings distance and reordered profile photos", async () => {
+    const user = await User.create({
+      name: "Photo Settings User",
+      email: "photo-settings-user@example.com",
+      passwordHash: "hashed-password",
+      birthDate: new Date("1998-01-01T00:00:00.000Z"),
+      gender: "woman",
+      photos: [
+        { url: "https://example.com/old-primary.jpg", publicId: "old-primary", isPrimary: true },
+        { url: "https://example.com/old-second.jpg", publicId: "old-second", isPrimary: false },
+      ],
+      preferences: {
+        maxDistanceKm: 50,
+        ageRange: {
+          min: 21,
+          max: 40,
+        },
+      },
+    });
+    const token = signUserToken(user);
+
+    const response = await request(app)
+      .put("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        maxDistanceKm: 88,
+        photos: [
+          { url: "https://example.com/photo-3.jpg", publicId: "photo-3" },
+          { url: "https://example.com/photo-1.jpg", publicId: "photo-1", isPrimary: true },
+          { url: "https://example.com/photo-2.jpg", publicId: "photo-2" },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user).toMatchObject({
+      maxDistanceKm: 88,
+      preferences: {
+        maxDistanceKm: 88,
+        ageRange: {
+          min: 21,
+          max: 40,
+        },
+      },
+      searchFilters: {
+        maxDistanceKm: 88,
+      },
+    });
+    expect(response.body.user.photos.map((photo) => photo.url)).toEqual([
+      "https://example.com/photo-3.jpg",
+      "https://example.com/photo-1.jpg",
+      "https://example.com/photo-2.jpg",
+    ]);
+    expect(response.body.user.photos.map((photo) => photo.isPrimary)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+
+    const storedUser = await User.findById(user._id).lean();
+    expect(storedUser.preferences.maxDistanceKm).toBe(88);
+    expect(storedUser.photos.map((photo) => photo.url)).toEqual([
+      "https://example.com/photo-3.jpg",
+      "https://example.com/photo-1.jpg",
+      "https://example.com/photo-2.jpg",
+    ]);
+    expect(storedUser.photos.map((photo) => photo.isPrimary)).toEqual([
+      true,
+      false,
+      false,
+    ]);
   });
 
   it("maps profile API aliases into the existing user schema", async () => {
@@ -365,6 +442,7 @@ describe("PUT /api/v1/users/profile", () => {
       interests: ["original"],
       interestedIn: ["man"],
       preferences: {
+        maxDistanceKm: 50,
         ageRange: {
           min: 25,
           max: 35,
@@ -384,6 +462,10 @@ describe("PUT /api/v1/users/profile", () => {
         genderPreference: ["invalid"],
         minAge: 40,
         maxAge: 30,
+        maxDistanceKm: 101,
+        photos: Array.from({ length: 7 }, (_, index) => ({
+          url: `https://example.com/photo-${index}.jpg`,
+        })),
       });
 
     expect(response.status).toBe(400);
@@ -395,6 +477,8 @@ describe("PUT /api/v1/users/profile", () => {
       interests: "Each interest must be 40 characters or less.",
       genderPreference: "Select a valid gender preference.",
       ageRange: "minAge must be less than or equal to maxAge.",
+      maxDistanceKm: "maxDistanceKm must be between 2 and 100.",
+      photos: "Profile can contain at most 6 photos.",
     });
 
     const storedUser = await User.findById(user._id).lean();
@@ -408,6 +492,7 @@ describe("PUT /api/v1/users/profile", () => {
       min: 25,
       max: 35,
     });
+    expect(storedUser.preferences.maxDistanceKm).toBe(50);
   });
 
   it("applies updated search filters to the next explore request immediately", async () => {

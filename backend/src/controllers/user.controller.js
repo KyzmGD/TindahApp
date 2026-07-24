@@ -12,6 +12,9 @@ const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const BIRTHDAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MIN_ALLOWED_AGE = 18;
 const MAX_ALLOWED_AGE = 100;
+const MIN_DISTANCE_KM = 2;
+const MAX_DISTANCE_KM = 100;
+const MAX_PROFILE_PHOTOS = 6;
 
 function getAgeFromBirthDateString(birthDate) {
   const birthday = new Date(`${birthDate}T00:00:00.000Z`);
@@ -85,6 +88,29 @@ function validateAgeNumber(value, fieldName, errors) {
   } else if (parsed < MIN_ALLOWED_AGE || parsed > MAX_ALLOWED_AGE) {
     errors[fieldName] = `${fieldName} must be between ${MIN_ALLOWED_AGE} and ${MAX_ALLOWED_AGE}.`;
   }
+}
+
+function getRequestedMaxDistance(payload, user) {
+  const requestedMaxDistanceKm = payload.maxDistanceKm ?? payload.preferences?.maxDistanceKm;
+
+  return {
+    requestedMaxDistanceKm,
+    effectiveMaxDistanceKm: requestedMaxDistanceKm !== undefined
+      ? Number(requestedMaxDistanceKm)
+      : user.preferences?.maxDistanceKm,
+  };
+}
+
+function normalizePhotos(photos) {
+  if (photos === undefined) {
+    return undefined;
+  }
+
+  return photos.map((photo, index) => ({
+    url: String(photo.url).trim(),
+    publicId: photo.publicId ? String(photo.publicId).trim() : undefined,
+    isPrimary: index === 0,
+  }));
 }
 
 function validateProfilePayload(payload, user) {
@@ -165,6 +191,35 @@ function validateProfilePayload(payload, user) {
         errors.interests = "Interests can contain at most 20 items.";
       } else if (tooLongInterest) {
         errors.interests = "Each interest must be 40 characters or less.";
+      }
+    }
+  }
+
+  const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
+
+  if (requestedMaxDistanceKm !== undefined) {
+    const parsedDistance = Number(requestedMaxDistanceKm);
+
+    if (!Number.isInteger(parsedDistance)) {
+      errors.maxDistanceKm = "maxDistanceKm must be an integer.";
+    } else if (parsedDistance < MIN_DISTANCE_KM || parsedDistance > MAX_DISTANCE_KM) {
+      errors.maxDistanceKm = `maxDistanceKm must be between ${MIN_DISTANCE_KM} and ${MAX_DISTANCE_KM}.`;
+    }
+  }
+
+  if (payload.photos !== undefined) {
+    if (!Array.isArray(payload.photos)) {
+      errors.photos = "Photos must be an array.";
+    } else if (payload.photos.length > MAX_PROFILE_PHOTOS) {
+      errors.photos = `Profile can contain at most ${MAX_PROFILE_PHOTOS} photos.`;
+    } else {
+      const invalidPhoto = payload.photos.find((photo) => {
+        const url = typeof photo?.url === "string" ? photo.url.trim() : "";
+        return !url;
+      });
+
+      if (invalidPhoto) {
+        errors.photos = "Each photo must include a valid url.";
       }
     }
   }
@@ -260,6 +315,11 @@ function mapProfilePayloadToUser(user, payload) {
   if (normalizedInterests !== undefined) {
     user.interests = normalizedInterests;
   }
+
+  const normalizedPhotos = normalizePhotos(payload.photos);
+  if (normalizedPhotos !== undefined) {
+    user.photos = normalizedPhotos;
+  }
 }
 
 function mapSearchFilterPayloadToUser(user, payload) {
@@ -286,6 +346,17 @@ function mapSearchFilterPayloadToUser(user, payload) {
       },
     };
   }
+
+  const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
+
+  if (requestedMaxDistanceKm !== undefined) {
+    const currentPreferences = user.preferences?.toObject?.() || user.preferences || {};
+    user.preferences = {
+      ...currentPreferences,
+      maxDistanceKm: Number(requestedMaxDistanceKm),
+      ageRange: currentPreferences.ageRange || user.preferences?.ageRange,
+    };
+  }
 }
 
 function buildUserProfileResponse(user) {
@@ -297,6 +368,7 @@ function buildUserProfileResponse(user) {
     genderPreference: profile.interestedIn,
     minAge: ageRange.min,
     maxAge: ageRange.max,
+    maxDistanceKm: profile.preferences?.maxDistanceKm,
     searchFilters: {
       genderPreference: profile.interestedIn,
       minAge: ageRange.min,

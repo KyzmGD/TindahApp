@@ -8,6 +8,7 @@ import ChatScreen from "../screens/ChatScreen";
 import ExploreScreen from "../screens/ExploreScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import ProfileSettingsScreen from "../screens/ProfileSettingsScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -73,6 +74,7 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

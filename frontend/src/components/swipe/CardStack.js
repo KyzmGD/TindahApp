@@ -11,8 +11,6 @@ export default function CardStack({
   onSuperLike,
 }) {
   const currentUser = users[0];
-  console.log("users length:", users.length);
-console.log("currentUser:", currentUser?._id);
   const nextUser = users[1];
   const { panHandlers, cardStyle } = useSwipeGesture({
   currentUser,

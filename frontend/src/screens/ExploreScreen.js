@@ -64,18 +64,12 @@ const [matchedUser, setMatchedUser] =
       user: matchedUser,
     }
   );
-};
+  };
   const handleSwipe = async (user, direction) => {
-  console.log("HANDLE SWIPE:", user?._id, direction);
-
   setUsers((current) => {
-    console.log("BEFORE:", current.length);
-
     const next = current.filter(
       (item) => item._id !== user._id
     );
-
-    console.log("AFTER:", next.length);
 
     return next;
   });
@@ -89,7 +83,6 @@ const [matchedUser, setMatchedUser] =
     if (result.isMatch) {
   setMatchedUser(user);
   setShowMatchModal(true);
-      console.log(result);
     }
   } catch (swipeError) {
     setUsers((current) => [user, ...current]);
