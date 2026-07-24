@@ -7,6 +7,20 @@ import { useAuth } from "../context/AuthContext";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const birthdayPattern = /^\d{4}-\d{2}-\d{2}$/;
 
+function formatBirthdayInput(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 4) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
 function getBirthdayValidation(value) {
   if (!value) {
     return "Birthday is required.";
@@ -121,6 +135,10 @@ export default function LoginScreen() {
     setError("");
   };
 
+  const updateBirthday = (value) => {
+    updateField("birthDate", formatBirthdayInput(value));
+  };
+
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setError("");
@@ -199,9 +217,13 @@ export default function LoginScreen() {
               placeholder="YYYY-MM-DD"
               value={form.birthDate}
               error={fieldErrors.birthDate}
-              onChangeText={(value) => updateField("birthDate", value)}
-              keyboardType="numbers-and-punctuation"
+              onChangeText={updateBirthday}
+              keyboardType="number-pad"
+              maxLength={10}
             />
+            <Text style={styles.fieldHint}>
+              Type 8 digits in order: year, month, day. Example: 2000-05-21.
+            </Text>
           </>
         ) : null}
 
@@ -296,5 +318,12 @@ const styles = StyleSheet.create({
   error: {
     color: "#ff4458",
     fontWeight: "700",
+  },
+  fieldHint: {
+    color: "#8f8787",
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 17,
+    marginTop: -10,
   },
 });
