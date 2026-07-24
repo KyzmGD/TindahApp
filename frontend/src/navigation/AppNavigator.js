@@ -22,7 +22,7 @@ const TAB_META = {
 function LoadingScreen() {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color="#ff4458" size="large" />
+      <ActivityIndicator color="#ff4f7b" size="large" />
     </View>
   );
 }
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   tabBar: {
     height: 72,
@@ -158,8 +158,13 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     paddingBottom: 12,
     borderTopWidth: 1,
-    borderTopColor: "#272020",
-    backgroundColor: "#101010",
+    borderTopColor: "#2c2334",
+    backgroundColor: "#121016",
+    shadowColor: "#20c7ff",
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 10,
   },
   tabItem: {
     flex: 1,
@@ -170,10 +175,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tabItemActive: {
-    backgroundColor: "rgba(255,68,88,0.08)",
+    backgroundColor: "rgba(255,79,123,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,79,123,0.28)",
   },
   tabItemHover: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(32,199,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(32,199,255,0.34)",
     transform: [{ translateY: -2 }],
   },
   tabItemPressed: {
@@ -181,23 +190,23 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   tabLabel: {
-    color: "#8f8787",
+    color: "#a79aaa",
     fontSize: 12,
     fontWeight: "700",
   },
   tabLabelActive: {
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
   tabLabelHover: {
     color: "#ffffff",
   },
   tabIcon: {
-    color: "#8f8787",
+    color: "#a79aaa",
     fontSize: 16,
     fontWeight: "900",
   },
   tabIconActive: {
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
   tabIconHover: {
     color: "#ffffff",

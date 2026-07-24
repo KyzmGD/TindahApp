@@ -185,21 +185,35 @@ export default function ChatScreen({ navigation, route }) {
       keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>{"<"}</Text>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={({ hovered, pressed }) => [
+            styles.backButton,
+            hovered && styles.backButtonHover,
+            pressed && styles.backButtonPressed,
+          ]}
+        >
+          {({ hovered }) => (
+            <Text style={[styles.backText, hovered && styles.backTextHover]}>
+              {"‹"}
+            </Text>
+          )}
         </Pressable>
-        <Image source={{ uri: getAvatar(recipient) }} style={styles.avatar} />
-        <View style={styles.headerCopy}>
+        <View style={styles.headerCenter}>
+          <Image source={{ uri: getAvatar(recipient) }} style={styles.avatar} />
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.statusText}>
             {typingUserId ? "typing..." : isConnected ? "online" : "reconnecting..."}
           </Text>
         </View>
+        <Pressable style={styles.menuButton}>
+          <Text style={styles.menuText}>...</Text>
+        </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color="#ff4458" size="large" />
+          <ActivityIndicator color="#ff4f7b" size="large" />
         </View>
       ) : (
         <FlatList
@@ -218,7 +232,13 @@ export default function ChatScreen({ navigation, route }) {
           }
           renderItem={({ item }) => {
             const senderId = item.sender?._id || item.sender;
-            return <ChatBubble message={item} isMine={senderId === currentUser?.id} />;
+            return (
+              <ChatBubble
+                message={item}
+                isMine={senderId === currentUser?.id}
+                avatarUrl={senderId === currentUser?.id ? getAvatar(currentUser) : getAvatar(recipient)}
+              />
+            );
           }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
@@ -241,50 +261,85 @@ export default function ChatScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   header: {
-    paddingTop: 54,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    minHeight: 132,
+    paddingTop: 34,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#272020",
-    backgroundColor: "#101010",
+    borderBottomColor: "#2c2334",
+    backgroundColor: "#111112",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
   },
   backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
   },
+  backButtonHover: {
+    transform: [{ scale: 1.08 }],
+  },
+  backButtonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.92 }],
+  },
   backText: {
-    color: "#ff4458",
-    fontSize: 34,
-    fontWeight: "700",
+    color: "#c8c0c7",
+    fontSize: 46,
+    fontWeight: "300",
+    lineHeight: 46,
+    marginTop: -3,
+  },
+  backTextHover: {
+    color: "#7cf4c8",
+    fontSize: 54,
+  },
+  headerCenter: {
+    position: "absolute",
+    left: 90,
+    right: 90,
+    top: 28,
+    alignItems: "center",
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#1d1a1a",
-  },
-  headerCopy: {
-    flex: 1,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1,
+    borderColor: "#ff7aa2",
+    backgroundColor: "#ff4f7b",
   },
   title: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "800",
+    color: "#c8c0c7",
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 5,
+    lineHeight: 19,
   },
   statusText: {
-    color: "#bfb8b8",
-    fontSize: 12,
+    color: "#8e858d",
+    fontSize: 9,
     fontWeight: "700",
-    marginTop: 2,
+    lineHeight: 11,
+  },
+  menuButton: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuText: {
+    color: "#c8c0c7",
+    fontSize: 34,
+    fontWeight: "800",
+    letterSpacing: 2,
   },
   loading: {
     flex: 1,
@@ -292,7 +347,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   messages: {
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 14,
   },
   emptyMessages: {
     flexGrow: 1,
@@ -310,12 +366,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   emptyChatText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     textAlign: "center",
     lineHeight: 20,
   },
   errorText: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
@@ -323,7 +379,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   sendingHint: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",

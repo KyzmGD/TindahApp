@@ -21,7 +21,7 @@ export default function MessageInput({ disabled = false, onSend, onTyping }) {
           onTyping?.(value.length > 0);
         }}
         placeholder="Message"
-        placeholderTextColor="#777171"
+        placeholderTextColor="#8f8398"
         editable={!disabled}
         style={[styles.input, disabled && styles.inputDisabled]}
         multiline
@@ -46,18 +46,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 10,
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
     borderTopWidth: 1,
-    borderTopColor: "#272020",
-    backgroundColor: "#101010",
+    borderTopColor: "#1f1b22",
+    backgroundColor: "#050506",
   },
   input: {
     flex: 1,
     maxHeight: 110,
-    minHeight: 44,
-    borderRadius: 22,
-    backgroundColor: "#1d1a1a",
-    paddingHorizontal: 16,
+    minHeight: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: "#2c2334",
+    backgroundColor: "#151219",
+    paddingHorizontal: 18,
     paddingVertical: 10,
     color: "#ffffff",
     fontSize: 15,
@@ -66,12 +70,14 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   send: {
-    minWidth: 64,
-    height: 44,
-    borderRadius: 22,
+    minWidth: 58,
+    height: 46,
+    borderRadius: 23,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
+    borderWidth: 1,
+    borderColor: "#ff7aa2",
   },
   pressed: {
     opacity: 0.75,

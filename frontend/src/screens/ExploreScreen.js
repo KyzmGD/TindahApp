@@ -25,14 +25,125 @@ const GENDER_OPTIONS = [
   { label: "Other", value: "other" },
 ];
 const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
+const SEARCH_FILTER_CONFIGS = {
+  interests: {
+    icon: "TAG",
+    label: "Interests",
+    mode: "multi",
+    options: [
+      "Football",
+      "Gaming",
+      "Travel",
+      "Coffee",
+      "Music",
+      "Movies",
+      "Gym",
+      "Photography",
+      "Cooking",
+      "Reading",
+      "Hiking",
+      "Technology",
+      "Pets",
+      "Foodie",
+    ],
+  },
+  looking: {
+    icon: "EYE",
+    label: "Looking for",
+    mode: "single",
+    options: [
+      "Long-term partner",
+      "Long-term, open to short",
+      "Short-term fun",
+      "New friends",
+      "Still figuring it out",
+    ],
+  },
+  languages: {
+    icon: "A",
+    label: "Languages",
+    mode: "multi",
+    options: ["English", "Vietnamese", "Korean", "Japanese", "Chinese", "French", "Spanish"],
+  },
+  education: {
+    icon: "EDU",
+    label: "Education",
+    mode: "single",
+    options: ["High school", "College", "Bachelor's degree", "Master's degree", "PhD"],
+  },
+  family: {
+    icon: "FAM",
+    label: "Family plans",
+    mode: "single",
+    options: ["Want children", "Open to children", "Do not want children", "Have children", "Not sure yet"],
+  },
+  pets: {
+    icon: "PET",
+    label: "Pets",
+    mode: "multi",
+    options: ["Dog", "Cat", "Fish", "Bird", "No pets", "Want pets", "Pet-free"],
+  },
+  drinking: {
+    icon: "BAR",
+    label: "Drinking",
+    mode: "single",
+    options: ["Not for me", "Sober", "On special occasions", "Socially on weekends", "Most nights"],
+  },
+  smoking: {
+    icon: "SMK",
+    label: "Smoking",
+    mode: "single",
+    options: ["Non-smoker", "Social smoker", "Smoker", "Trying to quit", "Prefer not to say"],
+  },
+  workout: {
+    icon: "FIT",
+    label: "Workout",
+    mode: "single",
+    options: ["Every day", "Often", "Sometimes", "Almost never", "Prefer not to say"],
+  },
+};
+const SEARCH_FILTER_IDS = [
+  "interests",
+  "looking",
+  "languages",
+  "education",
+  "family",
+  "pets",
+  "drinking",
+  "smoking",
+  "workout",
+];
 
 function clamp(value, min, max) {
   return Math.min(Math.max(Number(value) || min, min), max);
 }
 
+function normalizeSelection(value) {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+}
+
+function formatSelectionValue(value) {
+  const selected = normalizeSelection(value);
+
+  if (!selected.length) {
+    return "Any";
+  }
+
+  if (selected.length === 1) {
+    return selected[0];
+  }
+
+  return `${selected.length} selected`;
+}
+
 function getFilterForm(user) {
   const preferences = user?.preferences || {};
   const ageRange = preferences.ageRange || {};
+  const advancedFilters = user?.advancedFilters || preferences.advancedFilters || {};
 
   return {
     genderPreference:
@@ -45,6 +156,7 @@ function getFilterForm(user) {
     maxAge: clamp(user?.maxAge || ageRange.max || 38, 18, 100),
     expandDistance: user?.expandDistance ?? preferences.expandDistance ?? true,
     expandAge: user?.expandAge ?? preferences.expandAge ?? true,
+    advancedFilters,
   };
 }
 
@@ -60,6 +172,7 @@ export default function ExploreScreen() {
   const [filtersSaving, setFiltersSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [filterMessage, setFilterMessage] = useState("");
+  const [activeSearchFilterId, setActiveSearchFilterId] = useState(null);
   const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -143,6 +256,7 @@ const [matchedMatch, setMatchedMatch] =
 
   const closeFilters = () => {
     if (!filtersSaving) {
+      setActiveSearchFilterId(null);
       setFiltersVisible(false);
     }
   };
@@ -188,7 +302,9 @@ const [matchedMatch, setMatchedMatch] =
         maxAge: filterForm.maxAge,
         expandDistance: filterForm.expandDistance,
         expandAge: filterForm.expandAge,
+        advancedFilters: filterForm.advancedFilters,
       });
+      setActiveSearchFilterId(null);
       setFiltersVisible(false);
       setLoading(true);
       await loadProfiles();
@@ -257,6 +373,42 @@ const [matchedMatch, setMatchedMatch] =
       .map((option) => option.label)
       .join(", ");
   }, [filterForm.genderPreference]);
+
+  const activeSearchFilter = activeSearchFilterId
+    ? SEARCH_FILTER_CONFIGS[activeSearchFilterId]
+    : null;
+  const activeSearchSelection = activeSearchFilterId
+    ? normalizeSelection(filterForm.advancedFilters?.[activeSearchFilterId])
+    : [];
+
+  const updateAdvancedFilter = (filterId, value) => {
+    setFilterForm((current) => ({
+      ...current,
+      advancedFilters: {
+        ...current.advancedFilters,
+        [filterId]: value,
+      },
+    }));
+  };
+
+  const toggleAdvancedFilterOption = (option) => {
+    if (!activeSearchFilterId || !activeSearchFilter) {
+      return;
+    }
+
+    if (activeSearchFilter.mode === "multi") {
+      const selected = activeSearchSelection.includes(option)
+        ? activeSearchSelection.filter((item) => item !== option)
+        : [...activeSearchSelection, option];
+      updateAdvancedFilter(activeSearchFilterId, selected);
+      return;
+    }
+
+    updateAdvancedFilter(
+      activeSearchFilterId,
+      activeSearchSelection.includes(option) ? "" : option,
+    );
+  };
   const handleSwipe = async (user, direction) => {
   setUsers((current) => {
     const next = current.filter(
@@ -287,7 +439,7 @@ const [matchedMatch, setMatchedMatch] =
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.logo}>tindah</Text>
+        <Text style={styles.logo}>Tindah</Text>
         <Pressable
           style={({ hovered, pressed }) => [
             styles.filterButton,
@@ -313,13 +465,13 @@ const [matchedMatch, setMatchedMatch] =
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#ff4458"
+            tintColor="#ff4f7b"
           />
         }
       >
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color="#ff4458" size="large" />
+            <ActivityIndicator color="#ff4f7b" size="large" />
           </View>
         ) : error ? (
           <View style={styles.errorBox}>
@@ -375,7 +527,7 @@ const [matchedMatch, setMatchedMatch] =
                 ]}
               >
                 {filtersSaving ? (
-                  <ActivityIndicator color="#4c9dff" />
+                  <ActivityIndicator color="#57b8ff" />
                 ) : (
                   <Text style={styles.doneFilterText}>Done</Text>
                 )}
@@ -430,7 +582,7 @@ const [matchedMatch, setMatchedMatch] =
                   maximumValue={100}
                   step={1}
                   value={filterForm.maxDistanceKm}
-                  minimumTrackTintColor="#ff253a"
+                  minimumTrackTintColor="#ff2f6d"
                   maximumTrackTintColor="#6c6363"
                   thumbTintColor="#ffffff"
                   onValueChange={(value) =>
@@ -452,7 +604,7 @@ const [matchedMatch, setMatchedMatch] =
                         expandDistance: value,
                       }))
                     }
-                    trackColor={{ false: "#5e5a5a", true: "#e91515" }}
+                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
                     thumbColor="#ffffff"
                   />
                 </View>
@@ -510,7 +662,7 @@ const [matchedMatch, setMatchedMatch] =
                   maximumValue={100}
                   step={1}
                   value={filterForm.minAge}
-                  minimumTrackTintColor="#ff253a"
+                  minimumTrackTintColor="#ff2f6d"
                   maximumTrackTintColor="#6c6363"
                   thumbTintColor="#ffffff"
                   onValueChange={updateMinAge}
@@ -521,7 +673,7 @@ const [matchedMatch, setMatchedMatch] =
                   maximumValue={100}
                   step={1}
                   value={filterForm.maxAge}
-                  minimumTrackTintColor="#ff253a"
+                  minimumTrackTintColor="#ff2f6d"
                   maximumTrackTintColor="#6c6363"
                   thumbTintColor="#ffffff"
                   onValueChange={updateMaxAge}
@@ -538,24 +690,132 @@ const [matchedMatch, setMatchedMatch] =
                         expandAge: value,
                       }))
                     }
-                    trackColor={{ false: "#5e5a5a", true: "#e91515" }}
+                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
                     thumbColor="#ffffff"
                   />
                 </View>
               </View>
 
-              <View style={styles.advancedBlock}>
-                <View style={styles.advancedTitleRow}>
-                  <Text style={styles.filtersSectionTitle}>Advanced search</Text>
-                  <View style={styles.goldBadge}>
-                    <Text style={styles.goldBadgeText}>GOLD</Text>
-                  </View>
+              <View style={styles.searchFilterBlock}>
+                <Text style={styles.filtersSectionTitle}>More filters</Text>
+                <View style={styles.searchFilterList}>
+                  {SEARCH_FILTER_IDS.map((filterId) => {
+                    const config = SEARCH_FILTER_CONFIGS[filterId];
+                    const value = formatSelectionValue(filterForm.advancedFilters?.[filterId]);
+
+                    return (
+                      <Pressable
+                        key={filterId}
+                        style={({ hovered, pressed }) => [
+                          styles.searchFilterRow,
+                          hovered && styles.searchFilterRowHover,
+                          pressed && styles.buttonPressed,
+                        ]}
+                        onPress={() => setActiveSearchFilterId(filterId)}
+                      >
+                        {({ hovered }) => (
+                          <>
+                            <Text style={[styles.searchFilterIcon, hovered && styles.valueHover]}>
+                              {config.icon}
+                            </Text>
+                            <Text style={styles.searchFilterLabel} numberOfLines={1}>
+                              {config.label}
+                            </Text>
+                            <Text
+                              style={[styles.searchFilterValue, hovered && styles.valueHover]}
+                              numberOfLines={1}
+                            >
+                              {value}
+                            </Text>
+                            <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
+                              {">"}
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
-                <Text style={styles.advancedText}>
-                  Extra preferences can help rank better profiles, but they will
-                  not completely hide everyone else.
-                </Text>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={Boolean(activeSearchFilter)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActiveSearchFilterId(null)}
+      >
+        <View style={styles.selectorOverlay}>
+          <Pressable
+            style={styles.selectorDismiss}
+            onPress={() => setActiveSearchFilterId(null)}
+          />
+          <View style={styles.selectorSheet}>
+            <View style={styles.selectorHeader}>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.doneFilterButtonHover,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => updateAdvancedFilter(
+                  activeSearchFilterId,
+                  activeSearchFilter?.mode === "multi" ? [] : "",
+                )}
+              >
+                <Text style={styles.selectorClearText}>Clear</Text>
+              </Pressable>
+              <Text style={styles.selectorTitle}>{activeSearchFilter?.label}</Text>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.doneFilterButtonHover,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => setActiveSearchFilterId(null)}
+              >
+                <Text style={styles.doneFilterText}>Done</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.selectorOptionList}
+            >
+              {activeSearchFilter?.options.map((option) => {
+                const selected = activeSearchSelection.includes(option);
+
+                return (
+                  <Pressable
+                    key={option}
+                    style={({ hovered, pressed }) => [
+                      styles.selectorOptionRow,
+                      selected && styles.selectorOptionRowSelected,
+                      hovered && styles.selectorOptionRowHover,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={() => toggleAdvancedFilterOption(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.selectorOptionText,
+                        selected && styles.selectorOptionTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                    <View
+                      style={[
+                        styles.selectorCheck,
+                        selected && styles.selectorCheckSelected,
+                      ]}
+                    >
+                      {selected ? <Text style={styles.selectorCheckText}>OK</Text> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -634,7 +894,7 @@ const [matchedMatch, setMatchedMatch] =
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   header: {
     paddingTop: 16,
@@ -643,21 +903,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
   },
   logo: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 30,
     fontWeight: "900",
   },
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     borderRadius: 18,
   },
   filterButtonHover: {
-    backgroundColor: "#282222",
+    backgroundColor: "#2a2133",
     transform: [{ translateY: -1 }],
   },
   filterText: {
@@ -682,7 +942,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     borderRadius: 18,
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     padding: 14,
     alignItems: "center",
   },
@@ -698,7 +958,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorText: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
@@ -708,7 +968,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 20,
     paddingBottom: 16,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   actionButton: {
     width: 70,
@@ -716,15 +976,15 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1d1a1a",
-    shadowColor: "#000000",
+    backgroundColor: "#1c1720",
+    shadowColor: "#050506",
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   actionHover: {
-    backgroundColor: "#282222",
+    backgroundColor: "#2a2133",
     transform: [{ translateY: -2 }, { scale: 1.04 }],
   },
   actionPressed: {
@@ -737,11 +997,11 @@ const styles = StyleSheet.create({
   },
   superLike: {
     borderWidth: 1,
-    borderColor: "#2ba7ff",
+    borderColor: "#20c7ff",
   },
   like: {
     borderWidth: 1,
-    borderColor: "#ff253a",
+    borderColor: "#ff2f6d",
   },
   retryButton: {
     marginTop: 12,
@@ -749,10 +1009,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
   },
   retryButtonHover: {
-    backgroundColor: "#ff5f70",
+    backgroundColor: "#ff7aa2",
     transform: [{ translateY: -1 }],
   },
   buttonPressed: {
@@ -766,7 +1026,7 @@ const styles = StyleSheet.create({
   filtersOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.62)",
+    backgroundColor: "rgba(5,5,6,0.72)",
   },
   filtersBackdrop: {
     flex: 1,
@@ -776,8 +1036,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
-    borderColor: "#201b1b",
-    backgroundColor: "#000000",
+    borderColor: "#2b2234",
+    backgroundColor: "#050506",
     overflow: "hidden",
   },
   sheetHandle: {
@@ -793,7 +1053,7 @@ const styles = StyleSheet.create({
     minHeight: 72,
     borderBottomWidth: 1,
     borderBottomColor: "#252020",
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
@@ -817,11 +1077,11 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   doneFilterButtonHover: {
-    backgroundColor: "rgba(76,157,255,0.12)",
+    backgroundColor: "rgba(87,184,255,0.16)",
     transform: [{ translateY: -1 }],
   },
   doneFilterText: {
-    color: "#4c9dff",
+    color: "#57b8ff",
     fontSize: 18,
     fontWeight: "600",
   },
@@ -838,7 +1098,7 @@ const styles = StyleSheet.create({
   },
   discoveryCard: {
     borderRadius: 8,
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
@@ -850,7 +1110,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   locationRowHover: {
-    backgroundColor: "#171313",
+    backgroundColor: "#231b2b",
     transform: [{ translateX: 4 }],
   },
   locationCopy: {
@@ -863,26 +1123,26 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   settingHint: {
-    color: "#b9b1b1",
+    color: "#c7b9cf",
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "500",
   },
   filterMessage: {
-    color: "#b9b1b1",
+    color: "#c7b9cf",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 8,
   },
   locationValue: {
     maxWidth: 138,
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 22,
     fontWeight: "400",
     textAlign: "right",
   },
   rowChevron: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 34,
     fontWeight: "300",
   },
@@ -891,7 +1151,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#292424",
+    backgroundColor: "#33283d",
     marginVertical: 18,
   },
   settingHeader: {
@@ -903,7 +1163,7 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     flexShrink: 1,
-    color: "#c8c0c0",
+    color: "#ddd0e5",
     fontSize: 22,
     fontWeight: "400",
     textAlign: "right",
@@ -917,7 +1177,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     flex: 1,
-    color: "#b9b1b1",
+    color: "#c7b9cf",
     fontSize: 17,
     lineHeight: 23,
     fontWeight: "500",
@@ -932,63 +1192,170 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#3a3434",
-    backgroundColor: "#211d1d",
+    borderColor: "#403449",
+    backgroundColor: "#221a29",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 18,
   },
   genderChipSelected: {
-    borderColor: "#ff4458",
-    backgroundColor: "#2a171b",
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
   },
   genderChipHover: {
     borderColor: "#ffffff",
-    backgroundColor: "#2b2525",
+    backgroundColor: "#2f2440",
     transform: [{ translateY: -2 }, { scale: 1.03 }],
   },
   genderChipText: {
-    color: "#c8c0c0",
+    color: "#ddd0e5",
     fontSize: 16,
     fontWeight: "800",
   },
   genderChipTextSelected: {
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
   genderChipTextHover: {
     color: "#ffffff",
   },
   sliderLabel: {
-    color: "#b9b1b1",
+    color: "#c7b9cf",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 10,
   },
-  advancedBlock: {
-    paddingHorizontal: 2,
-    gap: 10,
+  searchFilterBlock: {
+    gap: 12,
   },
-  advancedTitleRow: {
+  searchFilterList: {
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#121016",
+  },
+  searchFilterRow: {
+    minHeight: 64,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2c2334",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    paddingHorizontal: 14,
+    gap: 12,
   },
-  goldBadge: {
-    borderRadius: 999,
-    backgroundColor: "#f6c90e",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  searchFilterRowHover: {
+    backgroundColor: "#231b2b",
+    transform: [{ translateX: 4 }],
   },
-  goldBadgeText: {
-    color: "#211400",
-    fontSize: 13,
+  searchFilterIcon: {
+    width: 42,
+    color: "#cbbdd2",
+    fontSize: 11,
     fontWeight: "900",
   },
-  advancedText: {
-    color: "#b9b1b1",
+  searchFilterLabel: {
+    flex: 1,
+    color: "#ffffff",
     fontSize: 18,
-    lineHeight: 27,
-    fontWeight: "500",
+    fontWeight: "600",
+  },
+  searchFilterValue: {
+    maxWidth: 116,
+    color: "#ddd0e5",
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  selectorOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(5,5,6,0.68)",
+    justifyContent: "flex-end",
+  },
+  selectorDismiss: {
+    flex: 1,
+  },
+  selectorSheet: {
+    maxHeight: "74%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: "#2b2234",
+    backgroundColor: "#121016",
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 28,
+  },
+  selectorHeader: {
+    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  selectorHeaderButton: {
+    width: 72,
+    minHeight: 44,
+    borderRadius: 999,
+    justifyContent: "center",
+  },
+  selectorClearText: {
+    color: "#cbbdd2",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  selectorTitle: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  selectorOptionList: {
+    gap: 8,
+    paddingVertical: 12,
+  },
+  selectorOptionRow: {
+    minHeight: 54,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#403449",
+    backgroundColor: "#1c1720",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+  },
+  selectorOptionRowSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
+  },
+  selectorOptionRowHover: {
+    borderColor: "#20c7ff",
+    backgroundColor: "#231b2b",
+  },
+  selectorOptionText: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    paddingRight: 12,
+  },
+  selectorOptionTextSelected: {
+    color: "#ff7aa2",
+  },
+  selectorCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#74677d",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectorCheckSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#ff4f7b",
+  },
+  selectorCheckText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "900",
   },
   nopeText: {
     color: "#ffffff",
@@ -996,12 +1363,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   superLikeText: {
-    color: "#2ba7ff",
+    color: "#20c7ff",
     fontSize: 30,
     fontWeight: "900",
   },
   likeText: {
-    color: "#ff253a",
+    color: "#ff2f6d",
     fontSize: 32,
     fontWeight: "900",
   },

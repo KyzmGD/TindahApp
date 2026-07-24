@@ -50,7 +50,7 @@ export default function ChatListScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#ff4458" size="large" />
+        <ActivityIndicator color="#ff4f7b" size="large" />
       </View>
     );
   }
@@ -63,7 +63,7 @@ export default function ChatListScreen({ navigation }) {
       <Animated.FlatList
         data={matches}
         keyExtractor={(item) => item._id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#ff4458" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#ff4f7b" />}
         contentContainerStyle={matches.length ? styles.list : styles.emptyList}
         style={[
           styles.listSurface,
@@ -139,13 +139,13 @@ export default function ChatListScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   header: {
     paddingTop: 16,
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
   },
   title: {
     color: "#ffffff",
@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   rowHover: {
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "#121010",
+    borderColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "#17111c",
     transform: [{ translateX: 4 }],
   },
   rowPressed: {
@@ -199,13 +199,13 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     borderWidth: 1,
     borderColor: "transparent",
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   avatarHover: {
-    borderColor: "#ff4458",
+    borderColor: "#ff4f7b",
     transform: [{ scale: 1.04 }],
   },
   avatarImage: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   avatarText: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 22,
     fontWeight: "900",
   },
@@ -230,14 +230,14 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   message: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 14,
   },
   messageHover: {
     color: "#ffffff",
   },
   chevron: {
-    color: "#5f5858",
+    color: "#74677d",
     fontSize: 28,
   },
   chevronHover: {
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   emptyText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     textAlign: "center",
     lineHeight: 20,
   },

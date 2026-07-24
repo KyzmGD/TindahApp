@@ -28,6 +28,21 @@ const profileDetailsSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const advancedSearchFiltersSchema = new mongoose.Schema(
+  {
+    interests: [{ type: String, trim: true, maxlength: 40 }],
+    looking: { type: String, trim: true, maxlength: 80, default: "" },
+    languages: [{ type: String, trim: true, maxlength: 40 }],
+    education: { type: String, trim: true, maxlength: 80, default: "" },
+    family: { type: String, trim: true, maxlength: 80, default: "" },
+    pets: [{ type: String, trim: true, maxlength: 40 }],
+    drinking: { type: String, trim: true, maxlength: 80, default: "" },
+    smoking: { type: String, trim: true, maxlength: 80, default: "" },
+    workout: { type: String, trim: true, maxlength: 80, default: "" },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -43,7 +58,7 @@ const userSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: ["woman", "man", "nonbinary", "other"],
-      default: "other",
+      required: true,
     },
     interestedIn: {
       type: [String],
@@ -64,6 +79,7 @@ const userSchema = new mongoose.Schema(
       maxDistanceKm: { type: Number, default: 50, min: 2, max: 100 },
       expandDistance: { type: Boolean, default: true },
       expandAge: { type: Boolean, default: true },
+      advancedFilters: { type: advancedSearchFiltersSchema, default: () => ({}) },
       ageRange: {
         min: { type: Number, default: 18, min: 18, max: 100 },
         max: { type: Number, default: 60, min: 18, max: 100 },

@@ -321,7 +321,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
   },
   content: {
     flexGrow: 1,
@@ -333,10 +333,17 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ffd166",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.38,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   brandMarkText: {
     color: "#fff",
@@ -349,7 +356,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   subtitle: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 8,
@@ -364,11 +371,11 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   error: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontWeight: "700",
   },
   fieldHint: {
-    color: "#8f8787",
+    color: "#a79aaa",
     fontSize: 12,
     fontWeight: "600",
     lineHeight: 17,
@@ -378,7 +385,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fieldLabel: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -391,19 +398,19 @@ const styles = StyleSheet.create({
     minHeight: 42,
     borderRadius: 21,
     borderWidth: 1,
-    borderColor: "#3a3434",
-    backgroundColor: "#1d1a1a",
+    borderColor: "#403449",
+    backgroundColor: "#1c1720",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 15,
   },
   genderChipSelected: {
-    borderColor: "#ff4458",
-    backgroundColor: "#2a171b",
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
   },
   genderChipHover: {
     borderColor: "#ffffff",
-    backgroundColor: "#282222",
+    backgroundColor: "#2a2133",
     transform: [{ translateY: -2 }, { scale: 1.03 }],
   },
   genderChipPressed: {
@@ -411,17 +418,17 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   genderChipText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontWeight: "800",
   },
   genderChipTextSelected: {
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
   genderChipTextHover: {
     color: "#ffffff",
   },
   fieldError: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 12,
   },
 });

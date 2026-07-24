@@ -48,6 +48,7 @@ describe("auth routes", () => {
     expect(response.body.details.birthDate).toBe(
       "You must be at least 18 years old.",
     );
+    expect(response.body.details.gender).toBe("Choose your gender.");
   });
 
   it("registers a new user successfully and returns a JWT", async () => {
@@ -102,6 +103,7 @@ describe("auth routes", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("Please fix the highlighted fields.");
     expect(response.body.details.name).toBe("Name is required.");
+    expect(response.body.details.gender).toBe("Choose your gender.");
   });
 
   it("logs in successfully and returns a JWT", async () => {

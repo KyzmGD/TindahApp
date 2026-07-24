@@ -61,26 +61,33 @@ export default function MatchModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.85)",
+    backgroundColor: "rgba(5,5,6,0.9)",
     justifyContent: "center",
     alignItems: "center",
   },
   container: {
     width: "85%",
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
     borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,209,102,0.32)",
     padding: 24,
     alignItems: "center",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 12,
   },
   title: {
     fontSize: 34,
     fontWeight: "900",
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
   subtitle: {
     marginTop: 10,
     textAlign: "center",
-    color: "#bfb8b8",
+    color: "#cbbdd2",
   },
   avatarRow: {
     flexDirection: "row",
@@ -90,13 +97,17 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
+    borderWidth: 2,
+    borderColor: "#ffd166",
   },
   secondAvatar: {
     marginLeft: -20,
   },
   messageButton: {
     width: "100%",
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
+    borderWidth: 1,
+    borderColor: "#ff7aa2",
     paddingVertical: 14,
     borderRadius: 30,
     alignItems: "center",
@@ -110,7 +121,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   continueText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontWeight: "700",
   },
 });

@@ -13,7 +13,7 @@ export default function Button({ title, onPress, variant = "primary", disabled =
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={variant === "primary" ? "#fff" : "#ff4458"} /> : null}
+      {loading ? <ActivityIndicator color={variant === "primary" ? "#fff" : "#ff4f7b"} /> : null}
       {!loading ? <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text> : null}
     </Pressable>
   );
@@ -26,14 +26,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
+    shadowColor: "#050506",
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
   primary: {
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
+    borderWidth: 1,
+    borderColor: "#ff7aa2",
   },
   secondary: {
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     borderWidth: 1,
-    borderColor: "#3a3434",
+    borderColor: "#403449",
   },
   ghost: {
     backgroundColor: "transparent",
@@ -43,7 +50,10 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   hovered: {
-    transform: [{ translateY: -1 }],
+    borderColor: "#20c7ff",
+    shadowColor: "#20c7ff",
+    shadowOpacity: 0.22,
+    transform: [{ translateY: -2 }],
   },
   text: {
     fontSize: 16,
@@ -56,6 +66,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   ghostText: {
-    color: "#ff4458",
+    color: "#ff4f7b",
   },
 });

@@ -634,7 +634,7 @@ export default function ProfileSettingsScreen({ navigation }) {
             disabled={uploading}
           >
             {uploading ? (
-              <ActivityIndicator color="#ff4458" />
+              <ActivityIndicator color="#ff4f7b" />
             ) : (
               <>
                 <Text style={styles.emptyPlus}>+</Text>
@@ -787,7 +787,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           ]}
         >
           {saving ? (
-            <ActivityIndicator color="#4c9dff" />
+            <ActivityIndicator color="#57b8ff" />
           ) : (
             <Text style={styles.doneText}>Done</Text>
           )}
@@ -836,7 +836,7 @@ export default function ProfileSettingsScreen({ navigation }) {
             <Switch
               value={settings.includeBio}
               onValueChange={toggleBio}
-              trackColor={{ false: "#5e5a5a", true: "#ff4458" }}
+              trackColor={{ false: "#61556b", true: "#ff4f7b" }}
               thumbColor="#ffffff"
             />
           </View>
@@ -845,7 +845,7 @@ export default function ProfileSettingsScreen({ navigation }) {
               value={settings.bio}
               onChangeText={(value) => updateSetting("bio", value)}
               placeholder="Add a short introduction"
-              placeholderTextColor="#777171"
+              placeholderTextColor="#8f8398"
               multiline
               maxLength={500}
               style={styles.bioInput}
@@ -863,8 +863,8 @@ export default function ProfileSettingsScreen({ navigation }) {
             maximumValue={MAX_DISTANCE_KM}
             step={1}
             value={settings.maxDistanceKm}
-            minimumTrackTintColor="#ff4458"
-            maximumTrackTintColor="#3a3434"
+            minimumTrackTintColor="#ff4f7b"
+            maximumTrackTintColor="#403449"
             thumbTintColor="#ffffff"
             onValueChange={(value) => updateSetting("maxDistanceKm", Math.round(value))}
           />
@@ -887,8 +887,8 @@ export default function ProfileSettingsScreen({ navigation }) {
             maximumValue={MAX_AGE}
             step={1}
             value={settings.minAge}
-            minimumTrackTintColor="#ff4458"
-            maximumTrackTintColor="#3a3434"
+            minimumTrackTintColor="#ff4f7b"
+            maximumTrackTintColor="#403449"
             thumbTintColor="#ffffff"
             onValueChange={updateMinAge}
           />
@@ -898,8 +898,8 @@ export default function ProfileSettingsScreen({ navigation }) {
             maximumValue={MAX_AGE}
             step={1}
             value={settings.maxAge}
-            minimumTrackTintColor="#ff4458"
-            maximumTrackTintColor="#3a3434"
+            minimumTrackTintColor="#ff4f7b"
+            maximumTrackTintColor="#403449"
             thumbTintColor="#ffffff"
             onValueChange={updateMaxAge}
           />
@@ -920,7 +920,7 @@ export default function ProfileSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#050506",
     paddingHorizontal: 18,
     paddingTop: 44,
   },
@@ -929,7 +929,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     marginBottom: 10,
   },
   header: {
@@ -937,8 +937,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#262020",
-    backgroundColor: "#101010",
+    borderBottomColor: "#2c2334",
+    backgroundColor: "#121016",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
@@ -962,7 +962,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   doneButtonHover: {
-    backgroundColor: "rgba(76,157,255,0.12)",
+    backgroundColor: "rgba(87,184,255,0.16)",
     transform: [{ translateY: -1 }],
   },
   doneButtonPressed: {
@@ -970,12 +970,12 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   doneText: {
-    color: "#4c9dff",
+    color: "#57b8ff",
     fontSize: 18,
     fontWeight: "600",
   },
   content: {
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
     paddingHorizontal: CONTENT_PADDING,
     paddingBottom: 36,
   },
@@ -987,21 +987,21 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     overflow: "hidden",
-    backgroundColor: "#262020",
+    backgroundColor: "#2c2334",
   },
   completionFill: {
     height: "100%",
     borderRadius: 4,
-    backgroundColor: "#ff253a",
+    backgroundColor: "#ff2f6d",
   },
   completionText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 15,
     fontWeight: "700",
   },
   section: {
     borderBottomWidth: 1,
-    borderBottomColor: "#272020",
+    borderBottomColor: "#2c2334",
     paddingVertical: 18,
   },
   sectionHeader: {
@@ -1016,12 +1016,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   valueText: {
-    color: "#c8c0c0",
+    color: "#ddd0e5",
     fontSize: 17,
     fontWeight: "500",
   },
   helperText: {
-    color: "#908888",
+    color: "#a79aaa",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 14,
@@ -1035,10 +1035,10 @@ const styles = StyleSheet.create({
     aspectRatio: 0.78,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#242020",
+    backgroundColor: "#231b2b",
     marginBottom: PHOTO_GAP,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.1)",
   },
   photoSlotActive: {
     opacity: 0.86,
@@ -1065,7 +1065,7 @@ const styles = StyleSheet.create({
     left: 6,
     bottom: 6,
     borderRadius: 6,
-    backgroundColor: "rgba(0,0,0,0.68)",
+    backgroundColor: "rgba(5,5,6,0.72)",
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -1083,10 +1083,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.68)",
+    backgroundColor: "rgba(5,5,6,0.72)",
   },
   removeButtonHover: {
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
     transform: [{ scale: 1.08 }],
   },
   removeButtonPressed: {
@@ -1103,15 +1103,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#4a4242",
-    backgroundColor: "#242020",
+    borderColor: "#4b3d56",
+    backgroundColor: "#231b2b",
     marginBottom: PHOTO_GAP,
     alignItems: "center",
     justifyContent: "center",
   },
   emptySlotHover: {
     borderColor: "#ffffff",
-    backgroundColor: "#2f2929",
+    backgroundColor: "#33273d",
     shadowColor: "#ffffff",
     shadowOpacity: 0.18,
     shadowRadius: 12,
@@ -1145,9 +1145,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: "#ffffff",
-    backgroundColor: "#1d1a1a",
+    backgroundColor: "#1c1720",
     borderWidth: 1,
-    borderColor: "#2f2929",
+    borderColor: "#33273d",
     fontSize: 16,
     textAlignVertical: "top",
   },
@@ -1156,29 +1156,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   boundText: {
-    color: "#8f8787",
+    color: "#a79aaa",
     fontSize: 13,
     fontWeight: "700",
   },
   sliderLabel: {
-    color: "#9f9797",
+    color: "#b6a9ba",
     fontSize: 14,
     fontWeight: "700",
     marginTop: 10,
   },
   listSection: {
     borderBottomWidth: 1,
-    borderBottomColor: "#272020",
+    borderBottomColor: "#2c2334",
   },
   detailRow: {
     minHeight: 66,
     borderTopWidth: 1,
-    borderTopColor: "#272020",
+    borderTopColor: "#2c2334",
     flexDirection: "row",
     alignItems: "center",
   },
   detailRowHover: {
-    backgroundColor: "#171313",
+    backgroundColor: "#231b2b",
     paddingHorizontal: 8,
     transform: [{ translateX: 4 }],
   },
@@ -1190,7 +1190,7 @@ const styles = StyleSheet.create({
     width: 58,
   },
   rowIconText: {
-    color: "#bdb5b5",
+    color: "#cbbdd2",
     fontSize: 12,
     fontWeight: "900",
   },
@@ -1209,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     maxWidth: 126,
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 18,
     fontWeight: "500",
     textAlign: "right",
@@ -1218,7 +1218,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   chevron: {
-    color: "#5f5858",
+    color: "#74677d",
     fontSize: 28,
     marginLeft: 8,
   },
@@ -1226,14 +1226,14 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   message: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontWeight: "800",
     textAlign: "center",
     marginTop: 18,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.58)",
+    backgroundColor: "rgba(5,5,6,0.68)",
     justifyContent: "flex-end",
   },
   modalDismissArea: {
@@ -1243,7 +1243,7 @@ const styles = StyleSheet.create({
     maxHeight: "78%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    backgroundColor: "#101010",
+    backgroundColor: "#121016",
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 30,
@@ -1261,7 +1261,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   selectorHeaderButtonHover: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     transform: [{ translateY: -1 }],
   },
   selectorHeaderButtonPressed: {
@@ -1269,7 +1269,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   clearText: {
-    color: "#bfb8b8",
+    color: "#cbbdd2",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1281,7 +1281,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   selectorHint: {
-    color: "#908888",
+    color: "#a79aaa",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 12,
@@ -1295,20 +1295,20 @@ const styles = StyleSheet.create({
     minHeight: 54,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#2f2929",
-    backgroundColor: "#1b1717",
+    borderColor: "#33273d",
+    backgroundColor: "#1b1522",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 14,
   },
   optionRowSelected: {
-    borderColor: "#ff4458",
-    backgroundColor: "#2a171b",
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
   },
   optionRowHover: {
     borderColor: "#ffffff",
-    backgroundColor: "#211c1c",
+    backgroundColor: "#261d2f",
     transform: [{ translateX: 4 }],
   },
   optionRowPressed: {
@@ -1323,20 +1323,20 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   optionTextSelected: {
-    color: "#ff6b7b",
+    color: "#ff7aa2",
   },
   checkCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#5f5858",
+    borderColor: "#74677d",
     alignItems: "center",
     justifyContent: "center",
   },
   checkCircleSelected: {
-    borderColor: "#ff4458",
-    backgroundColor: "#ff4458",
+    borderColor: "#ff4f7b",
+    backgroundColor: "#ff4f7b",
   },
   checkText: {
     color: "#ffffff",

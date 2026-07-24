@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   flex: 1,
   minHeight: 500,
   borderRadius: 22,
-  backgroundColor: "#101010",
+  backgroundColor: "#121016",
   alignItems: "center",
   justifyContent: "center",
   padding: 24,
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    color: "#bfb8b8",
+    color: "#cbbdd2",
   },
 });

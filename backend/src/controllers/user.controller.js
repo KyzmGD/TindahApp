@@ -28,6 +28,15 @@ const PROFILE_DETAIL_STRING_FIELDS = [
   "workout",
   "social",
 ];
+const ADVANCED_FILTER_ARRAY_FIELDS = ["interests", "languages", "pets"];
+const ADVANCED_FILTER_STRING_FIELDS = [
+  "looking",
+  "education",
+  "family",
+  "drinking",
+  "smoking",
+  "workout",
+];
 
 function getAgeFromBirthDateString(birthDate) {
   const birthday = new Date(`${birthDate}T00:00:00.000Z`);
@@ -99,6 +108,28 @@ function normalizeProfileDetails(profileDetails) {
   return normalized;
 }
 
+function normalizeAdvancedFilters(advancedFilters) {
+  if (advancedFilters === undefined) {
+    return undefined;
+  }
+
+  const normalized = {};
+
+  ADVANCED_FILTER_STRING_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined) {
+      normalized[field] = String(advancedFilters[field]).trim();
+    }
+  });
+
+  ADVANCED_FILTER_ARRAY_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined) {
+      normalized[field] = normalizeStringList(advancedFilters[field]);
+    }
+  });
+
+  return normalized;
+}
+
 function getRequestedAgeRange(payload, user) {
   const requestedMinAge = payload.minAge ?? payload.preferences?.ageRange?.min;
   const requestedMaxAge = payload.maxAge ?? payload.preferences?.ageRange?.max;
@@ -134,9 +165,7 @@ function validateGender(value, errors) {
     return;
   }
 
-  if (typeof value !== "string" || !ALLOWED_GENDERS.includes(value)) {
-    errors.gender = "Select a valid gender.";
-  }
+  errors.gender = "Gender can only be set during registration.";
 }
 
 function validateLocation(value, errors) {
@@ -163,6 +192,49 @@ function validateLocation(value, errors) {
   ) {
     errors.location = "Location must be a GeoJSON Point with [lng, lat] coordinates.";
   }
+}
+
+function validateAdvancedFiltersPayload(advancedFilters, errors) {
+  if (advancedFilters === undefined) {
+    return;
+  }
+
+  if (!advancedFilters || typeof advancedFilters !== "object" || Array.isArray(advancedFilters)) {
+    errors.advancedFilters = "Advanced filters must be an object.";
+    return;
+  }
+
+  ADVANCED_FILTER_STRING_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined && typeof advancedFilters[field] !== "string") {
+      errors[`advancedFilters.${field}`] = `${field} must be text.`;
+      return;
+    }
+
+    const value = String(advancedFilters[field] || "").trim();
+    if (value.length > 80) {
+      errors[`advancedFilters.${field}`] = `${field} must be 80 characters or less.`;
+    }
+  });
+
+  ADVANCED_FILTER_ARRAY_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined && !isStringOrStringArray(advancedFilters[field])) {
+      errors[`advancedFilters.${field}`] = `${field} must be an array or comma-separated text.`;
+      return;
+    }
+
+    const normalizedValues = normalizeStringList(advancedFilters[field]);
+    if (normalizedValues === undefined) {
+      return;
+    }
+
+    const tooLongValue = normalizedValues.find((value) => value.length > 40);
+
+    if (normalizedValues.length > 20) {
+      errors[`advancedFilters.${field}`] = `${field} can contain at most 20 items.`;
+    } else if (tooLongValue) {
+      errors[`advancedFilters.${field}`] = `Each ${field} item must be 40 characters or less.`;
+    }
+  });
 }
 
 function getRequestedMaxDistance(payload, user) {
@@ -344,6 +416,10 @@ function validateProfilePayload(payload, user) {
       errors[fieldName] = `${fieldName} must be a boolean.`;
     }
   });
+  validateAdvancedFiltersPayload(
+    payload.advancedFilters ?? payload.preferences?.advancedFilters,
+    errors,
+  );
 
   if (payload.photos !== undefined) {
     if (!Array.isArray(payload.photos)) {
@@ -449,10 +525,6 @@ function mapProfilePayloadToUser(user, payload) {
     }
   }
 
-  if (payload.gender !== undefined) {
-    user.gender = payload.gender;
-  }
-
   if (payload.location !== undefined) {
     user.location = {
       type: "Point",
@@ -507,11 +579,15 @@ function mapSearchFilterPayloadToUser(user, payload) {
   const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
   const requestedExpandDistance = getRequestedSearchPreferenceBoolean(payload, "expandDistance");
   const requestedExpandAge = getRequestedSearchPreferenceBoolean(payload, "expandAge");
+  const requestedAdvancedFilters = normalizeAdvancedFilters(
+    payload.advancedFilters ?? payload.preferences?.advancedFilters,
+  );
 
   if (
     requestedMaxDistanceKm !== undefined ||
     requestedExpandDistance !== undefined ||
-    requestedExpandAge !== undefined
+    requestedExpandAge !== undefined ||
+    requestedAdvancedFilters !== undefined
   ) {
     const currentPreferences = getPlainObject(user.preferences);
     user.preferences = {
@@ -525,6 +601,12 @@ function mapSearchFilterPayloadToUser(user, payload) {
       expandAge: requestedExpandAge !== undefined
         ? requestedExpandAge
         : user.preferences?.expandAge ?? true,
+      advancedFilters: requestedAdvancedFilters !== undefined
+        ? {
+          ...getPlainObject(user.preferences?.advancedFilters),
+          ...requestedAdvancedFilters,
+        }
+        : user.preferences?.advancedFilters,
       ageRange: currentPreferences.ageRange || user.preferences?.ageRange,
     };
   }
@@ -535,6 +617,7 @@ function buildUserProfileResponse(user) {
   const ageRange = profile.preferences?.ageRange || {};
   const expandDistance = profile.preferences?.expandDistance ?? true;
   const expandAge = profile.preferences?.expandAge ?? true;
+  const advancedFilters = profile.preferences?.advancedFilters || {};
 
   return {
     ...profile,
@@ -544,6 +627,7 @@ function buildUserProfileResponse(user) {
     maxDistanceKm: profile.preferences?.maxDistanceKm,
     expandDistance,
     expandAge,
+    advancedFilters,
     searchFilters: {
       genderPreference: profile.interestedIn,
       minAge: ageRange.min,
@@ -551,6 +635,7 @@ function buildUserProfileResponse(user) {
       maxDistanceKm: profile.preferences?.maxDistanceKm,
       expandDistance,
       expandAge,
+      advancedFilters,
     },
   };
 }

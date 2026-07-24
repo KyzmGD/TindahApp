@@ -81,7 +81,9 @@ function validateRegisterPayload(payload) {
     }
   }
 
-  if (payload.gender && !allowedGenders.includes(payload.gender)) {
+  if (!payload.gender) {
+    errors.gender = "Choose your gender.";
+  } else if (!allowedGenders.includes(payload.gender)) {
     errors.gender = "Select a valid gender.";
   }
 

@@ -102,7 +102,6 @@ const updateMe = asyncHandler(async (req, res) => {
   const allowedFields = [
     "name",
     "birthDate",
-    "gender",
     "interestedIn",
     "bio",
     "interests",

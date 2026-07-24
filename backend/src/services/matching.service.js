@@ -155,11 +155,43 @@ function buildBirthDateFilter(ageRange = {}) {
   };
 }
 
+function buildAdvancedFilterMatchStage(advancedFilters = {}) {
+  const matchStage = {};
+
+  if (advancedFilters.interests?.length) {
+    matchStage.interests = { $in: advancedFilters.interests };
+  }
+
+  if (advancedFilters.languages?.length) {
+    matchStage["profileDetails.languages"] = { $in: advancedFilters.languages };
+  }
+
+  if (advancedFilters.pets?.length) {
+    matchStage["profileDetails.pets"] = { $in: advancedFilters.pets };
+  }
+
+  [
+    "looking",
+    "education",
+    "family",
+    "drinking",
+    "smoking",
+    "workout",
+  ].forEach((field) => {
+    if (advancedFilters[field]) {
+      matchStage[`profileDetails.${field}`] = advancedFilters[field];
+    }
+  });
+
+  return matchStage;
+}
+
 function buildDiscoveryMatchStage(user, skippedIds = [], options = {}) {
   const matchStage = {
     _id: { $nin: skippedIds },
     gender: { $in: user.interestedIn?.length ? user.interestedIn : ALLOWED_GENDERS },
     interestedIn: user.gender,
+    ...buildAdvancedFilterMatchStage(user.preferences?.advancedFilters),
   };
 
   if (!options.ignoreAgeRange) {
