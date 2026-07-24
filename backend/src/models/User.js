@@ -62,6 +62,8 @@ const userSchema = new mongoose.Schema(
     },
     preferences: {
       maxDistanceKm: { type: Number, default: 50, min: 2, max: 100 },
+      expandDistance: { type: Boolean, default: true },
+      expandAge: { type: Boolean, default: true },
       ageRange: {
         min: { type: Number, default: 18, min: 18, max: 100 },
         max: { type: Number, default: 60, min: 18, max: 100 },

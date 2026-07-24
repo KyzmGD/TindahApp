@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import { useAuth } from "../context/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const birthdayPattern = /^\d{4}-\d{2}-\d{2}$/;
+const GENDER_OPTIONS = [
+  { label: "Woman", value: "woman" },
+  { label: "Man", value: "man" },
+  { label: "Nonbinary", value: "nonbinary" },
+  { label: "Other", value: "other" },
+];
 
 function formatBirthdayInput(value) {
   const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -74,6 +80,7 @@ export default function LoginScreen() {
     password: "",
     confirmPassword: "",
     birthDate: "",
+    gender: "",
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
@@ -121,6 +128,10 @@ export default function LoginScreen() {
       if (birthdayError) {
         nextErrors.birthDate = birthdayError;
       }
+
+      if (!form.gender) {
+        nextErrors.gender = "Choose your gender.";
+      }
     }
 
     return nextErrors;
@@ -166,6 +177,7 @@ export default function LoginScreen() {
           email: form.email.trim(),
           password: form.password,
           birthDate: form.birthDate,
+          gender: form.gender,
         });
       }
     } catch (submitError) {
@@ -224,6 +236,42 @@ export default function LoginScreen() {
             <Text style={styles.fieldHint}>
               Type 8 digits in order: year, month, day. Example: 2000-05-21.
             </Text>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>I am</Text>
+              <View style={styles.genderGrid}>
+                {GENDER_OPTIONS.map((option) => {
+                  const selected = form.gender === option.value;
+
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={({ hovered, pressed }) => [
+                        styles.genderChip,
+                        selected && styles.genderChipSelected,
+                        hovered && styles.genderChipHover,
+                        pressed && styles.genderChipPressed,
+                      ]}
+                      onPress={() => updateField("gender", option.value)}
+                    >
+                      {({ hovered }) => (
+                        <Text
+                          style={[
+                            styles.genderChipText,
+                            selected && styles.genderChipTextSelected,
+                            hovered && styles.genderChipTextHover,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {fieldErrors.gender ? (
+                <Text style={styles.fieldError}>{fieldErrors.gender}</Text>
+              ) : null}
+            </View>
           </>
         ) : null}
 
@@ -325,5 +373,55 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 17,
     marginTop: -10,
+  },
+  fieldGroup: {
+    gap: 8,
+  },
+  fieldLabel: {
+    color: "#bfb8b8",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  genderGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  genderChip: {
+    minHeight: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: "#3a3434",
+    backgroundColor: "#1d1a1a",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+  },
+  genderChipSelected: {
+    borderColor: "#ff4458",
+    backgroundColor: "#2a171b",
+  },
+  genderChipHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#282222",
+    transform: [{ translateY: -2 }, { scale: 1.03 }],
+  },
+  genderChipPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }],
+  },
+  genderChipText: {
+    color: "#bfb8b8",
+    fontWeight: "800",
+  },
+  genderChipTextSelected: {
+    color: "#ff4458",
+  },
+  genderChipTextHover: {
+    color: "#ffffff",
+  },
+  fieldError: {
+    color: "#ff4458",
+    fontSize: 12,
   },
 });

@@ -227,6 +227,55 @@ describe("GET /api/v1/users/explore", () => {
       mutualCandidate._id.toString(),
     ]);
   });
+
+  it("fills /swipes/discover with relaxed age candidates when expandAge is enabled", async () => {
+    const requester = await User.create({
+      name: "Expanded Age Requester",
+      email: "expanded-age-requester@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(29),
+      gender: "man",
+      interestedIn: ["woman"],
+      preferences: {
+        maxDistanceKm: 50,
+        expandDistance: false,
+        expandAge: true,
+        ageRange: {
+          min: 25,
+          max: 30,
+        },
+      },
+    });
+
+    const strictCandidate = await User.create({
+      name: "Strict Age Candidate",
+      email: "strict-age-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(28),
+      gender: "woman",
+      interestedIn: ["man"],
+    });
+
+    const relaxedCandidate = await User.create({
+      name: "Relaxed Age Candidate",
+      email: "relaxed-age-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(42),
+      gender: "woman",
+      interestedIn: ["man"],
+    });
+
+    const response = await request(app)
+      .get("/api/v1/swipes/discover")
+      .set("Authorization", `Bearer ${signUserToken(requester)}`)
+      .query({ limit: 20 });
+
+    const ids = response.body.users.map((user) => user.id);
+
+    expect(response.status).toBe(200);
+    expect(ids).toContain(strictCandidate._id.toString());
+    expect(ids).toContain(relaxedCandidate._id.toString());
+  });
 });
 
 describe("PUT /api/v1/users/profile", () => {
@@ -249,6 +298,11 @@ describe("PUT /api/v1/users/profile", () => {
         jobTitle: "Product Designer",
         school: "Tinder University",
         birthDate: "1997-06-15",
+        gender: "man",
+        location: {
+          type: "Point",
+          coordinates: [106.7, 10.78],
+        },
         interests: ["coffee", "travel", "coffee"],
         profileDetails: {
           looking: "Long-term partner",
@@ -268,6 +322,8 @@ describe("PUT /api/v1/users/profile", () => {
         minAge: 24,
         maxAge: 36,
         maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
       });
 
     expect(response.status).toBe(200);
@@ -278,6 +334,11 @@ describe("PUT /api/v1/users/profile", () => {
       bio: "Coffee and weekend walks",
       jobTitle: "Product Designer",
       school: "Tinder University",
+      gender: "man",
+      location: {
+        type: "Point",
+        coordinates: [106.7, 10.78],
+      },
       interests: ["coffee", "travel"],
       profileDetails: {
         looking: "Long-term partner",
@@ -298,8 +359,12 @@ describe("PUT /api/v1/users/profile", () => {
       minAge: 24,
       maxAge: 36,
       maxDistanceKm: 72,
+      expandDistance: false,
+      expandAge: true,
       preferences: {
         maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
         ageRange: {
           min: 24,
           max: 36,
@@ -310,6 +375,8 @@ describe("PUT /api/v1/users/profile", () => {
         minAge: 24,
         maxAge: 36,
         maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
       },
     });
 
@@ -319,6 +386,11 @@ describe("PUT /api/v1/users/profile", () => {
       bio: "Coffee and weekend walks",
       jobTitle: "Product Designer",
       school: "Tinder University",
+      gender: "man",
+      location: {
+        type: "Point",
+        coordinates: [106.7, 10.78],
+      },
       interests: ["coffee", "travel"],
       profileDetails: {
         looking: "Long-term partner",
@@ -342,6 +414,8 @@ describe("PUT /api/v1/users/profile", () => {
       max: 36,
     });
     expect(storedUser.preferences.maxDistanceKm).toBe(72);
+    expect(storedUser.preferences.expandDistance).toBe(false);
+    expect(storedUser.preferences.expandAge).toBe(true);
   });
 
   it("syncs settings distance and reordered profile photos", async () => {
@@ -507,10 +581,17 @@ describe("PUT /api/v1/users/profile", () => {
           pets: ["x".repeat(41)],
         },
         genderPreference: ["invalid"],
+        gender: "alien",
+        location: {
+          type: "Point",
+          coordinates: [500, 95],
+        },
         minAge: 40,
-        maxAge: 30,
-        maxDistanceKm: 101,
-        photos: Array.from({ length: 7 }, (_, index) => ({
+      maxAge: 30,
+      maxDistanceKm: 101,
+      expandDistance: "yes",
+      expandAge: 1,
+      photos: Array.from({ length: 7 }, (_, index) => ({
           url: `https://example.com/photo-${index}.jpg`,
         })),
       });
@@ -526,8 +607,12 @@ describe("PUT /api/v1/users/profile", () => {
       "profileDetails.languages": "languages can contain at most 10 items.",
       "profileDetails.pets": "Each pets item must be 40 characters or less.",
       genderPreference: "Select a valid gender preference.",
+      gender: "Select a valid gender.",
+      location: "Location must be a GeoJSON Point with [lng, lat] coordinates.",
       ageRange: "minAge must be less than or equal to maxAge.",
       maxDistanceKm: "maxDistanceKm must be between 2 and 100.",
+      expandDistance: "expandDistance must be a boolean.",
+      expandAge: "expandAge must be a boolean.",
       photos: "Profile can contain at most 6 photos.",
     });
 

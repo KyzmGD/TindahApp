@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "db:backfill-search-preferences": "node scripts/backfill-search-preferences.js"
   },
   "jest": {
     "testEnvironment": "node",

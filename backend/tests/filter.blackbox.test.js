@@ -247,6 +247,7 @@ describe("Black-box discovery filter accuracy", () => {
       minAge: 18,
       maxAge: 60,
       maxDistanceKm: 5,
+      expandDistance: false,
     });
 
     const nearCandidate = await seedCandidate({

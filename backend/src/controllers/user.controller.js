@@ -129,6 +129,42 @@ function validateAgeNumber(value, fieldName, errors) {
   }
 }
 
+function validateGender(value, errors) {
+  if (value === undefined) {
+    return;
+  }
+
+  if (typeof value !== "string" || !ALLOWED_GENDERS.includes(value)) {
+    errors.gender = "Select a valid gender.";
+  }
+}
+
+function validateLocation(value, errors) {
+  if (value === undefined) {
+    return;
+  }
+
+  const coordinates = value?.coordinates;
+  const [lng, lat] = Array.isArray(coordinates) ? coordinates.map(Number) : [];
+
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    value.type !== "Point" ||
+    !Array.isArray(coordinates) ||
+    coordinates.length !== 2 ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(lat) ||
+    lng < -180 ||
+    lng > 180 ||
+    lat < -90 ||
+    lat > 90
+  ) {
+    errors.location = "Location must be a GeoJSON Point with [lng, lat] coordinates.";
+  }
+}
+
 function getRequestedMaxDistance(payload, user) {
   const requestedMaxDistanceKm = payload.maxDistanceKm ?? payload.preferences?.maxDistanceKm;
 
@@ -138,6 +174,10 @@ function getRequestedMaxDistance(payload, user) {
       ? Number(requestedMaxDistanceKm)
       : user.preferences?.maxDistanceKm,
   };
+}
+
+function getRequestedSearchPreferenceBoolean(payload, fieldName) {
+  return payload[fieldName] ?? payload.preferences?.[fieldName];
 }
 
 function normalizePhotos(photos) {
@@ -219,6 +259,9 @@ function validateProfilePayload(payload, user) {
     validateAgeNumber(payload.age, "age", errors);
   }
 
+  validateGender(payload.gender, errors);
+  validateLocation(payload.location, errors);
+
   if (payload.interests !== undefined) {
     if (!isStringOrStringArray(payload.interests)) {
       errors.interests = "Interests must be an array or comma-separated text.";
@@ -293,6 +336,14 @@ function validateProfilePayload(payload, user) {
       errors.maxDistanceKm = `maxDistanceKm must be between ${MIN_DISTANCE_KM} and ${MAX_DISTANCE_KM}.`;
     }
   }
+
+  ["expandDistance", "expandAge"].forEach((fieldName) => {
+    const value = getRequestedSearchPreferenceBoolean(payload, fieldName);
+
+    if (value !== undefined && typeof value !== "boolean") {
+      errors[fieldName] = `${fieldName} must be a boolean.`;
+    }
+  });
 
   if (payload.photos !== undefined) {
     if (!Array.isArray(payload.photos)) {
@@ -398,6 +449,17 @@ function mapProfilePayloadToUser(user, payload) {
     }
   }
 
+  if (payload.gender !== undefined) {
+    user.gender = payload.gender;
+  }
+
+  if (payload.location !== undefined) {
+    user.location = {
+      type: "Point",
+      coordinates: payload.location.coordinates.map(Number),
+    };
+  }
+
   const normalizedInterests = normalizeInterests(payload.interests);
   if (normalizedInterests !== undefined) {
     user.interests = normalizedInterests;
@@ -443,12 +505,26 @@ function mapSearchFilterPayloadToUser(user, payload) {
   }
 
   const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
+  const requestedExpandDistance = getRequestedSearchPreferenceBoolean(payload, "expandDistance");
+  const requestedExpandAge = getRequestedSearchPreferenceBoolean(payload, "expandAge");
 
-  if (requestedMaxDistanceKm !== undefined) {
+  if (
+    requestedMaxDistanceKm !== undefined ||
+    requestedExpandDistance !== undefined ||
+    requestedExpandAge !== undefined
+  ) {
     const currentPreferences = getPlainObject(user.preferences);
     user.preferences = {
       ...currentPreferences,
-      maxDistanceKm: Number(requestedMaxDistanceKm),
+      maxDistanceKm: requestedMaxDistanceKm !== undefined
+        ? Number(requestedMaxDistanceKm)
+        : user.preferences?.maxDistanceKm,
+      expandDistance: requestedExpandDistance !== undefined
+        ? requestedExpandDistance
+        : user.preferences?.expandDistance ?? true,
+      expandAge: requestedExpandAge !== undefined
+        ? requestedExpandAge
+        : user.preferences?.expandAge ?? true,
       ageRange: currentPreferences.ageRange || user.preferences?.ageRange,
     };
   }
@@ -457,6 +533,8 @@ function mapSearchFilterPayloadToUser(user, payload) {
 function buildUserProfileResponse(user) {
   const profile = user.toProfileJSON();
   const ageRange = profile.preferences?.ageRange || {};
+  const expandDistance = profile.preferences?.expandDistance ?? true;
+  const expandAge = profile.preferences?.expandAge ?? true;
 
   return {
     ...profile,
@@ -464,11 +542,15 @@ function buildUserProfileResponse(user) {
     minAge: ageRange.min,
     maxAge: ageRange.max,
     maxDistanceKm: profile.preferences?.maxDistanceKm,
+    expandDistance,
+    expandAge,
     searchFilters: {
       genderPreference: profile.interestedIn,
       minAge: ageRange.min,
       maxAge: ageRange.max,
       maxDistanceKm: profile.preferences?.maxDistanceKm,
+      expandDistance,
+      expandAge,
     },
   };
 }

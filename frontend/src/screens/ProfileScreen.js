@@ -25,6 +25,12 @@ const GENDER_OPTIONS = [
   { label: "Nonbinary", value: "nonbinary" },
   { label: "Other", value: "other" },
 ];
+const OWN_GENDER_OPTIONS = [
+  { label: "Woman", value: "woman" },
+  { label: "Man", value: "man" },
+  { label: "Nonbinary", value: "nonbinary" },
+  { label: "Other", value: "other" },
+];
 
 const getAvatar = (user) => {
   if (!user?.photos?.length) return null;
@@ -55,6 +61,7 @@ export default function ProfileScreen({ navigation }) {
     jobTitle: user?.jobTitle || "",
     school: user?.school || "",
     interests: (user?.interests || []).join(", "),
+    gender: user?.gender || "other",
     genderPreference: getSearchFilters(user).genderPreference,
     minAge: getSearchFilters(user).minAge,
     maxAge: getSearchFilters(user).maxAge,
@@ -75,6 +82,7 @@ export default function ProfileScreen({ navigation }) {
       jobTitle: user?.jobTitle || "",
       school: user?.school || "",
       interests: (user?.interests || []).join(", "),
+      gender: user?.gender || "other",
       genderPreference: searchFilters.genderPreference,
       minAge: searchFilters.minAge,
       maxAge: searchFilters.maxAge,
@@ -97,7 +105,7 @@ export default function ProfileScreen({ navigation }) {
 
       return {
         ...current,
-        genderPreference: selected,
+        genderPreference: selected.length ? selected : current.genderPreference,
       };
     });
   };
@@ -146,6 +154,7 @@ setMessage("Avatar updated");
         bio: form.bio,
         jobTitle: form.jobTitle,
         school: form.school,
+        gender: form.gender,
         interests: form.interests
           .split(",")
           .map((interest) => interest.trim())
@@ -224,6 +233,40 @@ setMessage("Avatar updated");
           onChangeText={(value) => updateField("interests", value)}
           placeholder="Coffee, travel, music"
         />
+        <View style={styles.profileSection}>
+          <Text style={styles.sectionTitle}>About you</Text>
+          <Text style={styles.label}>I am</Text>
+          <View style={styles.genderGrid}>
+            {OWN_GENDER_OPTIONS.map((option) => {
+              const selected = form.gender === option.value;
+
+              return (
+                <Pressable
+                  key={option.value}
+                  style={({ hovered, pressed }) => [
+                    styles.genderChip,
+                    selected && styles.genderChipSelected,
+                    hovered && styles.genderChipHover,
+                    pressed && styles.genderChipPressed,
+                  ]}
+                  onPress={() => updateField("gender", option.value)}
+                >
+                  {({ hovered }) => (
+                    <Text
+                      style={[
+                        styles.genderChipText,
+                        selected && styles.genderChipTextSelected,
+                        hovered && styles.genderChipTextHover,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
         <Animated.View
           style={[
             styles.filterSection,
@@ -358,6 +401,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   filterSection: {
+    gap: 12,
+    paddingTop: 6,
+  },
+  profileSection: {
     gap: 12,
     paddingTop: 6,
   },

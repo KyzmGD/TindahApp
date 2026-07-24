@@ -23,21 +23,26 @@ function distanceInKm(from, to) {
   return Math.round(earthRadiusKm * c * 10) / 10;
 }
 
-function buildGeoNearStage(user, maxDistanceKm) {
+function buildGeoNearStage(user, maxDistanceKm, options = {}) {
   const coordinates = user.location?.coordinates;
 
   if (!coordinates || coordinates.length < 2 || coordinates.every((value) => value === 0)) {
     return null;
   }
 
-  return {
+  const geoNearStage = {
     $geoNear: {
       near: { type: "Point", coordinates },
       distanceField: "distanceMeters",
-      maxDistance: (maxDistanceKm || 50) * 1000,
       spherical: true,
     },
   };
+
+  if (!options.ignoreMaxDistance) {
+    geoNearStage.$geoNear.maxDistance = (maxDistanceKm || 50) * 1000;
+  }
+
+  return geoNearStage;
 }
 
 module.exports = {

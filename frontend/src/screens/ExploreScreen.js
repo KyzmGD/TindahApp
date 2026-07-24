@@ -43,8 +43,8 @@ function getFilterForm(user) {
     maxDistanceKm: clamp(user?.maxDistanceKm || preferences.maxDistanceKm || 80, 2, 100),
     minAge: clamp(user?.minAge || ageRange.min || 18, 18, 100),
     maxAge: clamp(user?.maxAge || ageRange.max || 38, 18, 100),
-    expandDistance: true,
-    expandAge: true,
+    expandDistance: user?.expandDistance ?? preferences.expandDistance ?? true,
+    expandAge: user?.expandAge ?? preferences.expandAge ?? true,
   };
 }
 
@@ -58,6 +58,8 @@ export default function ExploreScreen() {
   const [error, setError] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [filtersSaving, setFiltersSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [filterMessage, setFilterMessage] = useState("");
   const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -73,6 +75,8 @@ const [showMatchModal, setShowMatchModal] =
   useState(false);
 
 const [matchedUser, setMatchedUser] =
+  useState(null);
+const [matchedMatch, setMatchedMatch] =
   useState(null);
 
   useEffect(() => {
@@ -123,9 +127,9 @@ const [matchedUser, setMatchedUser] =
   setShowMatchModal(false);
 
   navigation.navigate(
-    "ChatScreen",
+    "Chat",
     {
-      matchId: matchedUser?._id,
+      match: matchedMatch,
       user: matchedUser,
     }
   );
@@ -133,6 +137,7 @@ const [matchedUser, setMatchedUser] =
 
   const openFilters = () => {
     setFilterForm(getFilterForm(user));
+    setFilterMessage("");
     setFiltersVisible(true);
   };
 
@@ -181,6 +186,8 @@ const [matchedUser, setMatchedUser] =
         maxDistanceKm: filterForm.maxDistanceKm,
         minAge: filterForm.minAge,
         maxAge: filterForm.maxAge,
+        expandDistance: filterForm.expandDistance,
+        expandAge: filterForm.expandAge,
       });
       setFiltersVisible(false);
       setLoading(true);
@@ -191,6 +198,50 @@ const [matchedUser, setMatchedUser] =
       setFiltersSaving(false);
       setLoading(false);
     }
+  };
+
+  const useCurrentLocation = async () => {
+    const geolocation = globalThis.navigator?.geolocation;
+
+    if (!geolocation) {
+      setFilterMessage("Location is not available in this environment.");
+      return;
+    }
+
+    setLocating(true);
+    setFilterMessage("");
+
+    geolocation.getCurrentPosition(
+      async (position) => {
+        const { longitude, latitude } = position.coords;
+
+        try {
+          await updateProfile({
+            location: {
+              type: "Point",
+              coordinates: [longitude, latitude],
+            },
+          });
+          setFilterMessage("Location updated.");
+          setLoading(true);
+          await loadProfiles();
+        } catch (locationError) {
+          setFilterMessage(locationError.message || "Unable to save location.");
+        } finally {
+          setLocating(false);
+          setLoading(false);
+        }
+      },
+      (locationError) => {
+        setFilterMessage(locationError.message || "Could not read your location.");
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
   };
 
   const selectedGenderLabel = useMemo(() => {
@@ -223,6 +274,7 @@ const [matchedUser, setMatchedUser] =
 
     if (result.isMatch) {
   setMatchedUser(user);
+  setMatchedMatch(result.match);
   setShowMatchModal(true);
     }
   } catch (swipeError) {
@@ -343,6 +395,8 @@ const [matchedUser, setMatchedUser] =
                     hovered && styles.locationRowHover,
                     pressed && styles.buttonPressed,
                   ]}
+                  onPress={useCurrentLocation}
+                  disabled={locating}
                 >
                   {({ hovered }) => (
                     <>
@@ -353,7 +407,7 @@ const [matchedUser, setMatchedUser] =
                         </Text>
                       </View>
                       <Text style={[styles.locationValue, hovered && styles.valueHover]}>
-                        Current area
+                        {locating ? "Locating..." : "Use current location"}
                       </Text>
                       <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
                         {">"}
@@ -361,6 +415,9 @@ const [matchedUser, setMatchedUser] =
                     </>
                   )}
                 </Pressable>
+                {filterMessage ? (
+                  <Text style={styles.filterMessage}>{filterMessage}</Text>
+                ) : null}
 
                 <View style={styles.divider} />
 
@@ -810,6 +867,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "500",
+  },
+  filterMessage: {
+    color: "#b9b1b1",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 8,
   },
   locationValue: {
     maxWidth: 138,
