@@ -155,13 +155,50 @@ function buildBirthDateFilter(ageRange = {}) {
   };
 }
 
-function buildDiscoveryMatchStage(user, skippedIds = []) {
-  return {
+function buildAdvancedFilterMatchStage(advancedFilters = {}) {
+  const matchStage = {};
+
+  if (advancedFilters.interests?.length) {
+    matchStage.interests = { $in: advancedFilters.interests };
+  }
+
+  if (advancedFilters.languages?.length) {
+    matchStage["profileDetails.languages"] = { $in: advancedFilters.languages };
+  }
+
+  if (advancedFilters.pets?.length) {
+    matchStage["profileDetails.pets"] = { $in: advancedFilters.pets };
+  }
+
+  [
+    "looking",
+    "education",
+    "family",
+    "drinking",
+    "smoking",
+    "workout",
+  ].forEach((field) => {
+    if (advancedFilters[field]) {
+      matchStage[`profileDetails.${field}`] = advancedFilters[field];
+    }
+  });
+
+  return matchStage;
+}
+
+function buildDiscoveryMatchStage(user, skippedIds = [], options = {}) {
+  const matchStage = {
     _id: { $nin: skippedIds },
     gender: { $in: user.interestedIn?.length ? user.interestedIn : ALLOWED_GENDERS },
     interestedIn: user.gender,
-    birthDate: buildBirthDateFilter(user.preferences?.ageRange),
+    ...buildAdvancedFilterMatchStage(user.preferences?.advancedFilters),
   };
+
+  if (!options.ignoreAgeRange) {
+    matchStage.birthDate = buildBirthDateFilter(user.preferences?.ageRange);
+  }
+
+  return matchStage;
 }
 
 function calculateAge(birthDate) {
@@ -189,16 +226,12 @@ function formatDiscoveryCandidate(user) {
   };
 }
 
-async function getDiscoveryCandidates(user, limit = 20) {
-  const excludedSwipeIds = await getExcludedSwipeIds(user._id);
-  const skippedIds = excludedSwipeIds
-    .filter((id) => mongoose.Types.ObjectId.isValid(id))
-    .map((id) => new mongoose.Types.ObjectId(id));
-  skippedIds.push(user._id);
+async function runDiscoveryQuery(user, skippedIds, limit, options = {}) {
+  const matchStage = buildDiscoveryMatchStage(user, skippedIds, options);
 
-  const matchStage = buildDiscoveryMatchStage(user, skippedIds);
-
-  const geoStage = buildGeoNearStage(user, user.preferences?.maxDistanceKm);
+  const geoStage = buildGeoNearStage(user, user.preferences?.maxDistanceKm, {
+    ignoreMaxDistance: options.ignoreDistance,
+  });
   const pipeline = [];
 
   if (geoStage) {
@@ -221,6 +254,44 @@ async function getDiscoveryCandidates(user, limit = 20) {
 
   const candidates = await User.aggregate(pipeline);
   return candidates.map(formatDiscoveryCandidate);
+}
+
+async function getDiscoveryCandidates(user, limit = 20) {
+  const requestedLimit = normalizeLimit(limit);
+  const excludedSwipeIds = await getExcludedSwipeIds(user._id);
+  const skippedIds = excludedSwipeIds
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+  skippedIds.push(user._id);
+
+  const strictCandidates = await runDiscoveryQuery(user, skippedIds, requestedLimit);
+
+  if (strictCandidates.length >= requestedLimit) {
+    return strictCandidates;
+  }
+
+  const canExpandDistance = user.preferences?.expandDistance !== false;
+  const canExpandAge = user.preferences?.expandAge !== false;
+
+  if (!canExpandDistance && !canExpandAge) {
+    return strictCandidates;
+  }
+
+  const relaxedSkippedIds = [
+    ...skippedIds,
+    ...strictCandidates.map((candidate) => new mongoose.Types.ObjectId(candidate._id)),
+  ];
+  const relaxedCandidates = await runDiscoveryQuery(
+    user,
+    relaxedSkippedIds,
+    requestedLimit - strictCandidates.length,
+    {
+      ignoreDistance: canExpandDistance,
+      ignoreAgeRange: canExpandAge,
+    },
+  );
+
+  return [...strictCandidates, ...relaxedCandidates];
 }
 
 async function createOrUpdateSwipe(userId, targetId, direction) {

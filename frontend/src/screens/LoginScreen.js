@@ -1,11 +1,31 @@
-﻿import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import { useAuth } from "../context/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const birthdayPattern = /^\d{4}-\d{2}-\d{2}$/;
+const GENDER_OPTIONS = [
+  { label: "Woman", value: "woman" },
+  { label: "Man", value: "man" },
+  { label: "Nonbinary", value: "nonbinary" },
+  { label: "Other", value: "other" },
+];
+
+function formatBirthdayInput(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 4) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
 
 function getBirthdayValidation(value) {
   if (!value) {
@@ -60,6 +80,7 @@ export default function LoginScreen() {
     password: "",
     confirmPassword: "",
     birthDate: "",
+    gender: "",
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
@@ -107,6 +128,10 @@ export default function LoginScreen() {
       if (birthdayError) {
         nextErrors.birthDate = birthdayError;
       }
+
+      if (!form.gender) {
+        nextErrors.gender = "Choose your gender.";
+      }
     }
 
     return nextErrors;
@@ -119,6 +144,10 @@ export default function LoginScreen() {
     setForm((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: "" }));
     setError("");
+  };
+
+  const updateBirthday = (value) => {
+    updateField("birthDate", formatBirthdayInput(value));
   };
 
   const switchMode = (nextMode) => {
@@ -148,6 +177,7 @@ export default function LoginScreen() {
           email: form.email.trim(),
           password: form.password,
           birthDate: form.birthDate,
+          gender: form.gender,
         });
       }
     } catch (submitError) {
@@ -199,9 +229,49 @@ export default function LoginScreen() {
               placeholder="YYYY-MM-DD"
               value={form.birthDate}
               error={fieldErrors.birthDate}
-              onChangeText={(value) => updateField("birthDate", value)}
-              keyboardType="numbers-and-punctuation"
+              onChangeText={updateBirthday}
+              keyboardType="number-pad"
+              maxLength={10}
             />
+            <Text style={styles.fieldHint}>
+              Type 8 digits in order: year, month, day. Example: 2000-05-21.
+            </Text>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>I am</Text>
+              <View style={styles.genderGrid}>
+                {GENDER_OPTIONS.map((option) => {
+                  const selected = form.gender === option.value;
+
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={({ hovered, pressed }) => [
+                        styles.genderChip,
+                        selected && styles.genderChipSelected,
+                        hovered && styles.genderChipHover,
+                        pressed && styles.genderChipPressed,
+                      ]}
+                      onPress={() => updateField("gender", option.value)}
+                    >
+                      {({ hovered }) => (
+                        <Text
+                          style={[
+                            styles.genderChipText,
+                            selected && styles.genderChipTextSelected,
+                            hovered && styles.genderChipTextHover,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {fieldErrors.gender ? (
+                <Text style={styles.fieldError}>{fieldErrors.gender}</Text>
+              ) : null}
+            </View>
           </>
         ) : null}
 
@@ -251,7 +321,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fafbff",
+    backgroundColor: "#050506",
   },
   content: {
     flexGrow: 1,
@@ -263,10 +333,17 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ffd166",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.38,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   brandMarkText: {
     color: "#fff",
@@ -274,12 +351,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   title: {
-    color: "#171a25",
-    fontSize: 34,
-    fontWeight: "900",
+    color: "#ffffff",
+    fontSize: 36,
+    fontWeight: "800",
   },
   subtitle: {
-    color: "#6d7180",
+    color: "#cbbdd2",
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 8,
@@ -294,7 +371,64 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   error: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontWeight: "700",
+  },
+  fieldHint: {
+    color: "#a79aaa",
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 17,
+    marginTop: -10,
+  },
+  fieldGroup: {
+    gap: 8,
+  },
+  fieldLabel: {
+    color: "#cbbdd2",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  genderGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  genderChip: {
+    minHeight: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: "#403449",
+    backgroundColor: "#1c1720",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 15,
+  },
+  genderChipSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
+  },
+  genderChipHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#2a2133",
+    transform: [{ translateY: -2 }, { scale: 1.03 }],
+  },
+  genderChipPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }],
+  },
+  genderChipText: {
+    color: "#cbbdd2",
+    fontWeight: "800",
+  },
+  genderChipTextSelected: {
+    color: "#ff4f7b",
+  },
+  genderChipTextHover: {
+    color: "#ffffff",
+  },
+  fieldError: {
+    color: "#ff4f7b",
+    fontSize: 12,
   },
 });

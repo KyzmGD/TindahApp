@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 import UserCard from "./UserCard";
@@ -11,15 +12,29 @@ export default function CardStack({
   onSuperLike,
 }) {
   const currentUser = users[0];
-  console.log("users length:", users.length);
-console.log("currentUser:", currentUser?._id);
   const nextUser = users[1];
+  const enterAnimation = useRef(new Animated.Value(0)).current;
   const { panHandlers, cardStyle } = useSwipeGesture({
   currentUser,
   onSwipeLeft: onNope,
   onSwipeRight: onLike,
   onSwipeUp: onSuperLike,
 });
+
+  useEffect(() => {
+    enterAnimation.setValue(0);
+    Animated.spring(enterAnimation, {
+      toValue: 1,
+      tension: 70,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  }, [currentUser?._id, enterAnimation]);
+
+  const enterStyle = {
+    opacity: enterAnimation,
+  };
+
   if (!currentUser) {
     return (
       <View style={styles.empty}>
@@ -47,6 +62,7 @@ console.log("currentUser:", currentUser?._id);
     styles.card,
     styles.activeCard,
     cardStyle,
+    enterStyle,
     styles.swipeCard,
   ]}
 >
@@ -88,7 +104,7 @@ const styles = StyleSheet.create({
   flex: 1,
   minHeight: 500,
   borderRadius: 22,
-  backgroundColor: "#fff",
+  backgroundColor: "#121016",
   alignItems: "center",
   justifyContent: "center",
   padding: 24,
@@ -97,10 +113,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#1d2233",
+    color: "#ffffff",
   },
   emptyText: {
     textAlign: "center",
-    color: "#737789",
+    color: "#cbbdd2",
   },
 });

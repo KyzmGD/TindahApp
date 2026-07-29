@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -24,6 +25,40 @@ const GENDER_OPTIONS = [
   { label: "Nonbinary", value: "nonbinary" },
   { label: "Other", value: "other" },
 ];
+const GENDER_COLORS = {
+  woman: {
+    border: "#ff4f9a",
+    background: "rgba(255,79,154,0.12)",
+    selectedBackground: "rgba(255,79,154,0.24)",
+    selectedFill: "#b31762",
+    text: "#ff7ab8",
+  },
+  man: {
+    border: "#20c7ff",
+    background: "rgba(32,199,255,0.12)",
+    selectedBackground: "rgba(32,199,255,0.23)",
+    selectedFill: "#0d6d96",
+    text: "#57d7ff",
+  },
+  nonbinary: {
+    border: "#ffd166",
+    background: "rgba(255,209,102,0.12)",
+    selectedBackground: "rgba(255,209,102,0.22)",
+    selectedFill: "#8a6412",
+    text: "#ffd166",
+  },
+  other: {
+    border: "#7cf4c8",
+    background: "rgba(124,244,200,0.11)",
+    selectedBackground: "rgba(124,244,200,0.2)",
+    selectedFill: "#19775e",
+    text: "#7cf4c8",
+  },
+};
+
+function getGenderColor(value) {
+  return GENDER_COLORS[value] || GENDER_COLORS.other;
+}
 
 const getAvatar = (user) => {
   if (!user?.photos?.length) return null;
@@ -41,7 +76,7 @@ const getSearchFilters = (user) => ({
   maxAge: String(user?.maxAge || user?.preferences?.ageRange?.max || 60),
 });
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const {
   user,
   signOut,
@@ -60,6 +95,7 @@ export default function ProfileScreen() {
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const filtersAnimation = useRef(new Animated.Value(0)).current;
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -79,6 +115,14 @@ export default function ProfileScreen() {
     });
   }, [user]);
 
+  useEffect(() => {
+    Animated.timing(filtersAnimation, {
+      toValue: 1,
+      duration: 460,
+      useNativeDriver: true,
+    }).start();
+  }, [filtersAnimation]);
+
   const toggleGenderPreference = (value) => {
     setForm((current) => {
       const selected = current.genderPreference.includes(value)
@@ -87,7 +131,7 @@ export default function ProfileScreen() {
 
       return {
         ...current,
-        genderPreference: selected,
+        genderPreference: selected.length ? selected : current.genderPreference,
       };
     });
   };
@@ -121,7 +165,6 @@ setMessage("Avatar updated");
 
   } catch(error){
 
-    console.log(error);
     setMessage(error.message);
 
   }
@@ -215,22 +258,70 @@ setMessage("Avatar updated");
           onChangeText={(value) => updateField("interests", value)}
           placeholder="Coffee, travel, music"
         />
-        <View style={styles.filterSection}>
+        <Animated.View
+          style={[
+            styles.filterSection,
+            {
+              opacity: filtersAnimation,
+              transform: [
+                {
+                  translateY: filtersAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [18, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <Text style={styles.sectionTitle}>Search filters</Text>
           <Text style={styles.label}>Interested in</Text>
           <View style={styles.genderGrid}>
             {GENDER_OPTIONS.map((option) => {
               const selected = form.genderPreference.includes(option.value);
+              const genderColor = getGenderColor(option.value);
 
               return (
                 <Pressable
                   key={option.value}
-                  style={[styles.genderChip, selected && styles.genderChipSelected]}
+                  style={({ hovered, pressed }) => [
+                    styles.genderChip,
+                    {
+                      borderColor: genderColor.border,
+                      backgroundColor: selected
+                        ? genderColor.selectedFill
+                        : genderColor.background,
+                    },
+                    selected && {
+                      shadowColor: genderColor.border,
+                      borderWidth: 2,
+                    },
+                    hovered && [
+                      styles.genderChipHover,
+                      {
+                        borderColor: genderColor.border,
+                        shadowColor: genderColor.border,
+                      },
+                    ],
+                    pressed && styles.genderChipPressed,
+                  ]}
                   onPress={() => toggleGenderPreference(option.value)}
                 >
-                  <Text style={[styles.genderChipText, selected && styles.genderChipTextSelected]}>
-                    {option.label}
-                  </Text>
+                  {({ hovered }) => (
+                    <View style={styles.genderChipContent}>
+                      {selected ? <View style={styles.genderCheckDot} /> : null}
+                      <Text
+                        style={[
+                          styles.genderChipText,
+                          { color: genderColor.text },
+                          selected && styles.genderChipTextSelected,
+                          hovered && styles.genderChipTextHover,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -251,10 +342,15 @@ setMessage("Avatar updated");
               style={styles.ageInput}
             />
           </View>
-        </View>
+        </Animated.View>
 
         {message ? <Text style={styles.message}>{message}</Text> : null}
 
+        <Button
+          title="Settings"
+          variant="secondary"
+          onPress={() => navigation.navigate("ProfileSettings")}
+        />
         <Button title="Save profile" loading={saving} onPress={save} />
         <Button title="Log out" variant="secondary" onPress={signOut} />
       </ScrollView>
@@ -265,7 +361,7 @@ setMessage("Avatar updated");
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fafbff",
+    backgroundColor: "#050506",
   },
   content: {
     paddingTop: 58,
@@ -284,7 +380,7 @@ const styles = StyleSheet.create({
     borderRadius: 46,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
   },
   avatarText: {
     color: "#fff",
@@ -292,9 +388,9 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   title: {
-    color: "#171a25",
-    fontSize: 26,
-    fontWeight: "900",
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: "800",
   },
   avatarImage: {
   width: "100%",
@@ -302,7 +398,7 @@ const styles = StyleSheet.create({
   borderRadius: 46,
 },
   email: {
-    color: "#777b8d",
+    color: "#cbbdd2",
     fontWeight: "600",
   },
   bioInput: {
@@ -311,7 +407,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   message: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontWeight: "800",
     textAlign: "center",
   },
@@ -320,12 +416,12 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   sectionTitle: {
-    color: "#171a25",
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: "900",
+    fontWeight: "800",
   },
   label: {
-    color: "#606473",
+    color: "#cbbdd2",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -336,22 +432,49 @@ const styles = StyleSheet.create({
   },
   genderChip: {
     borderWidth: 1,
-    borderColor: "#e3e4eb",
+    borderColor: "#403449",
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    backgroundColor: "#fff",
+    backgroundColor: "#1c1720",
   },
   genderChipSelected: {
-    borderColor: "#ff4458",
-    backgroundColor: "#fff0f2",
+    shadowOpacity: 0.36,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  genderChipHover: {
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
+    transform: [{ translateY: -2 }, { scale: 1.03 }],
+  },
+  genderChipPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.96 }],
+  },
+  genderChipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  genderCheckDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#ffffff",
   },
   genderChipText: {
-    color: "#606473",
+    color: "#cbbdd2",
     fontWeight: "800",
   },
   genderChipTextSelected: {
-    color: "#ff4458",
+    color: "#ffffff",
+  },
+  genderChipTextHover: {
+    color: "#ffffff",
   },
   ageRow: {
     flexDirection: "row",

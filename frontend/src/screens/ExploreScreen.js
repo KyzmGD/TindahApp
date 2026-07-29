@@ -1,25 +1,180 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
+import Slider from "@react-native-community/slider";
 import CardStack from "../components/swipe/CardStack";
 import { discover, sendSwipe } from "../services/swipe.api";
 import MatchModal from "../components/common/MatchModal";
 import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+
+const GENDER_OPTIONS = [
+  { label: "Women", value: "woman" },
+  { label: "Men", value: "man" },
+  { label: "Nonbinary", value: "nonbinary" },
+  { label: "Other", value: "other" },
+];
+const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
+const SEARCH_FILTER_CONFIGS = {
+  interests: {
+    icon: "TAG",
+    label: "Interests",
+    mode: "multi",
+    options: [
+      "Football",
+      "Gaming",
+      "Travel",
+      "Coffee",
+      "Music",
+      "Movies",
+      "Gym",
+      "Photography",
+      "Cooking",
+      "Reading",
+      "Hiking",
+      "Technology",
+      "Pets",
+      "Foodie",
+    ],
+  },
+  looking: {
+    icon: "EYE",
+    label: "Looking for",
+    mode: "single",
+    options: [
+      "Long-term partner",
+      "Long-term, open to short",
+      "Short-term fun",
+      "New friends",
+      "Still figuring it out",
+    ],
+  },
+  languages: {
+    icon: "A",
+    label: "Languages",
+    mode: "multi",
+    options: ["English", "Vietnamese", "Korean", "Japanese", "Chinese", "French", "Spanish"],
+  },
+  education: {
+    icon: "EDU",
+    label: "Education",
+    mode: "single",
+    options: ["High school", "College", "Bachelor's degree", "Master's degree", "PhD"],
+  },
+  family: {
+    icon: "FAM",
+    label: "Family plans",
+    mode: "single",
+    options: ["Want children", "Open to children", "Do not want children", "Have children", "Not sure yet"],
+  },
+  pets: {
+    icon: "PET",
+    label: "Pets",
+    mode: "multi",
+    options: ["Dog", "Cat", "Fish", "Bird", "No pets", "Want pets", "Pet-free"],
+  },
+  drinking: {
+    icon: "BAR",
+    label: "Drinking",
+    mode: "single",
+    options: ["Not for me", "Sober", "On special occasions", "Socially on weekends", "Most nights"],
+  },
+  smoking: {
+    icon: "SMK",
+    label: "Smoking",
+    mode: "single",
+    options: ["Non-smoker", "Social smoker", "Smoker", "Trying to quit", "Prefer not to say"],
+  },
+  workout: {
+    icon: "FIT",
+    label: "Workout",
+    mode: "single",
+    options: ["Every day", "Often", "Sometimes", "Almost never", "Prefer not to say"],
+  },
+};
+const SEARCH_FILTER_IDS = [
+  "interests",
+  "looking",
+  "languages",
+  "education",
+  "family",
+  "pets",
+  "drinking",
+  "smoking",
+  "workout",
+];
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(Number(value) || min, min), max);
+}
+
+function normalizeSelection(value) {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+}
+
+function formatSelectionValue(value) {
+  const selected = normalizeSelection(value);
+
+  if (!selected.length) {
+    return "Any";
+  }
+
+  if (selected.length === 1) {
+    return selected[0];
+  }
+
+  return `${selected.length} selected`;
+}
+
+function getFilterForm(user) {
+  const preferences = user?.preferences || {};
+  const ageRange = preferences.ageRange || {};
+  const advancedFilters = user?.advancedFilters || preferences.advancedFilters || {};
+
+  return {
+    genderPreference:
+      user?.genderPreference ||
+      user?.interestedIn ||
+      preferences.genderPreference ||
+      ALL_GENDER_VALUES,
+    maxDistanceKm: clamp(user?.maxDistanceKm || preferences.maxDistanceKm || 80, 2, 100),
+    minAge: clamp(user?.minAge || ageRange.min || 18, 18, 100),
+    maxAge: clamp(user?.maxAge || ageRange.max || 38, 18, 100),
+    expandDistance: user?.expandDistance ?? preferences.expandDistance ?? true,
+    expandAge: user?.expandAge ?? preferences.expandAge ?? true,
+    advancedFilters,
+  };
+}
 
 export default function ExploreScreen() {
+  const { user, updateProfile } = useAuth();
   const [users, setUsers] = useState([]);
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [matchBanner, setMatchBanner] = useState("");
   const [error, setError] = useState("");
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [filtersSaving, setFiltersSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [filterMessage, setFilterMessage] = useState("");
+  const [activeSearchFilterId, setActiveSearchFilterId] = useState(null);
+  const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
+  const pulse = useRef(new Animated.Value(0)).current;
 
   const loadProfiles = useCallback(async () => {
     setError("");
@@ -34,6 +189,33 @@ const [showMatchModal, setShowMatchModal] =
 
 const [matchedUser, setMatchedUser] =
   useState(null);
+const [matchedMatch, setMatchedMatch] =
+  useState(null);
+
+  useEffect(() => {
+    setFilterForm(getFilterForm(user));
+  }, [user]);
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1300,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [pulse]);
+
   useEffect(() => {
     loadProfiles()
       .catch(() => {
@@ -58,24 +240,180 @@ const [matchedUser, setMatchedUser] =
   setShowMatchModal(false);
 
   navigation.navigate(
-    "ChatScreen",
+    "Chat",
     {
-      matchId: matchedUser?._id,
+      match: matchedMatch,
       user: matchedUser,
     }
   );
-};
+  };
+
+  const openFilters = () => {
+    setFilterForm(getFilterForm(user));
+    setFilterMessage("");
+    setFiltersVisible(true);
+  };
+
+  const closeFilters = () => {
+    if (!filtersSaving) {
+      setActiveSearchFilterId(null);
+      setFiltersVisible(false);
+    }
+  };
+
+  const toggleGenderPreference = (value) => {
+    setFilterForm((current) => {
+      const selected = current.genderPreference.includes(value)
+        ? current.genderPreference.filter((item) => item !== value)
+        : [...current.genderPreference, value];
+
+      return {
+        ...current,
+        genderPreference: selected.length ? selected : current.genderPreference,
+      };
+    });
+  };
+
+  const updateMinAge = (value) => {
+    const nextMin = Math.round(value);
+    setFilterForm((current) => ({
+      ...current,
+      minAge: Math.min(nextMin, current.maxAge),
+    }));
+  };
+
+  const updateMaxAge = (value) => {
+    const nextMax = Math.round(value);
+    setFilterForm((current) => ({
+      ...current,
+      maxAge: Math.max(nextMax, current.minAge),
+    }));
+  };
+
+  const saveFilters = async () => {
+    setFiltersSaving(true);
+    setError("");
+
+    try {
+      await updateProfile({
+        genderPreference: filterForm.genderPreference,
+        maxDistanceKm: filterForm.maxDistanceKm,
+        minAge: filterForm.minAge,
+        maxAge: filterForm.maxAge,
+        expandDistance: filterForm.expandDistance,
+        expandAge: filterForm.expandAge,
+        advancedFilters: filterForm.advancedFilters,
+      });
+      setActiveSearchFilterId(null);
+      setFiltersVisible(false);
+      setLoading(true);
+      await loadProfiles();
+    } catch (filterError) {
+      setError(filterError.message || "Unable to save filters.");
+    } finally {
+      setFiltersSaving(false);
+      setLoading(false);
+    }
+  };
+
+  const useCurrentLocation = async () => {
+    const geolocation = globalThis.navigator?.geolocation;
+
+    if (!geolocation) {
+      setFilterMessage("Location is not available in this environment.");
+      return;
+    }
+
+    setLocating(true);
+    setFilterMessage("");
+
+    geolocation.getCurrentPosition(
+      async (position) => {
+        const { longitude, latitude } = position.coords;
+
+        try {
+          await updateProfile({
+            location: {
+              type: "Point",
+              coordinates: [longitude, latitude],
+            },
+          });
+          setFilterMessage("Location updated.");
+          setLoading(true);
+          await loadProfiles();
+        } catch (locationError) {
+          setFilterMessage(locationError.message || "Unable to save location.");
+        } finally {
+          setLocating(false);
+          setLoading(false);
+        }
+      },
+      (locationError) => {
+        setFilterMessage(locationError.message || "Could not read your location.");
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  };
+
+  const selectedGenderLabel = useMemo(() => {
+    if (
+      !filterForm.genderPreference.length ||
+      filterForm.genderPreference.length === GENDER_OPTIONS.length
+    ) {
+      return "Everyone";
+    }
+
+    return GENDER_OPTIONS
+      .filter((option) => filterForm.genderPreference.includes(option.value))
+      .map((option) => option.label)
+      .join(", ");
+  }, [filterForm.genderPreference]);
+
+  const activeSearchFilter = activeSearchFilterId
+    ? SEARCH_FILTER_CONFIGS[activeSearchFilterId]
+    : null;
+  const activeSearchSelection = activeSearchFilterId
+    ? normalizeSelection(filterForm.advancedFilters?.[activeSearchFilterId])
+    : [];
+
+  const updateAdvancedFilter = (filterId, value) => {
+    setFilterForm((current) => ({
+      ...current,
+      advancedFilters: {
+        ...current.advancedFilters,
+        [filterId]: value,
+      },
+    }));
+  };
+
+  const toggleAdvancedFilterOption = (option) => {
+    if (!activeSearchFilterId || !activeSearchFilter) {
+      return;
+    }
+
+    if (activeSearchFilter.mode === "multi") {
+      const selected = activeSearchSelection.includes(option)
+        ? activeSearchSelection.filter((item) => item !== option)
+        : [...activeSearchSelection, option];
+      updateAdvancedFilter(activeSearchFilterId, selected);
+      return;
+    }
+
+    updateAdvancedFilter(
+      activeSearchFilterId,
+      activeSearchSelection.includes(option) ? "" : option,
+    );
+  };
   const handleSwipe = async (user, direction) => {
-  console.log("HANDLE SWIPE:", user?._id, direction);
-
   setUsers((current) => {
-    console.log("BEFORE:", current.length);
-
     const next = current.filter(
       (item) => item._id !== user._id
     );
-
-    console.log("AFTER:", next.length);
 
     return next;
   });
@@ -88,8 +426,8 @@ const [matchedUser, setMatchedUser] =
 
     if (result.isMatch) {
   setMatchedUser(user);
+  setMatchedMatch(result.match);
   setShowMatchModal(true);
-      console.log(result);
     }
   } catch (swipeError) {
     setUsers((current) => [user, ...current]);
@@ -101,8 +439,15 @@ const [matchedUser, setMatchedUser] =
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.logo}>tindah</Text>
-        <Pressable style={styles.filterButton} onPress={refresh}>
+        <Text style={styles.logo}>Tindah</Text>
+        <Pressable
+          style={({ hovered, pressed }) => [
+            styles.filterButton,
+            hovered && styles.filterButtonHover,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={openFilters}
+        >
           <Text style={styles.filterText}>Filters</Text>
         </Pressable>
       </View>
@@ -115,22 +460,30 @@ const [matchedUser, setMatchedUser] =
 
       <ScrollView
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#ff4458"
+            tintColor="#ff4f7b"
           />
         }
       >
         {loading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color="#ff4458" size="large" />
+            <ActivityIndicator color="#ff4f7b" size="large" />
           </View>
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={refresh}>
+            <Pressable
+              style={({ hovered, pressed }) => [
+                styles.retryButton,
+                hovered && styles.retryButtonHover,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={refresh}
+            >
               <Text style={styles.retryText}>Try again</Text>
             </Pressable>
           </View>
@@ -151,24 +504,387 @@ const [matchedUser, setMatchedUser] =
   onClose={() => setShowMatchModal(false)}
   onMessage={openChat}
 />
+      <Modal
+        visible={filtersVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeFilters}
+      >
+        <View style={styles.filtersOverlay}>
+          <Pressable style={styles.filtersBackdrop} onPress={closeFilters} />
+          <View style={styles.filtersSheet}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.filtersHeader}>
+              <View style={styles.headerSide} />
+              <Text style={styles.filtersTitle}>Search settings</Text>
+              <Pressable
+                disabled={filtersSaving}
+                onPress={saveFilters}
+                style={({ hovered, pressed }) => [
+                  styles.doneFilterButton,
+                  hovered && styles.doneFilterButtonHover,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                {filtersSaving ? (
+                  <ActivityIndicator color="#57b8ff" />
+                ) : (
+                  <Text style={styles.doneFilterText}>Done</Text>
+                )}
+              </Pressable>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContent}
+            >
+              <Text style={styles.filtersSectionTitle}>Discovery</Text>
+
+              <View style={styles.discoveryCard}>
+                <Pressable
+                  style={({ hovered, pressed }) => [
+                    styles.locationRow,
+                    hovered && styles.locationRowHover,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={useCurrentLocation}
+                  disabled={locating}
+                >
+                  {({ hovered }) => (
+                    <>
+                      <View style={styles.locationCopy}>
+                        <Text style={styles.settingTitle}>Location</Text>
+                        <Text style={styles.settingHint}>
+                          Change where matches are discovered.
+                        </Text>
+                      </View>
+                      <Text style={[styles.locationValue, hovered && styles.valueHover]}>
+                        {locating ? "Locating..." : "Use current location"}
+                      </Text>
+                      <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
+                        {">"}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
+                {filterMessage ? (
+                  <Text style={styles.filterMessage}>{filterMessage}</Text>
+                ) : null}
+
+                <View style={styles.divider} />
+
+                <View style={styles.settingHeader}>
+                  <Text style={styles.settingTitle}>Maximum distance</Text>
+                  <Text style={styles.settingValue}>{filterForm.maxDistanceKm} km</Text>
+                </View>
+                <Slider
+                  minimumValue={2}
+                  maximumValue={100}
+                  step={1}
+                  value={filterForm.maxDistanceKm}
+                  minimumTrackTintColor="#ff2f6d"
+                  maximumTrackTintColor="#6c6363"
+                  thumbTintColor="#ffffff"
+                  onValueChange={(value) =>
+                    setFilterForm((current) => ({
+                      ...current,
+                      maxDistanceKm: Math.round(value),
+                    }))
+                  }
+                />
+                <View style={styles.toggleRow}>
+                  <Text style={styles.toggleText}>
+                    Show people farther away if I run out of profiles.
+                  </Text>
+                  <Switch
+                    value={filterForm.expandDistance}
+                    onValueChange={(value) =>
+                      setFilterForm((current) => ({
+                        ...current,
+                        expandDistance: value,
+                      }))
+                    }
+                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
+                    thumbColor="#ffffff"
+                  />
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.settingHeader}>
+                  <Text style={styles.settingTitle}>Interested in</Text>
+                  <Text style={styles.settingValue} numberOfLines={1}>
+                    {selectedGenderLabel}
+                  </Text>
+                </View>
+                <View style={styles.genderGrid}>
+                  {GENDER_OPTIONS.map((option) => {
+                    const selected = filterForm.genderPreference.includes(option.value);
+
+                    return (
+                      <Pressable
+                        key={option.value}
+                        onPress={() => toggleGenderPreference(option.value)}
+                        style={({ hovered, pressed }) => [
+                          styles.genderChip,
+                          selected && styles.genderChipSelected,
+                          hovered && styles.genderChipHover,
+                          pressed && styles.buttonPressed,
+                        ]}
+                      >
+                        {({ hovered }) => (
+                          <Text
+                            style={[
+                              styles.genderChipText,
+                              selected && styles.genderChipTextSelected,
+                              hovered && styles.genderChipTextHover,
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.settingHeader}>
+                  <Text style={styles.settingTitle}>Age range</Text>
+                  <Text style={styles.settingValue}>
+                    {filterForm.minAge}-{filterForm.maxAge}
+                  </Text>
+                </View>
+                <Text style={styles.sliderLabel}>Minimum age</Text>
+                <Slider
+                  minimumValue={18}
+                  maximumValue={100}
+                  step={1}
+                  value={filterForm.minAge}
+                  minimumTrackTintColor="#ff2f6d"
+                  maximumTrackTintColor="#6c6363"
+                  thumbTintColor="#ffffff"
+                  onValueChange={updateMinAge}
+                />
+                <Text style={styles.sliderLabel}>Maximum age</Text>
+                <Slider
+                  minimumValue={18}
+                  maximumValue={100}
+                  step={1}
+                  value={filterForm.maxAge}
+                  minimumTrackTintColor="#ff2f6d"
+                  maximumTrackTintColor="#6c6363"
+                  thumbTintColor="#ffffff"
+                  onValueChange={updateMaxAge}
+                />
+                <View style={styles.toggleRow}>
+                  <Text style={styles.toggleText}>
+                    Show people slightly outside my preferred age range.
+                  </Text>
+                  <Switch
+                    value={filterForm.expandAge}
+                    onValueChange={(value) =>
+                      setFilterForm((current) => ({
+                        ...current,
+                        expandAge: value,
+                      }))
+                    }
+                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
+                    thumbColor="#ffffff"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.searchFilterBlock}>
+                <Text style={styles.filtersSectionTitle}>More filters</Text>
+                <View style={styles.searchFilterList}>
+                  {SEARCH_FILTER_IDS.map((filterId) => {
+                    const config = SEARCH_FILTER_CONFIGS[filterId];
+                    const value = formatSelectionValue(filterForm.advancedFilters?.[filterId]);
+
+                    return (
+                      <Pressable
+                        key={filterId}
+                        style={({ hovered, pressed }) => [
+                          styles.searchFilterRow,
+                          hovered && styles.searchFilterRowHover,
+                          pressed && styles.buttonPressed,
+                        ]}
+                        onPress={() => setActiveSearchFilterId(filterId)}
+                      >
+                        {({ hovered }) => (
+                          <>
+                            <Text style={[styles.searchFilterIcon, hovered && styles.valueHover]}>
+                              {config.icon}
+                            </Text>
+                            <Text style={styles.searchFilterLabel} numberOfLines={1}>
+                              {config.label}
+                            </Text>
+                            <Text
+                              style={[styles.searchFilterValue, hovered && styles.valueHover]}
+                              numberOfLines={1}
+                            >
+                              {value}
+                            </Text>
+                            <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
+                              {">"}
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={Boolean(activeSearchFilter)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setActiveSearchFilterId(null)}
+      >
+        <View style={styles.selectorOverlay}>
+          <Pressable
+            style={styles.selectorDismiss}
+            onPress={() => setActiveSearchFilterId(null)}
+          />
+          <View style={styles.selectorSheet}>
+            <View style={styles.selectorHeader}>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.doneFilterButtonHover,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => updateAdvancedFilter(
+                  activeSearchFilterId,
+                  activeSearchFilter?.mode === "multi" ? [] : "",
+                )}
+              >
+                <Text style={styles.selectorClearText}>Clear</Text>
+              </Pressable>
+              <Text style={styles.selectorTitle}>{activeSearchFilter?.label}</Text>
+              <Pressable
+                style={({ hovered, pressed }) => [
+                  styles.selectorHeaderButton,
+                  hovered && styles.doneFilterButtonHover,
+                  pressed && styles.buttonPressed,
+                ]}
+                onPress={() => setActiveSearchFilterId(null)}
+              >
+                <Text style={styles.doneFilterText}>Done</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.selectorOptionList}
+            >
+              {activeSearchFilter?.options.map((option) => {
+                const selected = activeSearchSelection.includes(option);
+
+                return (
+                  <Pressable
+                    key={option}
+                    style={({ hovered, pressed }) => [
+                      styles.selectorOptionRow,
+                      selected && styles.selectorOptionRowSelected,
+                      hovered && styles.selectorOptionRowHover,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={() => toggleAdvancedFilterOption(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.selectorOptionText,
+                        selected && styles.selectorOptionTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                    <View
+                      style={[
+                        styles.selectorCheck,
+                        selected && styles.selectorCheckSelected,
+                      ]}
+                    >
+                      {selected ? <Text style={styles.selectorCheckText}>OK</Text> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       <View style={styles.actions}>
         <Pressable
-          style={[styles.actionButton, styles.nope]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.nope,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "nope")}
         >
-          <Text style={styles.nopeText}>✕</Text>
+          <Text style={styles.nopeText}>X</Text>
         </Pressable>
         <Pressable
-          style={[styles.actionButton, styles.superLike]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.superLike,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "superlike")}
         >
-          <Text style={styles.superLikeText}>★</Text>
+          <Animated.Text
+            style={[
+              styles.superLikeText,
+              {
+                transform: [
+                  {
+                    scale: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.08],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            ★
+          </Animated.Text>
         </Pressable>
         <Pressable
-          style={[styles.actionButton, styles.like]}
+          style={({ hovered, pressed }) => [
+            styles.actionButton,
+            styles.like,
+            hovered && styles.actionHover,
+            pressed && styles.actionPressed,
+          ]}
           onPress={() => users[0] && handleSwipe(users[0], "like")}
         >
-          <Text style={styles.likeText}>♥</Text>
+          <Animated.Text
+            style={[
+              styles.likeText,
+              {
+                transform: [
+                  {
+                    scale: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 1.1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            ♥
+          </Animated.Text>
         </Pressable>
       </View>
     </View>
@@ -178,7 +894,7 @@ const [matchedUser, setMatchedUser] =
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#f7f8fc",
+    backgroundColor: "#050506",
   },
   header: {
     paddingTop: 16,
@@ -187,26 +903,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#fff",
+    backgroundColor: "#121016",
   },
   logo: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 30,
     fontWeight: "900",
   },
   filterButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: "#f4f5f8",
+    backgroundColor: "#1c1720",
     borderRadius: 18,
   },
+  filterButtonHover: {
+    backgroundColor: "#2a2133",
+    transform: [{ translateY: -1 }],
+  },
   filterText: {
-    color: "#626678",
+    color: "#ffffff",
     fontWeight: "800",
   },
   content: {
     flexGrow: 1,
     padding: 16,
+    paddingBottom: 24,
   },
   loading: {
     flex: 1,
@@ -221,7 +942,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     borderRadius: 18,
-    backgroundColor: "#202433",
+    backgroundColor: "#1c1720",
     padding: 14,
     alignItems: "center",
   },
@@ -237,7 +958,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   errorText: {
-    color: "#ff4458",
+    color: "#ff4f7b",
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
@@ -247,7 +968,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 20,
     paddingBottom: 16,
-    backgroundColor: "#f7f8fc",
+    backgroundColor: "#050506",
   },
   actionButton: {
     width: 70,
@@ -255,24 +976,32 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
-    shadowColor: "#1b1d28",
-    shadowOpacity: 0.12,
+    backgroundColor: "#1c1720",
+    shadowColor: "#050506",
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
+  actionHover: {
+    backgroundColor: "#2a2133",
+    transform: [{ translateY: -2 }, { scale: 1.04 }],
+  },
+  actionPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.94 }],
+  },
   nope: {
     borderWidth: 1,
-    borderColor: "#ffd5dc",
+    borderColor: "#ffffff",
   },
   superLike: {
     borderWidth: 1,
-    borderColor: "#ccedff",
+    borderColor: "#20c7ff",
   },
   like: {
     borderWidth: 1,
-    borderColor: "#cef4df",
+    borderColor: "#ff2f6d",
   },
   retryButton: {
     marginTop: 12,
@@ -280,24 +1009,367 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: "#ff4458",
+    backgroundColor: "#ff4f7b",
+  },
+  retryButtonHover: {
+    backgroundColor: "#ff7aa2",
+    transform: [{ translateY: -1 }],
+  },
+  buttonPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
   },
   retryText: {
     color: "#fff",
     fontWeight: "800",
   },
+  filtersOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(5,5,6,0.72)",
+  },
+  filtersBackdrop: {
+    flex: 1,
+  },
+  filtersSheet: {
+    maxHeight: "94%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: "#2b2234",
+    backgroundColor: "#050506",
+    overflow: "hidden",
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 58,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 10,
+    marginBottom: 2,
+    backgroundColor: "#2b2626",
+  },
+  filtersHeader: {
+    minHeight: 72,
+    borderBottomWidth: 1,
+    borderBottomColor: "#252020",
+    backgroundColor: "#121016",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+  },
+  headerSide: {
+    width: 72,
+  },
+  filtersTitle: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 26,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  doneFilterButton: {
+    width: 72,
+    minHeight: 44,
+    borderRadius: 999,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingRight: 8,
+  },
+  doneFilterButtonHover: {
+    backgroundColor: "rgba(87,184,255,0.16)",
+    transform: [{ translateY: -1 }],
+  },
+  doneFilterText: {
+    color: "#57b8ff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  filtersContent: {
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 34,
+    gap: 20,
+  },
+  filtersSectionTitle: {
+    color: "#ffffff",
+    fontSize: 27,
+    fontWeight: "500",
+  },
+  discoveryCard: {
+    borderRadius: 8,
+    backgroundColor: "#121016",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  locationRow: {
+    minHeight: 92,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  locationRowHover: {
+    backgroundColor: "#231b2b",
+    transform: [{ translateX: 4 }],
+  },
+  locationCopy: {
+    flex: 1,
+    gap: 8,
+  },
+  settingTitle: {
+    color: "#ffffff",
+    fontSize: 24,
+    fontWeight: "400",
+  },
+  settingHint: {
+    color: "#c7b9cf",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  filterMessage: {
+    color: "#c7b9cf",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 8,
+  },
+  locationValue: {
+    maxWidth: 138,
+    color: "#cbbdd2",
+    fontSize: 22,
+    fontWeight: "400",
+    textAlign: "right",
+  },
+  rowChevron: {
+    color: "#cbbdd2",
+    fontSize: 34,
+    fontWeight: "300",
+  },
+  valueHover: {
+    color: "#ffffff",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#33283d",
+    marginVertical: 18,
+  },
+  settingHeader: {
+    minHeight: 42,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  settingValue: {
+    flexShrink: 1,
+    color: "#ddd0e5",
+    fontSize: 22,
+    fontWeight: "400",
+    textAlign: "right",
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    marginTop: 14,
+  },
+  toggleText: {
+    flex: 1,
+    color: "#c7b9cf",
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: "500",
+  },
+  genderGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12,
+  },
+  genderChip: {
+    minHeight: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#403449",
+    backgroundColor: "#221a29",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  genderChipSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
+  },
+  genderChipHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#2f2440",
+    transform: [{ translateY: -2 }, { scale: 1.03 }],
+  },
+  genderChipText: {
+    color: "#ddd0e5",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  genderChipTextSelected: {
+    color: "#ff4f7b",
+  },
+  genderChipTextHover: {
+    color: "#ffffff",
+  },
+  sliderLabel: {
+    color: "#c7b9cf",
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 10,
+  },
+  searchFilterBlock: {
+    gap: 12,
+  },
+  searchFilterList: {
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#121016",
+  },
+  searchFilterRow: {
+    minHeight: 64,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2c2334",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  searchFilterRowHover: {
+    backgroundColor: "#231b2b",
+    transform: [{ translateX: 4 }],
+  },
+  searchFilterIcon: {
+    width: 42,
+    color: "#cbbdd2",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  searchFilterLabel: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  searchFilterValue: {
+    maxWidth: 116,
+    color: "#ddd0e5",
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  selectorOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(5,5,6,0.68)",
+    justifyContent: "flex-end",
+  },
+  selectorDismiss: {
+    flex: 1,
+  },
+  selectorSheet: {
+    maxHeight: "74%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: "#2b2234",
+    backgroundColor: "#121016",
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 28,
+  },
+  selectorHeader: {
+    minHeight: 50,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  selectorHeaderButton: {
+    width: 72,
+    minHeight: 44,
+    borderRadius: 999,
+    justifyContent: "center",
+  },
+  selectorClearText: {
+    color: "#cbbdd2",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  selectorTitle: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  selectorOptionList: {
+    gap: 8,
+    paddingVertical: 12,
+  },
+  selectorOptionRow: {
+    minHeight: 54,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#403449",
+    backgroundColor: "#1c1720",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+  },
+  selectorOptionRowSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#321827",
+  },
+  selectorOptionRowHover: {
+    borderColor: "#20c7ff",
+    backgroundColor: "#231b2b",
+  },
+  selectorOptionText: {
+    flex: 1,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    paddingRight: 12,
+  },
+  selectorOptionTextSelected: {
+    color: "#ff7aa2",
+  },
+  selectorCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#74677d",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectorCheckSelected: {
+    borderColor: "#ff4f7b",
+    backgroundColor: "#ff4f7b",
+  },
+  selectorCheckText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "900",
+  },
   nopeText: {
-    color: "#ff4458",
+    color: "#ffffff",
     fontSize: 28,
     fontWeight: "900",
   },
   superLikeText: {
-    color: "#2ba7ff",
-    fontSize: 28,
+    color: "#20c7ff",
+    fontSize: 30,
     fontWeight: "900",
   },
   likeText: {
-    color: "#20c970",
-    fontSize: 28,
+    color: "#ff2f6d",
+    fontSize: 32,
+    fontWeight: "900",
   },
 });

@@ -78,6 +78,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     }).populate("sender", "name photos");
 
     if (existingMessage) {
+      existingMessage.$locals.wasCreated = false;
       return existingMessage;
     }
   }
@@ -108,6 +109,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     }).populate("sender", "name photos");
 
     if (existingMessage) {
+      existingMessage.$locals.wasCreated = false;
       return existingMessage;
     }
 
@@ -121,6 +123,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
   };
   await match.save();
 
+  message.$locals.wasCreated = true;
   return message.populate("sender", "name photos");
 }
 

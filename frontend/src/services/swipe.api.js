@@ -20,11 +20,17 @@ export async function unmatch(matchId) {
 }
 
 export async function getMessages(matchId) {
-  const response = await api.get(`/chats/${matchId}/messages`);
-  return response.data.messages;
+  const response = await api.get(`/v1/messages/${matchId}`, {
+    params: {
+      page: 1,
+      limit: 50,
+    },
+  });
+
+  return [...response.data.messages].reverse();
 }
 
-export async function sendMessage(matchId, text) {
-  const response = await api.post(`/chats/${matchId}/messages`, { text });
+export async function sendMessage(matchId, text, clientMessageId) {
+  const response = await api.post(`/chats/${matchId}/messages`, { text, clientMessageId });
   return response.data.message;
 }

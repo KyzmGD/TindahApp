@@ -1,28 +1,25 @@
 import api from "./api";
 
-
 export async function uploadImage(imageUri) {
-
-  const response = await fetch(imageUri);
-
-  const blob = await response.blob();
-
   const formData = new FormData();
 
-  formData.append("image", blob, "avatar.jpg");
-
+  formData.append("image", {
+    uri: imageUri,
+    name: "profile-photo.jpg",
+    type: "image/jpeg",
+  });
 
   const result = await api.post(
     "/upload/image",
     formData,
     {
-      headers:{
-        "Content-Type":"multipart/form-data",
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
-  return response.data.url;
+  return result.data.url;
 }
 
 export async function saveProfilePhoto(url, publicId) {

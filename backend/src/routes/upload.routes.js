@@ -9,13 +9,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 router.post(
   "/image",
+  authMiddleware,
   upload.single("image"),
   asyncHandler(async (req, res) => {
-
-    console.log("CONTENT TYPE:", req.headers["content-type"]);
-    console.log("FILE:", req.file);
-    console.log("BODY:", req.body);
-
     if (!req.file) {
       return res.status(400).json({
         message: "Image file is required",
@@ -24,16 +20,14 @@ router.post(
 
     const url = await uploadImageToCloudinary(
       req.file.buffer,
-
-      "tinder-app"
+      "tinder-app",
+      req.file.mimetype,
     );
 
-    console.log("CLOUDINARY URL:", url);
-
     return res.status(200).json({
-  message: "Profile photo saved successfully",
-  photos: req.user.photos,
-});
+      message: "Image uploaded successfully",
+      url,
+    });
   }),
 );
 
@@ -41,11 +35,7 @@ router.post(
   "/save-profile-photo",
   authMiddleware,
   asyncHandler(async (req, res) => {
-
-    console.log("USER FROM AUTH:", req.user);
-
     const { url, publicId } = req.body;
-
 
     if (!url) {
       return res.status(400).json({
@@ -53,24 +43,20 @@ router.post(
       });
     }
 
-
     req.user.photos.push({
       url,
       publicId: publicId || null,
       isPrimary: req.user.photos.length === 0,
     });
 
-
     await req.user.save();
 
-
     return res.status(200).json({
-  message: "Profile photo saved successfully",
-    user: req.user,
-  photos: req.user.photos,
-});
-
-  })
+      message: "Profile photo saved successfully",
+      user: req.user,
+      photos: req.user.photos,
+    });
+  }),
 );
 
 module.exports = router;

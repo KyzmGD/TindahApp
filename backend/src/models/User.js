@@ -10,6 +10,61 @@ const photoSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const profileDetailsSchema = new mongoose.Schema(
+  {
+    looking: { type: String, trim: true, maxlength: 80, default: "" },
+    languages: [{ type: String, trim: true, maxlength: 40 }],
+    zodiac: { type: String, trim: true, maxlength: 40, default: "" },
+    education: { type: String, trim: true, maxlength: 80, default: "" },
+    family: { type: String, trim: true, maxlength: 80, default: "" },
+    communication: { type: String, trim: true, maxlength: 80, default: "" },
+    love: { type: String, trim: true, maxlength: 80, default: "" },
+    pets: [{ type: String, trim: true, maxlength: 40 }],
+    drinking: { type: String, trim: true, maxlength: 80, default: "" },
+    smoking: { type: String, trim: true, maxlength: 80, default: "" },
+    workout: { type: String, trim: true, maxlength: 80, default: "" },
+    social: { type: String, trim: true, maxlength: 80, default: "" },
+  },
+  { _id: false },
+);
+
+const advancedSearchFiltersSchema = new mongoose.Schema(
+  {
+    interests: [{ type: String, trim: true, maxlength: 40 }],
+    looking: { type: String, trim: true, maxlength: 80, default: "" },
+    languages: [{ type: String, trim: true, maxlength: 40 }],
+    education: { type: String, trim: true, maxlength: 80, default: "" },
+    family: { type: String, trim: true, maxlength: 80, default: "" },
+    pets: [{ type: String, trim: true, maxlength: 40 }],
+    drinking: { type: String, trim: true, maxlength: 80, default: "" },
+    smoking: { type: String, trim: true, maxlength: 80, default: "" },
+    workout: { type: String, trim: true, maxlength: 80, default: "" },
+  },
+  { _id: false },
+);
+
+const pushTokenSchema = new mongoose.Schema(
+  {
+    token: { type: String, required: true, trim: true, maxlength: 512 },
+    provider: {
+      type: String,
+      enum: ["expo", "web"],
+      default: "expo",
+      required: true,
+    },
+    platform: {
+      type: String,
+      enum: ["ios", "android", "web", "unknown"],
+      default: "unknown",
+    },
+    deviceId: { type: String, trim: true, maxlength: 160, default: "" },
+    disabled: { type: Boolean, default: false },
+    lastSeenAt: { type: Date, default: Date.now },
+    revokedAt: Date,
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -25,7 +80,7 @@ const userSchema = new mongoose.Schema(
     gender: {
       type: String,
       enum: ["woman", "man", "nonbinary", "other"],
-      default: "other",
+      required: true,
     },
     interestedIn: {
       type: [String],
@@ -34,6 +89,7 @@ const userSchema = new mongoose.Schema(
     },
     bio: { type: String, maxlength: 500, default: "" },
     interests: [{ type: String, trim: true, maxlength: 40 }],
+    profileDetails: { type: profileDetailsSchema, default: () => ({}) },
     jobTitle: { type: String, trim: true, maxlength: 80 },
     school: { type: String, trim: true, maxlength: 120 },
     photos: { type: [photoSchema], default: [] },
@@ -42,10 +98,27 @@ const userSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] },
     },
     preferences: {
-      maxDistanceKm: { type: Number, default: 50, min: 1, max: 500 },
+      maxDistanceKm: { type: Number, default: 50, min: 2, max: 100 },
+      expandDistance: { type: Boolean, default: true },
+      expandAge: { type: Boolean, default: true },
+      advancedFilters: { type: advancedSearchFiltersSchema, default: () => ({}) },
       ageRange: {
         min: { type: Number, default: 18, min: 18, max: 100 },
         max: { type: Number, default: 60, min: 18, max: 100 },
+      },
+    },
+    pushTokens: {
+      type: [pushTokenSchema],
+      default: [],
+      validate: {
+        validator(tokens) {
+          const activeTokens = (tokens || [])
+            .filter((entry) => entry?.token && !entry.disabled)
+            .map((entry) => `${entry.provider || "expo"}:${entry.token}`);
+
+          return new Set(activeTokens).size === activeTokens.length;
+        },
+        message: "Push tokens must be unique per user.",
       },
     },
     isVerified: { type: Boolean, default: false },
@@ -76,6 +149,7 @@ userSchema.methods.toProfileJSON = function toProfileJSON() {
     interestedIn: this.interestedIn,
     bio: this.bio,
     interests: this.interests,
+    profileDetails: this.profileDetails,
     jobTitle: this.jobTitle,
     school: this.school,
     photos: this.photos,

@@ -12,6 +12,35 @@ const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const BIRTHDAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MIN_ALLOWED_AGE = 18;
 const MAX_ALLOWED_AGE = 100;
+const MIN_DISTANCE_KM = 2;
+const MAX_DISTANCE_KM = 100;
+const MAX_PROFILE_PHOTOS = 6;
+const MAX_PUSH_TOKENS_PER_USER = 20;
+const ALLOWED_PUSH_TOKEN_PROVIDERS = ["expo", "web"];
+const ALLOWED_PUSH_TOKEN_PLATFORMS = ["ios", "android", "web", "unknown"];
+const EXPO_PUSH_TOKEN_PATTERN = /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/;
+const PROFILE_DETAIL_ARRAY_FIELDS = ["languages", "pets"];
+const PROFILE_DETAIL_STRING_FIELDS = [
+  "looking",
+  "zodiac",
+  "education",
+  "family",
+  "communication",
+  "love",
+  "drinking",
+  "smoking",
+  "workout",
+  "social",
+];
+const ADVANCED_FILTER_ARRAY_FIELDS = ["interests", "languages", "pets"];
+const ADVANCED_FILTER_STRING_FIELDS = [
+  "looking",
+  "education",
+  "family",
+  "drinking",
+  "smoking",
+  "workout",
+];
 
 function getAgeFromBirthDateString(birthDate) {
   const birthday = new Date(`${birthDate}T00:00:00.000Z`);
@@ -57,6 +86,54 @@ function normalizeInterests(interests) {
   return normalizeStringList(interests);
 }
 
+function getPlainObject(value) {
+  return value?.toObject?.() || value || {};
+}
+
+function normalizeProfileDetails(profileDetails) {
+  if (profileDetails === undefined) {
+    return undefined;
+  }
+
+  const normalized = {};
+
+  PROFILE_DETAIL_STRING_FIELDS.forEach((field) => {
+    if (profileDetails[field] !== undefined) {
+      normalized[field] = String(profileDetails[field]).trim();
+    }
+  });
+
+  PROFILE_DETAIL_ARRAY_FIELDS.forEach((field) => {
+    if (profileDetails[field] !== undefined) {
+      normalized[field] = normalizeStringList(profileDetails[field]);
+    }
+  });
+
+  return normalized;
+}
+
+function normalizeAdvancedFilters(advancedFilters) {
+  if (advancedFilters === undefined) {
+    return undefined;
+  }
+
+  const normalized = {};
+
+  ADVANCED_FILTER_STRING_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined) {
+      normalized[field] = String(advancedFilters[field]).trim();
+    }
+  });
+
+  ADVANCED_FILTER_ARRAY_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined) {
+      normalized[field] = normalizeStringList(advancedFilters[field]);
+    }
+  });
+
+  return normalized;
+}
+
 function getRequestedAgeRange(payload, user) {
   const requestedMinAge = payload.minAge ?? payload.preferences?.ageRange?.min;
   const requestedMaxAge = payload.maxAge ?? payload.preferences?.ageRange?.max;
@@ -85,6 +162,164 @@ function validateAgeNumber(value, fieldName, errors) {
   } else if (parsed < MIN_ALLOWED_AGE || parsed > MAX_ALLOWED_AGE) {
     errors[fieldName] = `${fieldName} must be between ${MIN_ALLOWED_AGE} and ${MAX_ALLOWED_AGE}.`;
   }
+}
+
+function validateGender(value, errors) {
+  if (value === undefined) {
+    return;
+  }
+
+  errors.gender = "Gender can only be set during registration.";
+}
+
+function validateLocation(value, errors) {
+  if (value === undefined) {
+    return;
+  }
+
+  const coordinates = value?.coordinates;
+  const [lng, lat] = Array.isArray(coordinates) ? coordinates.map(Number) : [];
+
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    value.type !== "Point" ||
+    !Array.isArray(coordinates) ||
+    coordinates.length !== 2 ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(lat) ||
+    lng < -180 ||
+    lng > 180 ||
+    lat < -90 ||
+    lat > 90
+  ) {
+    errors.location = "Location must be a GeoJSON Point with [lng, lat] coordinates.";
+  }
+}
+
+function validateAdvancedFiltersPayload(advancedFilters, errors) {
+  if (advancedFilters === undefined) {
+    return;
+  }
+
+  if (!advancedFilters || typeof advancedFilters !== "object" || Array.isArray(advancedFilters)) {
+    errors.advancedFilters = "Advanced filters must be an object.";
+    return;
+  }
+
+  ADVANCED_FILTER_STRING_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined && typeof advancedFilters[field] !== "string") {
+      errors[`advancedFilters.${field}`] = `${field} must be text.`;
+      return;
+    }
+
+    const value = String(advancedFilters[field] || "").trim();
+    if (value.length > 80) {
+      errors[`advancedFilters.${field}`] = `${field} must be 80 characters or less.`;
+    }
+  });
+
+  ADVANCED_FILTER_ARRAY_FIELDS.forEach((field) => {
+    if (advancedFilters[field] !== undefined && !isStringOrStringArray(advancedFilters[field])) {
+      errors[`advancedFilters.${field}`] = `${field} must be an array or comma-separated text.`;
+      return;
+    }
+
+    const normalizedValues = normalizeStringList(advancedFilters[field]);
+    if (normalizedValues === undefined) {
+      return;
+    }
+
+    const tooLongValue = normalizedValues.find((value) => value.length > 40);
+
+    if (normalizedValues.length > 20) {
+      errors[`advancedFilters.${field}`] = `${field} can contain at most 20 items.`;
+    } else if (tooLongValue) {
+      errors[`advancedFilters.${field}`] = `Each ${field} item must be 40 characters or less.`;
+    }
+  });
+}
+
+function getRequestedMaxDistance(payload, user) {
+  const requestedMaxDistanceKm = payload.maxDistanceKm ?? payload.preferences?.maxDistanceKm;
+
+  return {
+    requestedMaxDistanceKm,
+    effectiveMaxDistanceKm: requestedMaxDistanceKm !== undefined
+      ? Number(requestedMaxDistanceKm)
+      : user.preferences?.maxDistanceKm,
+  };
+}
+
+function getRequestedSearchPreferenceBoolean(payload, fieldName) {
+  return payload[fieldName] ?? payload.preferences?.[fieldName];
+}
+
+function normalizePhotos(photos) {
+  if (photos === undefined) {
+    return undefined;
+  }
+
+  return photos.map((photo, index) => ({
+    url: String(photo.url).trim(),
+    publicId: photo.publicId ? String(photo.publicId).trim() : undefined,
+    isPrimary: index === 0,
+  }));
+}
+
+function getNormalizedPushTokenPayload(payload = {}) {
+  const provider = payload.provider ? String(payload.provider).trim().toLowerCase() : "expo";
+  const platform = payload.platform ? String(payload.platform).trim().toLowerCase() : "unknown";
+
+  return {
+    token: typeof payload.token === "string" ? payload.token.trim() : "",
+    provider,
+    platform,
+    deviceId: typeof payload.deviceId === "string" ? payload.deviceId.trim() : "",
+  };
+}
+
+function validatePushTokenPayload(payload = {}) {
+  const errors = {};
+  const normalized = getNormalizedPushTokenPayload(payload);
+
+  if (!normalized.token) {
+    errors.token = "Push token is required.";
+  } else if (normalized.token.length > 512) {
+    errors.token = "Push token must be 512 characters or less.";
+  } else if (normalized.provider === "expo" && !EXPO_PUSH_TOKEN_PATTERN.test(normalized.token)) {
+    errors.token = "Enter a valid Expo push token.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PROVIDERS.includes(normalized.provider)) {
+    errors.provider = "Select a valid push token provider.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PLATFORMS.includes(normalized.platform)) {
+    errors.platform = "Select a valid push token platform.";
+  }
+
+  if (normalized.deviceId.length > 160) {
+    errors.deviceId = "deviceId must be 160 characters or less.";
+  }
+
+  return { errors, normalized };
+}
+
+function getPushTokenMatchIndex(pushTokens, normalizedPayload) {
+  return pushTokens.findIndex((entry) => {
+    const sameProvider = (entry.provider || "expo") === normalizedPayload.provider;
+    const sameToken = entry.token === normalizedPayload.token;
+    const sameDevice = Boolean(normalizedPayload.deviceId)
+      && entry.deviceId === normalizedPayload.deviceId;
+
+    return sameProvider && (sameToken || sameDevice);
+  });
+}
+
+function countActivePushTokens(pushTokens) {
+  return pushTokens.filter((entry) => entry.token && !entry.disabled).length;
 }
 
 function validateProfilePayload(payload, user) {
@@ -154,6 +389,9 @@ function validateProfilePayload(payload, user) {
     validateAgeNumber(payload.age, "age", errors);
   }
 
+  validateGender(payload.gender, errors);
+  validateLocation(payload.location, errors);
+
   if (payload.interests !== undefined) {
     if (!isStringOrStringArray(payload.interests)) {
       errors.interests = "Interests must be an array or comma-separated text.";
@@ -165,6 +403,95 @@ function validateProfilePayload(payload, user) {
         errors.interests = "Interests can contain at most 20 items.";
       } else if (tooLongInterest) {
         errors.interests = "Each interest must be 40 characters or less.";
+      }
+    }
+  }
+
+  if (payload.profileDetails !== undefined) {
+    if (
+      !payload.profileDetails ||
+      typeof payload.profileDetails !== "object" ||
+      Array.isArray(payload.profileDetails)
+    ) {
+      errors.profileDetails = "Profile details must be an object.";
+    } else {
+      PROFILE_DETAIL_STRING_FIELDS.forEach((field) => {
+        if (
+          payload.profileDetails[field] !== undefined &&
+          typeof payload.profileDetails[field] !== "string"
+        ) {
+          errors[`profileDetails.${field}`] = `${field} must be text.`;
+          return;
+        }
+
+        const value = String(payload.profileDetails[field] || "").trim();
+        if (value.length > 80) {
+          errors[`profileDetails.${field}`] = `${field} must be 80 characters or less.`;
+        }
+      });
+
+      PROFILE_DETAIL_ARRAY_FIELDS.forEach((field) => {
+        if (
+          payload.profileDetails[field] !== undefined &&
+          !isStringOrStringArray(payload.profileDetails[field])
+        ) {
+          errors[`profileDetails.${field}`] = `${field} must be an array or comma-separated text.`;
+          return;
+        }
+
+        const normalizedValues = normalizeStringList(payload.profileDetails[field]);
+        if (normalizedValues === undefined) {
+          return;
+        }
+
+        const tooLongValue = normalizedValues.find((value) => value.length > 40);
+
+        if (normalizedValues.length > 10) {
+          errors[`profileDetails.${field}`] = `${field} can contain at most 10 items.`;
+        } else if (tooLongValue) {
+          errors[`profileDetails.${field}`] = `Each ${field} item must be 40 characters or less.`;
+        }
+      });
+    }
+  }
+
+  const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
+
+  if (requestedMaxDistanceKm !== undefined) {
+    const parsedDistance = Number(requestedMaxDistanceKm);
+
+    if (!Number.isInteger(parsedDistance)) {
+      errors.maxDistanceKm = "maxDistanceKm must be an integer.";
+    } else if (parsedDistance < MIN_DISTANCE_KM || parsedDistance > MAX_DISTANCE_KM) {
+      errors.maxDistanceKm = `maxDistanceKm must be between ${MIN_DISTANCE_KM} and ${MAX_DISTANCE_KM}.`;
+    }
+  }
+
+  ["expandDistance", "expandAge"].forEach((fieldName) => {
+    const value = getRequestedSearchPreferenceBoolean(payload, fieldName);
+
+    if (value !== undefined && typeof value !== "boolean") {
+      errors[fieldName] = `${fieldName} must be a boolean.`;
+    }
+  });
+  validateAdvancedFiltersPayload(
+    payload.advancedFilters ?? payload.preferences?.advancedFilters,
+    errors,
+  );
+
+  if (payload.photos !== undefined) {
+    if (!Array.isArray(payload.photos)) {
+      errors.photos = "Photos must be an array.";
+    } else if (payload.photos.length > MAX_PROFILE_PHOTOS) {
+      errors.photos = `Profile can contain at most ${MAX_PROFILE_PHOTOS} photos.`;
+    } else {
+      const invalidPhoto = payload.photos.find((photo) => {
+        const url = typeof photo?.url === "string" ? photo.url.trim() : "";
+        return !url;
+      });
+
+      if (invalidPhoto) {
+        errors.photos = "Each photo must include a valid url.";
       }
     }
   }
@@ -256,9 +583,29 @@ function mapProfilePayloadToUser(user, payload) {
     }
   }
 
+  if (payload.location !== undefined) {
+    user.location = {
+      type: "Point",
+      coordinates: payload.location.coordinates.map(Number),
+    };
+  }
+
   const normalizedInterests = normalizeInterests(payload.interests);
   if (normalizedInterests !== undefined) {
     user.interests = normalizedInterests;
+  }
+
+  const normalizedProfileDetails = normalizeProfileDetails(payload.profileDetails);
+  if (normalizedProfileDetails !== undefined) {
+    user.profileDetails = {
+      ...getPlainObject(user.profileDetails),
+      ...normalizedProfileDetails,
+    };
+  }
+
+  const normalizedPhotos = normalizePhotos(payload.photos);
+  if (normalizedPhotos !== undefined) {
+    user.photos = normalizedPhotos;
   }
 }
 
@@ -273,7 +620,7 @@ function mapSearchFilterPayloadToUser(user, payload) {
   const { requestedMinAge, requestedMaxAge } = getRequestedAgeRange(payload, user);
 
   if (requestedMinAge !== undefined || requestedMaxAge !== undefined) {
-    const currentPreferences = user.preferences?.toObject?.() || user.preferences || {};
+    const currentPreferences = getPlainObject(user.preferences);
     user.preferences = {
       ...currentPreferences,
       ageRange: {
@@ -286,22 +633,67 @@ function mapSearchFilterPayloadToUser(user, payload) {
       },
     };
   }
+
+  const { requestedMaxDistanceKm } = getRequestedMaxDistance(payload, user);
+  const requestedExpandDistance = getRequestedSearchPreferenceBoolean(payload, "expandDistance");
+  const requestedExpandAge = getRequestedSearchPreferenceBoolean(payload, "expandAge");
+  const requestedAdvancedFilters = normalizeAdvancedFilters(
+    payload.advancedFilters ?? payload.preferences?.advancedFilters,
+  );
+
+  if (
+    requestedMaxDistanceKm !== undefined ||
+    requestedExpandDistance !== undefined ||
+    requestedExpandAge !== undefined ||
+    requestedAdvancedFilters !== undefined
+  ) {
+    const currentPreferences = getPlainObject(user.preferences);
+    user.preferences = {
+      ...currentPreferences,
+      maxDistanceKm: requestedMaxDistanceKm !== undefined
+        ? Number(requestedMaxDistanceKm)
+        : user.preferences?.maxDistanceKm,
+      expandDistance: requestedExpandDistance !== undefined
+        ? requestedExpandDistance
+        : user.preferences?.expandDistance ?? true,
+      expandAge: requestedExpandAge !== undefined
+        ? requestedExpandAge
+        : user.preferences?.expandAge ?? true,
+      advancedFilters: requestedAdvancedFilters !== undefined
+        ? {
+          ...getPlainObject(user.preferences?.advancedFilters),
+          ...requestedAdvancedFilters,
+        }
+        : user.preferences?.advancedFilters,
+      ageRange: currentPreferences.ageRange || user.preferences?.ageRange,
+    };
+  }
 }
 
 function buildUserProfileResponse(user) {
   const profile = user.toProfileJSON();
   const ageRange = profile.preferences?.ageRange || {};
+  const expandDistance = profile.preferences?.expandDistance ?? true;
+  const expandAge = profile.preferences?.expandAge ?? true;
+  const advancedFilters = profile.preferences?.advancedFilters || {};
 
   return {
     ...profile,
     genderPreference: profile.interestedIn,
     minAge: ageRange.min,
     maxAge: ageRange.max,
+    maxDistanceKm: profile.preferences?.maxDistanceKm,
+    expandDistance,
+    expandAge,
+    advancedFilters,
     searchFilters: {
       genderPreference: profile.interestedIn,
       minAge: ageRange.min,
       maxAge: ageRange.max,
       maxDistanceKm: profile.preferences?.maxDistanceKm,
+      expandDistance,
+      expandAge,
+      advancedFilters,
     },
   };
 }
@@ -320,6 +712,110 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.json({
     message: "Profile updated successfully",
     user: buildUserProfileResponse(req.user),
+  });
+});
+
+const savePushToken = asyncHandler(async (req, res) => {
+  const { errors, normalized } = validatePushTokenPayload(req.body);
+
+  if (hasValidationErrors(errors)) {
+    throw httpError(400, "Please fix the highlighted fields.", errors);
+  }
+
+  const now = new Date();
+  const pushTokens = req.user.pushTokens || [];
+  const existingIndex = getPushTokenMatchIndex(pushTokens, normalized);
+
+  if (existingIndex >= 0) {
+    pushTokens[existingIndex] = {
+      ...getPlainObject(pushTokens[existingIndex]),
+      token: normalized.token,
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      disabled: false,
+      lastSeenAt: now,
+      revokedAt: undefined,
+    };
+  } else {
+    if (countActivePushTokens(pushTokens) >= MAX_PUSH_TOKENS_PER_USER) {
+      throw httpError(400, "Push token limit reached.", {
+        token: `A user can have at most ${MAX_PUSH_TOKENS_PER_USER} active push tokens.`,
+      });
+    }
+
+    pushTokens.push({
+      token: normalized.token,
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      disabled: false,
+      lastSeenAt: now,
+    });
+  }
+
+  req.user.pushTokens = pushTokens;
+  await req.user.save();
+
+  res.status(201).json({
+    message: "Push token saved successfully",
+    pushToken: {
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      lastSeenAt: now,
+    },
+  });
+});
+
+const revokePushToken = asyncHandler(async (req, res) => {
+  const provider = req.body.provider ? String(req.body.provider).trim().toLowerCase() : "expo";
+  const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+  const deviceId = typeof req.body.deviceId === "string" ? req.body.deviceId.trim() : "";
+  const errors = {};
+
+  if (!token && !deviceId) {
+    errors.token = "Push token or deviceId is required.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PROVIDERS.includes(provider)) {
+    errors.provider = "Select a valid push token provider.";
+  }
+
+  if (hasValidationErrors(errors)) {
+    throw httpError(400, "Please fix the highlighted fields.", errors);
+  }
+
+  const now = new Date();
+  const pushTokens = req.user.pushTokens || [];
+  let revoked = false;
+
+  req.user.pushTokens = pushTokens.map((entry) => {
+    const plainEntry = getPlainObject(entry);
+    const sameProvider = (plainEntry.provider || "expo") === provider;
+    const sameToken = Boolean(token) && plainEntry.token === token;
+    const sameDevice = Boolean(deviceId) && plainEntry.deviceId === deviceId;
+
+    if (sameProvider && (sameToken || sameDevice) && !plainEntry.disabled) {
+      revoked = true;
+      return {
+        ...plainEntry,
+        disabled: true,
+        revokedAt: now,
+        lastSeenAt: now,
+      };
+    }
+
+    return plainEntry;
+  });
+
+  if (revoked) {
+    await req.user.save();
+  }
+
+  res.json({
+    message: revoked ? "Push token revoked successfully" : "Push token was already inactive",
+    revoked,
   });
 });
 
@@ -401,5 +897,7 @@ const explore = asyncHandler(async (req, res) => {
 
 module.exports = {
   explore,
+  revokePushToken,
+  savePushToken,
   updateProfile,
 };

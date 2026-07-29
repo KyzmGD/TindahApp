@@ -227,6 +227,120 @@ describe("GET /api/v1/users/explore", () => {
       mutualCandidate._id.toString(),
     ]);
   });
+
+  it("fills /swipes/discover with relaxed age candidates when expandAge is enabled", async () => {
+    const requester = await User.create({
+      name: "Expanded Age Requester",
+      email: "expanded-age-requester@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(29),
+      gender: "man",
+      interestedIn: ["woman"],
+      preferences: {
+        maxDistanceKm: 50,
+        expandDistance: false,
+        expandAge: true,
+        ageRange: {
+          min: 25,
+          max: 30,
+        },
+      },
+    });
+
+    const strictCandidate = await User.create({
+      name: "Strict Age Candidate",
+      email: "strict-age-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(28),
+      gender: "woman",
+      interestedIn: ["man"],
+    });
+
+    const relaxedCandidate = await User.create({
+      name: "Relaxed Age Candidate",
+      email: "relaxed-age-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(42),
+      gender: "woman",
+      interestedIn: ["man"],
+    });
+
+    const response = await request(app)
+      .get("/api/v1/swipes/discover")
+      .set("Authorization", `Bearer ${signUserToken(requester)}`)
+      .query({ limit: 20 });
+
+    const ids = response.body.users.map((user) => user.id);
+
+    expect(response.status).toBe(200);
+    expect(ids).toContain(strictCandidate._id.toString());
+    expect(ids).toContain(relaxedCandidate._id.toString());
+  });
+
+  it("applies saved advanced search filters to /swipes/discover", async () => {
+    const requester = await User.create({
+      name: "Advanced Filter Requester",
+      email: "advanced-filter-requester@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(29),
+      gender: "man",
+      interestedIn: ["woman"],
+      preferences: {
+        maxDistanceKm: 50,
+        ageRange: {
+          min: 18,
+          max: 60,
+        },
+        advancedFilters: {
+          interests: ["Coffee"],
+          looking: "Long-term partner",
+          languages: ["Vietnamese"],
+          smoking: "Non-smoker",
+        },
+      },
+    });
+
+    const matchingCandidate = await User.create({
+      name: "Advanced Matching Candidate",
+      email: "advanced-matching-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(28),
+      gender: "woman",
+      interestedIn: ["man"],
+      interests: ["Coffee", "Travel"],
+      profileDetails: {
+        looking: "Long-term partner",
+        languages: ["Vietnamese", "English"],
+        smoking: "Non-smoker",
+      },
+    });
+
+    const wrongCandidate = await User.create({
+      name: "Advanced Wrong Candidate",
+      email: "advanced-wrong-candidate@example.com",
+      passwordHash: "hashed-password",
+      birthDate: birthDateForAge(28),
+      gender: "woman",
+      interestedIn: ["man"],
+      interests: ["Coffee"],
+      profileDetails: {
+        looking: "New friends",
+        languages: ["Vietnamese"],
+        smoking: "Non-smoker",
+      },
+    });
+
+    const response = await request(app)
+      .get("/api/v1/swipes/discover")
+      .set("Authorization", `Bearer ${signUserToken(requester)}`)
+      .query({ limit: 20 });
+
+    const ids = response.body.users.map((user) => user.id);
+
+    expect(response.status).toBe(200);
+    expect(ids).toContain(matchingCandidate._id.toString());
+    expect(ids).not.toContain(wrongCandidate._id.toString());
+  });
 });
 
 describe("PUT /api/v1/users/profile", () => {
@@ -249,10 +363,42 @@ describe("PUT /api/v1/users/profile", () => {
         jobTitle: "Product Designer",
         school: "Tinder University",
         birthDate: "1997-06-15",
+        location: {
+          type: "Point",
+          coordinates: [106.7, 10.78],
+        },
         interests: ["coffee", "travel", "coffee"],
+        profileDetails: {
+          looking: "Long-term partner",
+          languages: ["English", "Vietnamese", "English"],
+          zodiac: "Leo",
+          education: "Bachelor's degree",
+          family: "Open to children",
+          communication: "Big texter",
+          love: "Quality time",
+          pets: ["Dog", "Cat"],
+          drinking: "Socially on weekends",
+          smoking: "Non-smoker",
+          workout: "Often",
+          social: "Passive scroller",
+        },
         genderPreference: ["man", "nonbinary"],
         minAge: 24,
         maxAge: 36,
+        maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
+        advancedFilters: {
+          interests: ["Football", "Coffee"],
+          looking: "Long-term partner",
+          languages: ["Vietnamese"],
+          education: "College",
+          family: "Want children",
+          pets: ["Dog"],
+          drinking: "Sober",
+          smoking: "Non-smoker",
+          workout: "Often",
+        },
       });
 
     expect(response.status).toBe(200);
@@ -263,12 +409,59 @@ describe("PUT /api/v1/users/profile", () => {
       bio: "Coffee and weekend walks",
       jobTitle: "Product Designer",
       school: "Tinder University",
+      gender: "woman",
+      location: {
+        type: "Point",
+        coordinates: [106.7, 10.78],
+      },
       interests: ["coffee", "travel"],
+      profileDetails: {
+        looking: "Long-term partner",
+        languages: ["English", "Vietnamese"],
+        zodiac: "Leo",
+        education: "Bachelor's degree",
+        family: "Open to children",
+        communication: "Big texter",
+        love: "Quality time",
+        pets: ["Dog", "Cat"],
+        drinking: "Socially on weekends",
+        smoking: "Non-smoker",
+        workout: "Often",
+        social: "Passive scroller",
+      },
       interestedIn: ["man", "nonbinary"],
       genderPreference: ["man", "nonbinary"],
       minAge: 24,
       maxAge: 36,
+      maxDistanceKm: 72,
+      expandDistance: false,
+      expandAge: true,
+      advancedFilters: {
+        interests: ["Football", "Coffee"],
+        looking: "Long-term partner",
+        languages: ["Vietnamese"],
+        education: "College",
+        family: "Want children",
+        pets: ["Dog"],
+        drinking: "Sober",
+        smoking: "Non-smoker",
+        workout: "Often",
+      },
       preferences: {
+        maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
+        advancedFilters: {
+          interests: ["Football", "Coffee"],
+          looking: "Long-term partner",
+          languages: ["Vietnamese"],
+          education: "College",
+          family: "Want children",
+          pets: ["Dog"],
+          drinking: "Sober",
+          smoking: "Non-smoker",
+          workout: "Often",
+        },
         ageRange: {
           min: 24,
           max: 36,
@@ -278,6 +471,20 @@ describe("PUT /api/v1/users/profile", () => {
         genderPreference: ["man", "nonbinary"],
         minAge: 24,
         maxAge: 36,
+        maxDistanceKm: 72,
+        expandDistance: false,
+        expandAge: true,
+        advancedFilters: {
+          interests: ["Football", "Coffee"],
+          looking: "Long-term partner",
+          languages: ["Vietnamese"],
+          education: "College",
+          family: "Want children",
+          pets: ["Dog"],
+          drinking: "Sober",
+          smoking: "Non-smoker",
+          workout: "Often",
+        },
       },
     });
 
@@ -287,7 +494,26 @@ describe("PUT /api/v1/users/profile", () => {
       bio: "Coffee and weekend walks",
       jobTitle: "Product Designer",
       school: "Tinder University",
+      gender: "woman",
+      location: {
+        type: "Point",
+        coordinates: [106.7, 10.78],
+      },
       interests: ["coffee", "travel"],
+      profileDetails: {
+        looking: "Long-term partner",
+        languages: ["English", "Vietnamese"],
+        zodiac: "Leo",
+        education: "Bachelor's degree",
+        family: "Open to children",
+        communication: "Big texter",
+        love: "Quality time",
+        pets: ["Dog", "Cat"],
+        drinking: "Socially on weekends",
+        smoking: "Non-smoker",
+        workout: "Often",
+        social: "Passive scroller",
+      },
       interestedIn: ["man", "nonbinary"],
     });
     expect(storedUser.birthDate.toISOString()).toBe("1997-06-15T00:00:00.000Z");
@@ -295,6 +521,115 @@ describe("PUT /api/v1/users/profile", () => {
       min: 24,
       max: 36,
     });
+    expect(storedUser.preferences.maxDistanceKm).toBe(72);
+    expect(storedUser.preferences.expandDistance).toBe(false);
+    expect(storedUser.preferences.expandAge).toBe(true);
+    expect(storedUser.preferences.advancedFilters).toMatchObject({
+      interests: ["Football", "Coffee"],
+      looking: "Long-term partner",
+      languages: ["Vietnamese"],
+      education: "College",
+      family: "Want children",
+      pets: ["Dog"],
+      drinking: "Sober",
+      smoking: "Non-smoker",
+      workout: "Often",
+    });
+  });
+
+  it("syncs settings distance and reordered profile photos", async () => {
+    const user = await User.create({
+      name: "Photo Settings User",
+      email: "photo-settings-user@example.com",
+      passwordHash: "hashed-password",
+      birthDate: new Date("1998-01-01T00:00:00.000Z"),
+      gender: "woman",
+      photos: [
+        { url: "https://example.com/old-primary.jpg", publicId: "old-primary", isPrimary: true },
+        { url: "https://example.com/old-second.jpg", publicId: "old-second", isPrimary: false },
+      ],
+      preferences: {
+        maxDistanceKm: 50,
+        ageRange: {
+          min: 21,
+          max: 40,
+        },
+      },
+    });
+    const token = signUserToken(user);
+
+    const response = await request(app)
+      .put("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        maxDistanceKm: 88,
+        photos: [
+          { url: "https://example.com/photo-3.jpg", publicId: "photo-3" },
+          { url: "https://example.com/photo-1.jpg", publicId: "photo-1", isPrimary: true },
+          { url: "https://example.com/photo-2.jpg", publicId: "photo-2" },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user).toMatchObject({
+      maxDistanceKm: 88,
+      preferences: {
+        maxDistanceKm: 88,
+        ageRange: {
+          min: 21,
+          max: 40,
+        },
+      },
+      searchFilters: {
+        maxDistanceKm: 88,
+      },
+    });
+    expect(response.body.user.photos.map((photo) => photo.url)).toEqual([
+      "https://example.com/photo-3.jpg",
+      "https://example.com/photo-1.jpg",
+      "https://example.com/photo-2.jpg",
+    ]);
+    expect(response.body.user.photos.map((photo) => photo.isPrimary)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+
+    const storedUser = await User.findById(user._id).lean();
+    expect(storedUser.preferences.maxDistanceKm).toBe(88);
+    expect(storedUser.photos.map((photo) => photo.url)).toEqual([
+      "https://example.com/photo-3.jpg",
+      "https://example.com/photo-1.jpg",
+      "https://example.com/photo-2.jpg",
+    ]);
+    expect(storedUser.photos.map((photo) => photo.isPrimary)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("rejects attempts to change account gender from the profile API", async () => {
+    const user = await User.create({
+      name: "Locked Gender User",
+      email: "locked-gender-user@example.com",
+      passwordHash: "hashed-password",
+      birthDate: new Date("1998-01-01T00:00:00.000Z"),
+      gender: "woman",
+    });
+
+    const response = await request(app)
+      .put("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${signUserToken(user)}`)
+      .send({ gender: "man" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.details).toMatchObject({
+      gender: "Gender can only be set during registration.",
+    });
+
+    const storedUser = await User.findById(user._id).lean();
+    expect(storedUser.gender).toBe("woman");
   });
 
   it("maps profile API aliases into the existing user schema", async () => {
@@ -365,6 +700,7 @@ describe("PUT /api/v1/users/profile", () => {
       interests: ["original"],
       interestedIn: ["man"],
       preferences: {
+        maxDistanceKm: 50,
         ageRange: {
           min: 25,
           max: 35,
@@ -381,9 +717,29 @@ describe("PUT /api/v1/users/profile", () => {
         bio: "x".repeat(501),
         birthDate: "2020-01-01",
         interests: ["valid", "x".repeat(41)],
+        profileDetails: {
+          looking: "x".repeat(81),
+          languages: Array.from({ length: 11 }, (_, index) => `Language ${index}`),
+          pets: ["x".repeat(41)],
+        },
         genderPreference: ["invalid"],
+        gender: "alien",
+        location: {
+          type: "Point",
+          coordinates: [500, 95],
+        },
         minAge: 40,
-        maxAge: 30,
+      maxAge: 30,
+      maxDistanceKm: 101,
+      expandDistance: "yes",
+      expandAge: 1,
+      advancedFilters: {
+        interests: ["x".repeat(41)],
+        looking: "x".repeat(81),
+      },
+      photos: Array.from({ length: 7 }, (_, index) => ({
+          url: `https://example.com/photo-${index}.jpg`,
+        })),
       });
 
     expect(response.status).toBe(400);
@@ -393,8 +749,19 @@ describe("PUT /api/v1/users/profile", () => {
       bio: "Bio must be 500 characters or less.",
       birthDate: "You must be at least 18 years old.",
       interests: "Each interest must be 40 characters or less.",
+      "profileDetails.looking": "looking must be 80 characters or less.",
+      "profileDetails.languages": "languages can contain at most 10 items.",
+      "profileDetails.pets": "Each pets item must be 40 characters or less.",
       genderPreference: "Select a valid gender preference.",
+      gender: "Gender can only be set during registration.",
+      location: "Location must be a GeoJSON Point with [lng, lat] coordinates.",
       ageRange: "minAge must be less than or equal to maxAge.",
+      maxDistanceKm: "maxDistanceKm must be between 2 and 100.",
+      expandDistance: "expandDistance must be a boolean.",
+      expandAge: "expandAge must be a boolean.",
+      "advancedFilters.interests": "Each interests item must be 40 characters or less.",
+      "advancedFilters.looking": "looking must be 80 characters or less.",
+      photos: "Profile can contain at most 6 photos.",
     });
 
     const storedUser = await User.findById(user._id).lean();
@@ -408,6 +775,7 @@ describe("PUT /api/v1/users/profile", () => {
       min: 25,
       max: 35,
     });
+    expect(storedUser.preferences.maxDistanceKm).toBe(50);
   });
 
   it("applies updated search filters to the next explore request immediately", async () => {

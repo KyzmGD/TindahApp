@@ -1,5 +1,6 @@
 const request = require("supertest");
 const app = require("../src/app");
+const User = require("../src/models/User");
 
 function buildRegisterPayload(overrides = {}) {
   return {
@@ -48,6 +49,7 @@ describe("auth routes", () => {
     expect(response.body.details.birthDate).toBe(
       "You must be at least 18 years old.",
     );
+    expect(response.body.details.gender).toBe("Choose your gender.");
   });
 
   it("registers a new user successfully and returns a JWT", async () => {
@@ -64,6 +66,10 @@ describe("auth routes", () => {
       name: payload.name,
       gender: payload.gender,
     });
+    expect(response.body.user.pushTokens).toBeUndefined();
+
+    const storedUser = await User.findOne({ email: payload.email }).lean();
+    expect(storedUser.pushTokens).toEqual([]);
   });
 
   it("supports the versioned /api/v1/auth/register route", async () => {
@@ -102,6 +108,7 @@ describe("auth routes", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("Please fix the highlighted fields.");
     expect(response.body.details.name).toBe("Name is required.");
+    expect(response.body.details.gender).toBe("Choose your gender.");
   });
 
   it("logs in successfully and returns a JWT", async () => {

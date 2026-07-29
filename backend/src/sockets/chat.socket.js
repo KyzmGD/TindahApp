@@ -2,6 +2,7 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { assertUserInActiveMatch, sendMessage } = require("../services/chat.service");
+const { sendOfflineMessagePush } = require("../services/messageNotification.service");
 
 function registerChatSocket(server, app) {
   const io = new Server(server, {
@@ -58,6 +59,9 @@ function registerChatSocket(server, app) {
 
         socket.join(payload.matchId);
         io.to(payload.matchId).emit("receive_message", message);
+        if (message.$locals?.wasCreated) {
+          await sendOfflineMessagePush({ io, message });
+        }
         callback?.({ ok: true, message });
       } catch (error) {
         callback?.({ ok: false, message: error.message });
