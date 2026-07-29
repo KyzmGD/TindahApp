@@ -4,6 +4,9 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider } from "./src/context/AuthContext";
 import { SocketProvider } from "./src/context/SocketContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import { configurePushNotificationHandler } from "./src/services/pushNotifications";
+
+configurePushNotificationHandler();
 
 export default function App() {
   return (

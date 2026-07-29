@@ -2,6 +2,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as authApi from "../services/auth.api";
 import { setAuthToken } from "../services/api";
+import {
+  registerExpoPushTokenSafely,
+  revokeStoredExpoPushTokenSafely,
+} from "../services/pushNotifications";
 
 const TOKEN_KEY = "tinder_clone_token";
 const USER_KEY = "tinder_clone_user";
@@ -37,6 +41,7 @@ export function AuthProvider({ children }) {
         const freshUser = response.user;
         setUser(freshUser);
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+        await registerExpoPushTokenSafely();
       } catch (error) {
         setAuthToken(null);
         setToken(null);
@@ -65,6 +70,7 @@ export function AuthProvider({ children }) {
     async (email, password) => {
       const data = await authApi.login({ email, password });
       await persistSession(data.token, data.user);
+      await registerExpoPushTokenSafely();
       return data.user;
     },
     [persistSession],
@@ -74,12 +80,14 @@ export function AuthProvider({ children }) {
     async (payload) => {
       const data = await authApi.register(payload);
       await persistSession(data.token, data.user);
+      await registerExpoPushTokenSafely();
       return data.user;
     },
     [persistSession],
   );
 
   const signOut = useCallback(async () => {
+    await revokeStoredExpoPushTokenSafely();
     setAuthToken(null);
     setToken(null);
     setUser(null);
@@ -92,22 +100,17 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data.user;
   }, []);
-  
 
-const refreshUser = useCallback(async () => {
-  const response = await authApi.getMe();
+  const refreshUser = useCallback(async () => {
+    const response = await authApi.getMe();
+    const freshUser = response.user;
 
-  const freshUser = response.user;
+    setUser(freshUser);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(freshUser));
 
-  setUser(freshUser);
+    return freshUser;
+  }, []);
 
-  await AsyncStorage.setItem(
-    USER_KEY,
-    JSON.stringify(freshUser)
-  );
-
-  return freshUser;
-}, []);
   const value = useMemo(
     () => ({
       token,
@@ -121,15 +124,15 @@ const refreshUser = useCallback(async () => {
       refreshUser,
     }),
     [
-  isBootstrapping,
-  signIn,
-  signOut,
-  signUp,
-  token,
-  updateProfile,
-  refreshUser,
-  user,
-],
+      isBootstrapping,
+      refreshUser,
+      signIn,
+      signOut,
+      signUp,
+      token,
+      updateProfile,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,14 +1,24 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import {
+  flushPendingNotificationNavigation,
+  navigateFromNotificationData,
+  navigationRef,
+} from "./notificationNavigation";
 import ChatListScreen from "../screens/ChatListScreen";
 import ChatScreen from "../screens/ChatScreen";
 import ExploreScreen from "../screens/ExploreScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import ProfileSettingsScreen from "../screens/ProfileSettingsScreen";
+import {
+  addPushNotificationResponseListener,
+  getLastPushNotificationResponseData,
+} from "../services/pushNotifications";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -121,12 +131,35 @@ function MainTabs() {
 export default function AppNavigator() {
   const { isAuthenticated, isBootstrapping } = useAuth();
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    getLastPushNotificationResponseData()
+      .then((data) => {
+        if (isMounted && data) {
+          navigateFromNotificationData(data);
+        }
+      })
+      .catch(() => {});
+
+    const removeListener = addPushNotificationResponseListener(navigateFromNotificationData);
+
+    return () => {
+      isMounted = false;
+      removeListener();
+    };
+  }, [isAuthenticated]);
+
   if (isBootstrapping) {
     return <LoadingScreen />;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationNavigation}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <>

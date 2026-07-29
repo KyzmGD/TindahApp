@@ -43,6 +43,28 @@ const advancedSearchFiltersSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const pushTokenSchema = new mongoose.Schema(
+  {
+    token: { type: String, required: true, trim: true, maxlength: 512 },
+    provider: {
+      type: String,
+      enum: ["expo", "web"],
+      default: "expo",
+      required: true,
+    },
+    platform: {
+      type: String,
+      enum: ["ios", "android", "web", "unknown"],
+      default: "unknown",
+    },
+    deviceId: { type: String, trim: true, maxlength: 160, default: "" },
+    disabled: { type: Boolean, default: false },
+    lastSeenAt: { type: Date, default: Date.now },
+    revokedAt: Date,
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -83,6 +105,20 @@ const userSchema = new mongoose.Schema(
       ageRange: {
         min: { type: Number, default: 18, min: 18, max: 100 },
         max: { type: Number, default: 60, min: 18, max: 100 },
+      },
+    },
+    pushTokens: {
+      type: [pushTokenSchema],
+      default: [],
+      validate: {
+        validator(tokens) {
+          const activeTokens = (tokens || [])
+            .filter((entry) => entry?.token && !entry.disabled)
+            .map((entry) => `${entry.provider || "expo"}:${entry.token}`);
+
+          return new Set(activeTokens).size === activeTokens.length;
+        },
+        message: "Push tokens must be unique per user.",
       },
     },
     isVerified: { type: Boolean, default: false },

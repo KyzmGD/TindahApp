@@ -1240,9 +1240,157 @@ Result: PASS
 
 ---
 
+## Expo Push Notifications
+
+Issue #44 replaces Firebase Cloud Messaging with Expo Push Service for this
+Expo/React Native project.
+
+Implemented flow:
+
+- Frontend asks for notification permission after login, signup, or restored session.
+- Frontend gets an Expo push token through `expo-notifications`.
+- Frontend saves the token through `POST /api/v1/users/push-token`.
+- Backend stores tokens in `users.pushTokens`.
+- Backend sends a push notification when a new match is created and the target user is not connected by Socket.IO.
+- Backend sends a push notification when a new message is saved and the receiver is not inside the chat room.
+- When the user taps a match/message notification, the app navigates back into the matching chat flow.
+
+### Expo Project ID
+
+The real Expo/EAS project id is stored in:
+
+```text
+frontend/app.json
+```
+
+Expected shape:
+
+```json
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "YOUR-REAL-UUID"
+      }
+    }
+  }
+}
+```
+
+Verify it with:
+
+```bash
+cd frontend
+npx expo config --type public
+```
+
+The output must show a real UUID, not `REPLACE_WITH_EAS_PROJECT_ID`.
+
+Restart Expo after changing notification config:
+
+```bash
+npx expo start -c
+```
+
+### Save Push Token API
+
+#### POST `/api/v1/users/push-token`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "provider": "expo",
+  "platform": "android",
+  "deviceId": "device-001"
+}
+```
+
+Expected response:
+
+```json
+{
+  "message": "Push token saved successfully",
+  "pushToken": {
+    "provider": "expo",
+    "platform": "android",
+    "deviceId": "device-001",
+    "lastSeenAt": "2026-07-29T00:00:00.000Z"
+  }
+}
+```
+
+The raw push token is intentionally not returned.
+
+#### DELETE `/api/v1/users/push-token`
+
+Headers:
+
+```http
+Authorization: Bearer {{token}}
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "provider": "expo",
+  "deviceId": "device-001"
+}
+```
+
+Expected response:
+
+```json
+{
+  "message": "Push token revoked successfully",
+  "revoked": true
+}
+```
+
+The revoke API is idempotent. Calling it again should still return `200`.
+
+### Manual Push Test
+
+Recommended device:
+
+- Android physical device with Expo Go or a development build.
+- iOS physical device with a development build for reliable push testing.
+
+Steps:
+
+1. Start backend.
+2. Start frontend with `npx expo start -c`.
+3. Login on the mobile app and allow notifications.
+4. Open MongoDB Atlas, collection `users`.
+5. Check that the logged-in user has `pushTokens[0].token` with `ExponentPushToken[...]`.
+6. Login with another matched account.
+7. Put the target user's app in background, or close it.
+8. Create a match or send a chat message.
+9. The target device should receive a notification.
+10. Tap the notification. The app should navigate to the related chat flow.
+
+Local demo note:
+
+- Push notification code can be demonstrated through tests and MongoDB token storage.
+- Real status-bar notifications require a valid Expo project id and a supported physical device.
+
+---
+
 ## Known Limitations And Notes
 
-- FCM push notification issue #40 is intentionally deferred.
+- Firebase Cloud Messaging is no longer required for the current Expo push notification approach.
+- Real push notification delivery still requires Expo/EAS project setup and a supported physical device.
 - Redis is optional in local development because fallback to MongoDB exists.
 - Cloudinary upload requires valid Cloudinary environment variables.
 - Socket.IO events are best tested with the mobile app or a Socket.IO client, not normal Postman REST requests.

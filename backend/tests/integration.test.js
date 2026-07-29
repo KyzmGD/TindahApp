@@ -5,6 +5,17 @@ const Match = require("../src/models/Match");
 const Message = require("../src/models/Message");
 const Swipe = require("../src/models/Swipe");
 const User = require("../src/models/User");
+const {
+  resetExpoClientForTesting,
+  setExpoClientForTesting,
+} = require("../src/services/notification.service");
+
+const VALID_EXPO_PUSH_TOKEN = "ExponentPushToken[matchpushaaaaaaaaaaaa]";
+
+afterEach(() => {
+  resetExpoClientForTesting();
+  app.set("io", null);
+});
 
 async function registerUser(overrides = {}) {
   const payload = {
@@ -240,6 +251,122 @@ describe("v1 swipe matching engine", () => {
       }),
     ).resolves.toBe(2);
   });
+
+  it("sends a push notification to the offline matched user", async () => {
+    const expoClient = {
+      chunkPushNotifications: jest.fn((messages) => [messages]),
+      sendPushNotificationsAsync: jest.fn().mockResolvedValue([{ status: "ok", id: "ticket-1" }]),
+    };
+    setExpoClientForTesting(expoClient);
+
+    const alice = await registerUser({
+      name: "Alice Offline Push",
+      email: "alice-offline-push@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob Offline Push",
+      email: "bob-offline-push@example.com",
+    });
+
+    await User.findByIdAndUpdate(alice.user.id, {
+      $push: {
+        pushTokens: {
+          token: VALID_EXPO_PUSH_TOKEN,
+          provider: "expo",
+          platform: "android",
+          deviceId: "alice-device",
+        },
+      },
+    });
+
+    await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${alice.token}`)
+      .send({ targetId: bob.user.id, type: "like" })
+      .expect(201);
+
+    const response = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${bob.token}`)
+      .send({ targetId: alice.user.id, type: "like" })
+      .expect(201);
+
+    expect(response.body.isMatch).toBe(true);
+    expect(expoClient.sendPushNotificationsAsync).toHaveBeenCalledTimes(1);
+    expect(expoClient.sendPushNotificationsAsync).toHaveBeenCalledWith([
+      expect.objectContaining({
+        to: VALID_EXPO_PUSH_TOKEN,
+        title: "It's a match!",
+        body: "You and Bob Offline Push liked each other.",
+        channelId: "matches",
+        priority: "high",
+        data: {
+          type: "match",
+          matchId: response.body.match._id,
+          userId: bob.user.id,
+        },
+      }),
+    ]);
+    expect(JSON.stringify(response.body.match)).not.toContain(VALID_EXPO_PUSH_TOKEN);
+  });
+
+  it("does not send a match push notification when the matched user is online", async () => {
+    const expoClient = {
+      chunkPushNotifications: jest.fn((messages) => [messages]),
+      sendPushNotificationsAsync: jest.fn().mockResolvedValue([{ status: "ok", id: "ticket-1" }]),
+    };
+    const emit = jest.fn();
+    const to = jest.fn(() => ({ emit }));
+    setExpoClientForTesting(expoClient);
+
+    const alice = await registerUser({
+      name: "Alice Online Push",
+      email: "alice-online-push@example.com",
+    });
+    const bob = await registerUser({
+      name: "Bob Online Push",
+      email: "bob-online-push@example.com",
+    });
+
+    await User.findByIdAndUpdate(alice.user.id, {
+      $push: {
+        pushTokens: {
+          token: VALID_EXPO_PUSH_TOKEN,
+          provider: "expo",
+          platform: "android",
+          deviceId: "alice-device",
+        },
+      },
+    });
+    app.set("io", {
+      sockets: {
+        adapter: {
+          rooms: new Map([[`user:${alice.user.id}`, new Set(["socket-1"])]]),
+        },
+      },
+      to,
+    });
+
+    await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${alice.token}`)
+      .send({ targetId: bob.user.id, type: "like" })
+      .expect(201);
+
+    const response = await request(app)
+      .post("/api/v1/swipes")
+      .set("Authorization", `Bearer ${bob.token}`)
+      .send({ targetId: alice.user.id, type: "like" })
+      .expect(201);
+
+    expect(response.body.isMatch).toBe(true);
+    expect(expoClient.sendPushNotificationsAsync).not.toHaveBeenCalled();
+    expect(to).toHaveBeenCalledWith(`user:${alice.user.id}`);
+    expect(to).toHaveBeenCalledWith(`user:${bob.user.id}`);
+    expect(emit).toHaveBeenCalledWith("match:new", expect.objectContaining({
+      _id: expect.anything(),
+    }));
+  });
 });
 
 describe("v1 message history pagination", () => {
@@ -403,6 +530,24 @@ describe("match-gated chat integration", () => {
 
     const matchId = reciprocalSwipeResponse.body.match._id;
 
+    const fakeExpoClient = {
+      chunkPushNotifications: jest.fn((messages) => [messages]),
+      sendPushNotificationsAsync: jest.fn(async (messages) => (
+        messages.map(() => ({ status: "ok" }))
+      )),
+    };
+    setExpoClientForTesting(fakeExpoClient);
+    await User.findByIdAndUpdate(bob.user.id, {
+      pushTokens: [
+        {
+          token: VALID_EXPO_PUSH_TOKEN,
+          provider: "expo",
+          platform: "android",
+          deviceId: "bob-chat-device",
+        },
+      ],
+    });
+
     const aliceMatches = await request(app)
       .get("/api/matches")
       .set("Authorization", `Bearer ${alice.token}`);
@@ -433,13 +578,37 @@ describe("match-gated chat integration", () => {
     const messageResponse = await request(app)
       .post(`/api/chats/${matchId}/messages`)
       .set("Authorization", `Bearer ${alice.token}`)
-      .send({ text: "Hi Bob" });
+      .send({ text: "Hi Bob", clientMessageId: "chat-push-once" });
     expect(messageResponse.status).toBe(201);
     expect(messageResponse.body.message).toMatchObject({
       _id: expect.any(String),
       text: "Hi Bob",
     });
     await expect(Message.countDocuments({ match: matchId })).resolves.toBe(1);
+    expect(fakeExpoClient.sendPushNotificationsAsync).toHaveBeenCalledTimes(1);
+    expect(fakeExpoClient.sendPushNotificationsAsync).toHaveBeenCalledWith([
+      expect.objectContaining({
+        to: VALID_EXPO_PUSH_TOKEN,
+        title: "Alice",
+        body: "Hi Bob",
+        channelId: "messages",
+        priority: "high",
+        data: {
+          type: "message",
+          matchId,
+          messageId: messageResponse.body.message._id,
+          senderId: alice.user.id,
+        },
+      }),
+    ]);
+
+    await request(app)
+      .post(`/api/chats/${matchId}/messages`)
+      .set("Authorization", `Bearer ${alice.token}`)
+      .send({ text: "Hi Bob", clientMessageId: "chat-push-once" })
+      .expect(201);
+    await expect(Message.countDocuments({ match: matchId })).resolves.toBe(1);
+    expect(fakeExpoClient.sendPushNotificationsAsync).toHaveBeenCalledTimes(1);
   });
 
   it("blocks chat access after unmatching", async () => {

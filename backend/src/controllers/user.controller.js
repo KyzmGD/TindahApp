@@ -15,6 +15,10 @@ const MAX_ALLOWED_AGE = 100;
 const MIN_DISTANCE_KM = 2;
 const MAX_DISTANCE_KM = 100;
 const MAX_PROFILE_PHOTOS = 6;
+const MAX_PUSH_TOKENS_PER_USER = 20;
+const ALLOWED_PUSH_TOKEN_PROVIDERS = ["expo", "web"];
+const ALLOWED_PUSH_TOKEN_PLATFORMS = ["ios", "android", "web", "unknown"];
+const EXPO_PUSH_TOKEN_PATTERN = /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/;
 const PROFILE_DETAIL_ARRAY_FIELDS = ["languages", "pets"];
 const PROFILE_DETAIL_STRING_FIELDS = [
   "looking",
@@ -262,6 +266,60 @@ function normalizePhotos(photos) {
     publicId: photo.publicId ? String(photo.publicId).trim() : undefined,
     isPrimary: index === 0,
   }));
+}
+
+function getNormalizedPushTokenPayload(payload = {}) {
+  const provider = payload.provider ? String(payload.provider).trim().toLowerCase() : "expo";
+  const platform = payload.platform ? String(payload.platform).trim().toLowerCase() : "unknown";
+
+  return {
+    token: typeof payload.token === "string" ? payload.token.trim() : "",
+    provider,
+    platform,
+    deviceId: typeof payload.deviceId === "string" ? payload.deviceId.trim() : "",
+  };
+}
+
+function validatePushTokenPayload(payload = {}) {
+  const errors = {};
+  const normalized = getNormalizedPushTokenPayload(payload);
+
+  if (!normalized.token) {
+    errors.token = "Push token is required.";
+  } else if (normalized.token.length > 512) {
+    errors.token = "Push token must be 512 characters or less.";
+  } else if (normalized.provider === "expo" && !EXPO_PUSH_TOKEN_PATTERN.test(normalized.token)) {
+    errors.token = "Enter a valid Expo push token.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PROVIDERS.includes(normalized.provider)) {
+    errors.provider = "Select a valid push token provider.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PLATFORMS.includes(normalized.platform)) {
+    errors.platform = "Select a valid push token platform.";
+  }
+
+  if (normalized.deviceId.length > 160) {
+    errors.deviceId = "deviceId must be 160 characters or less.";
+  }
+
+  return { errors, normalized };
+}
+
+function getPushTokenMatchIndex(pushTokens, normalizedPayload) {
+  return pushTokens.findIndex((entry) => {
+    const sameProvider = (entry.provider || "expo") === normalizedPayload.provider;
+    const sameToken = entry.token === normalizedPayload.token;
+    const sameDevice = Boolean(normalizedPayload.deviceId)
+      && entry.deviceId === normalizedPayload.deviceId;
+
+    return sameProvider && (sameToken || sameDevice);
+  });
+}
+
+function countActivePushTokens(pushTokens) {
+  return pushTokens.filter((entry) => entry.token && !entry.disabled).length;
 }
 
 function validateProfilePayload(payload, user) {
@@ -657,6 +715,110 @@ const updateProfile = asyncHandler(async (req, res) => {
   });
 });
 
+const savePushToken = asyncHandler(async (req, res) => {
+  const { errors, normalized } = validatePushTokenPayload(req.body);
+
+  if (hasValidationErrors(errors)) {
+    throw httpError(400, "Please fix the highlighted fields.", errors);
+  }
+
+  const now = new Date();
+  const pushTokens = req.user.pushTokens || [];
+  const existingIndex = getPushTokenMatchIndex(pushTokens, normalized);
+
+  if (existingIndex >= 0) {
+    pushTokens[existingIndex] = {
+      ...getPlainObject(pushTokens[existingIndex]),
+      token: normalized.token,
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      disabled: false,
+      lastSeenAt: now,
+      revokedAt: undefined,
+    };
+  } else {
+    if (countActivePushTokens(pushTokens) >= MAX_PUSH_TOKENS_PER_USER) {
+      throw httpError(400, "Push token limit reached.", {
+        token: `A user can have at most ${MAX_PUSH_TOKENS_PER_USER} active push tokens.`,
+      });
+    }
+
+    pushTokens.push({
+      token: normalized.token,
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      disabled: false,
+      lastSeenAt: now,
+    });
+  }
+
+  req.user.pushTokens = pushTokens;
+  await req.user.save();
+
+  res.status(201).json({
+    message: "Push token saved successfully",
+    pushToken: {
+      provider: normalized.provider,
+      platform: normalized.platform,
+      deviceId: normalized.deviceId,
+      lastSeenAt: now,
+    },
+  });
+});
+
+const revokePushToken = asyncHandler(async (req, res) => {
+  const provider = req.body.provider ? String(req.body.provider).trim().toLowerCase() : "expo";
+  const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+  const deviceId = typeof req.body.deviceId === "string" ? req.body.deviceId.trim() : "";
+  const errors = {};
+
+  if (!token && !deviceId) {
+    errors.token = "Push token or deviceId is required.";
+  }
+
+  if (!ALLOWED_PUSH_TOKEN_PROVIDERS.includes(provider)) {
+    errors.provider = "Select a valid push token provider.";
+  }
+
+  if (hasValidationErrors(errors)) {
+    throw httpError(400, "Please fix the highlighted fields.", errors);
+  }
+
+  const now = new Date();
+  const pushTokens = req.user.pushTokens || [];
+  let revoked = false;
+
+  req.user.pushTokens = pushTokens.map((entry) => {
+    const plainEntry = getPlainObject(entry);
+    const sameProvider = (plainEntry.provider || "expo") === provider;
+    const sameToken = Boolean(token) && plainEntry.token === token;
+    const sameDevice = Boolean(deviceId) && plainEntry.deviceId === deviceId;
+
+    if (sameProvider && (sameToken || sameDevice) && !plainEntry.disabled) {
+      revoked = true;
+      return {
+        ...plainEntry,
+        disabled: true,
+        revokedAt: now,
+        lastSeenAt: now,
+      };
+    }
+
+    return plainEntry;
+  });
+
+  if (revoked) {
+    await req.user.save();
+  }
+
+  res.json({
+    message: revoked ? "Push token revoked successfully" : "Push token was already inactive",
+    revoked,
+  });
+});
+
 const explore = asyncHandler(async (req, res) => {
   const lat = Number(req.query.lat);
   const lng = Number(req.query.lng);
@@ -735,5 +897,7 @@ const explore = asyncHandler(async (req, res) => {
 
 module.exports = {
   explore,
+  revokePushToken,
+  savePushToken,
   updateProfile,
 };

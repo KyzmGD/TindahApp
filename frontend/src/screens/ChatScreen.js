@@ -14,7 +14,7 @@ import ChatBubble from "../components/chat/ChatBubble";
 import MessageInput from "../components/chat/MessageInput";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
-import { getMessages } from "../services/swipe.api";
+import { getMatches, getMessages } from "../services/swipe.api";
 
 function createClientMessageId(matchId) {
   return `local-${matchId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -53,10 +53,16 @@ function getAvatar(user) {
   return primary?.url || user.photos[0]?.url;
 }
 
+function getOtherUser(match, currentUserId) {
+  return match?.users?.find((item) => item._id !== currentUserId && item.id !== currentUserId) || null;
+}
+
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
   const { socket, isConnected, joinMatch, sendMessageRealtime, setTyping } = useSocket();
-  const { match, user: recipient } = route.params || {};
+  const { match: initialMatch, user: initialRecipient, matchId: notificationMatchId } = route.params || {};
+  const [resolvedMatch, setResolvedMatch] = useState(initialMatch || null);
+  const [resolvedRecipient, setResolvedRecipient] = useState(initialRecipient || null);
   const [messages, setMessages] = useState([]);
   const [typingUserId, setTypingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,16 +70,11 @@ export default function ChatScreen({ navigation, route }) {
   const [sendingCount, setSendingCount] = useState(0);
   const listRef = useRef(null);
 
-  const matchId = match?._id;
-  const title = useMemo(() => recipient?.name || "Chat", [recipient?.name]);
+  const matchId = resolvedMatch?._id || notificationMatchId;
+  const title = useMemo(() => resolvedRecipient?.name || "Chat", [resolvedRecipient?.name]);
   const inputDisabled = !matchId || loading;
 
   useEffect(() => {
-    if (!match || !recipient) {
-      navigation.goBack();
-      return undefined;
-    }
-
     let isMounted = true;
 
     const loadChat = async () => {
@@ -81,8 +82,31 @@ export default function ChatScreen({ navigation, route }) {
       setError("");
 
       try {
-        await joinMatch(matchId);
-        const fetchedMessages = await getMessages(matchId);
+        let activeMatch = resolvedMatch;
+        let activeRecipient = resolvedRecipient;
+
+        if ((!activeMatch || !activeRecipient) && notificationMatchId) {
+          const matches = await getMatches();
+          activeMatch = matches.find((item) => item._id === notificationMatchId);
+
+          if (activeMatch) {
+            activeRecipient = getOtherUser(activeMatch, currentUser?.id);
+          }
+        }
+
+        if (!activeMatch || !activeRecipient) {
+          navigation.goBack();
+          return;
+        }
+
+        if (isMounted) {
+          setResolvedMatch(activeMatch);
+          setResolvedRecipient(activeRecipient);
+        }
+
+        const activeMatchId = activeMatch._id;
+        await joinMatch(activeMatchId);
+        const fetchedMessages = await getMessages(activeMatchId);
         if (isMounted) {
           setMessages(fetchedMessages);
         }
@@ -103,7 +127,15 @@ export default function ChatScreen({ navigation, route }) {
     return () => {
       isMounted = false;
     };
-  }, [joinMatch, match, matchId, navigation, recipient]);
+  }, [
+    currentUser?.id,
+    joinMatch,
+    matchId,
+    navigation,
+    notificationMatchId,
+    resolvedMatch,
+    resolvedRecipient,
+  ]);
 
   useEffect(() => {
     if (isConnected && matchId) {

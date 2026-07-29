@@ -17,7 +17,14 @@
       }
     },
     "plugins": [
-      "expo-status-bar"
-    ]
+      "expo-status-bar",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fe840689-6011-4239-a52d-c1de20b8471e"
+      }
+    },
+    "owner": "tuandat17"
   }
 }

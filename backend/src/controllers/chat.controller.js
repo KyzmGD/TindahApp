@@ -1,4 +1,5 @@
 const { listMessages, sendMessage } = require("../services/chat.service");
+const { sendOfflineMessagePush } = require("../services/messageNotification.service");
 const asyncHandler = require("../utils/asyncHandler");
 
 const getMessages = asyncHandler(async (req, res) => {
@@ -32,6 +33,9 @@ const createMessage = asyncHandler(async (req, res) => {
 
   req.app.get("io")?.to(req.params.matchId).emit("message:new", message);
   req.app.get("io")?.to(req.params.matchId).emit("receive_message", message);
+  if (message.$locals?.wasCreated) {
+    await sendOfflineMessagePush({ io: req.app.get("io"), message });
+  }
   res.status(201).json({ message });
 });
 

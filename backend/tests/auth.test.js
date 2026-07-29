@@ -1,5 +1,6 @@
 const request = require("supertest");
 const app = require("../src/app");
+const User = require("../src/models/User");
 
 function buildRegisterPayload(overrides = {}) {
   return {
@@ -65,6 +66,10 @@ describe("auth routes", () => {
       name: payload.name,
       gender: payload.gender,
     });
+    expect(response.body.user.pushTokens).toBeUndefined();
+
+    const storedUser = await User.findOne({ email: payload.email }).lean();
+    expect(storedUser.pushTokens).toEqual([]);
   });
 
   it("supports the versioned /api/v1/auth/register route", async () => {
