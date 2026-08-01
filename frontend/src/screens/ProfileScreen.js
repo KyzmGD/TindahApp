@@ -15,7 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "react-native";
 import {
-  uploadImage,
+  uploadProfileImage,
   saveProfilePhoto,
 } from "../services/upload.api";
 
@@ -150,17 +150,18 @@ export default function ProfileScreen({ navigation }) {
     }
 
 
-    const imageUri = result.assets[0].uri;
+    const uploadedImage = await uploadProfileImage(result.assets[0]);
 
 
-    const url = await uploadImage(imageUri);
-
-
-    await saveProfilePhoto(url);
+    await saveProfilePhoto(uploadedImage.url, uploadedImage.publicId);
 
 await refreshUser();
 
-setMessage("Avatar updated");
+setMessage(
+  uploadedImage.storage === "cloudinary"
+    ? "Avatar uploaded to Cloudinary"
+    : "Avatar uploaded locally"
+);
 
 
   } catch(error){

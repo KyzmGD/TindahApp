@@ -127,12 +127,15 @@ JWT_SECRET=your_secret_key
 JWT_EXPIRES_IN=7d
 CLIENT_ORIGIN=http://localhost:8081
 REDIS_URL=redis://localhost:6379
+PUBLIC_BASE_URL=http://localhost:5000
 CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 ```
 
 If Redis is not running, Explore still works by falling back to MongoDB.
+If Cloudinary is not configured in local development, profile images are stored
+under `/uploads` on the backend server.
 
 ### Frontend
 
@@ -827,12 +830,29 @@ Postman Body:
 - Type: `File`
 - Value: choose an image file
 
+Rules:
+
+- Supported formats: JPG, PNG, WEBP.
+- Maximum file size: 5MB.
+
 Expected response:
 
 ```json
 {
   "message": "Image uploaded successfully",
-  "url": "https://res.cloudinary.com/..."
+  "url": "https://res.cloudinary.com/...",
+  "publicId": "tinder-app/profile-image"
+}
+```
+
+If Cloudinary environment variables are not configured in local development,
+the API falls back to server storage and returns a static URL such as:
+
+```json
+{
+  "message": "Image uploaded successfully",
+  "url": "http://localhost:5000/uploads/profile-123.jpg",
+  "publicId": "local/uploads/profile-123.jpg"
 }
 ```
 
@@ -852,7 +872,7 @@ Body:
 ```json
 {
   "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
-  "publicId": "optional-public-id"
+  "publicId": "tinder-app/profile-image"
 }
 ```
 
@@ -864,12 +884,17 @@ Expected response:
   "photos": [
     {
       "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
-      "publicId": "optional-public-id",
+      "publicId": "tinder-app/profile-image",
       "isPrimary": true
     }
   ]
 }
 ```
+
+Notes:
+
+- A profile can contain at most 6 photos.
+- The first photo is automatically marked as primary.
 
 ---
 

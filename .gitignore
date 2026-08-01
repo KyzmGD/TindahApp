@@ -2,6 +2,7 @@ node_modules
 .env
 .env.local
 backend/.cache
+backend/public/uploads
 frontend/.expo
 .expo/
 load-tests/results/*.json
