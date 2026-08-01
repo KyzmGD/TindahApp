@@ -127,9 +127,42 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
   return message.populate("sender", "name photos");
 }
 
+async function markMessagesRead({ matchId, userId, messageIds = [] }) {
+  await assertUserInActiveMatch(matchId, userId);
+
+  const filter = {
+    match: matchId,
+    receiver: userId,
+    readBy: { $ne: userId },
+  };
+
+  const normalizedMessageIds = Array.isArray(messageIds)
+    ? messageIds.filter((messageId) => mongoose.Types.ObjectId.isValid(messageId))
+    : [];
+
+  if (normalizedMessageIds.length) {
+    filter._id = { $in: normalizedMessageIds };
+  }
+
+  const messages = await Message.find(filter).select("_id").lean();
+
+  if (!messages.length) {
+    return [];
+  }
+
+  const readMessageIds = messages.map((message) => message._id.toString());
+  await Message.updateMany(
+    { _id: { $in: readMessageIds } },
+    { $addToSet: { readBy: userId } },
+  );
+
+  return readMessageIds;
+}
+
 module.exports = {
   listMessages,
   sendMessage,
+  markMessagesRead,
   assertUserInActiveMatch,
   normalizeMessagePagination,
 };

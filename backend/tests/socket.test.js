@@ -3,6 +3,8 @@ const request = require("supertest");
 const { io: createClient } = require("socket.io-client");
 const app = require("../src/app");
 const Message = require("../src/models/Message");
+const User = require("../src/models/User");
+const { resetPresenceForTesting } = require("../src/services/presence.service");
 const registerChatSocket = require("../src/sockets/chat.socket");
 
 async function registerUser(overrides = {}) {
@@ -125,6 +127,7 @@ describe("chat socket realtime", () => {
       await closeServer(server);
     }
 
+    resetPresenceForTesting();
     server = null;
   });
 
@@ -146,10 +149,18 @@ describe("chat socket realtime", () => {
     const caseySocket = await connectSocket(port, casey.token);
     sockets.push(aliceSocket, bobSocket, caseySocket);
 
-    await expect(emitWithAck(aliceSocket, "match:join", aliceBobMatch._id))
-      .resolves.toMatchObject({ ok: true });
-    await expect(emitWithAck(bobSocket, "match:join", aliceBobMatch._id))
-      .resolves.toMatchObject({ ok: true });
+    await sleep(100);
+
+    const aliceJoinAck = await emitWithAck(aliceSocket, "match:join", aliceBobMatch._id);
+    const bobJoinAck = await emitWithAck(bobSocket, "match:join", aliceBobMatch._id);
+    expect(aliceJoinAck).toMatchObject({ ok: true });
+    expect(bobJoinAck).toMatchObject({
+      ok: true,
+      presence: expect.arrayContaining([
+        expect.objectContaining({ userId: alice.user.id, isOnline: true }),
+        expect.objectContaining({ userId: bob.user.id, isOnline: true }),
+      ]),
+    });
     await expect(emitWithAck(caseySocket, "match:join", caseyDanaMatch._id))
       .resolves.toMatchObject({ ok: true });
 
@@ -191,6 +202,42 @@ describe("chat socket realtime", () => {
     expect(storedMessage.match.toString()).toBe(aliceBobMatch._id);
     expect(storedMessage.sender.toString()).toBe(alice.user.id);
     expect(storedMessage.receiver.toString()).toBe(bob.user.id);
+    await expect(User.findById(alice.user.id).lean()).resolves.toMatchObject({
+      isOnline: true,
+    });
+
+    const readEventPromise = waitForEvent(aliceSocket, "read_message");
+    const readAck = await emitWithAck(bobSocket, "read_message", {
+      matchId: aliceBobMatch._id,
+      messageIds: [ack.message._id],
+    });
+    const readEvent = await readEventPromise;
+
+    expect(readAck).toMatchObject({
+      ok: true,
+      matchId: aliceBobMatch._id,
+      userId: bob.user.id,
+      messageIds: [ack.message._id],
+    });
+    expect(readEvent).toMatchObject({
+      matchId: aliceBobMatch._id,
+      userId: bob.user.id,
+      messageIds: [ack.message._id],
+    });
+
+    const readMessage = await Message.findById(ack.message._id).lean();
+    expect(readMessage.readBy.map((userId) => userId.toString())).toContain(bob.user.id);
+
+    const offlineEventPromise = waitForEvent(aliceSocket, "presence:update");
+    bobSocket.disconnect();
+    const offlineEvent = await offlineEventPromise;
+    expect(offlineEvent).toMatchObject({
+      userId: bob.user.id,
+      isOnline: false,
+    });
+    await expect(User.findById(bob.user.id).lean()).resolves.toMatchObject({
+      isOnline: false,
+    });
 
     const duplicateAck = await emitWithAck(aliceSocket, "send_message", {
       matchId: aliceBobMatch._id,

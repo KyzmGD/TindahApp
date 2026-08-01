@@ -10,7 +10,7 @@ const {
 const { userExists } = require("./userExistenceCache.service");
 const httpError = require("../utils/httpError");
 
-const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified";
+const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified isOnline lastActive";
 const IDEMPOTENCY_CACHE_TTL_MS = 5 * 60 * 1000;
 const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const swipeStateCache = new Map();
@@ -338,7 +338,7 @@ async function createOrUpdateSwipe(userId, targetId, direction) {
 
 async function listMatches(userId) {
   return Match.find({ users: userId, status: "active" })
-    .populate("users", `${MATCH_USER_SELECT} lastActive`)
+    .populate("users", MATCH_USER_SELECT)
     .sort({ updatedAt: -1 });
 }
 

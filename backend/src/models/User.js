@@ -122,6 +122,7 @@ const userSchema = new mongoose.Schema(
       },
     },
     isVerified: { type: Boolean, default: false },
+    isOnline: { type: Boolean, default: false },
     lastActive: { type: Date, default: Date.now },
   },
   { timestamps: true },
@@ -156,6 +157,7 @@ userSchema.methods.toProfileJSON = function toProfileJSON() {
     location: this.location,
     preferences: this.preferences,
     isVerified: this.isVerified,
+    isOnline: this.isOnline,
     lastActive: this.lastActive,
   };
 };

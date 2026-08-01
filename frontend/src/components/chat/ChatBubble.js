@@ -16,7 +16,7 @@ function formatMessageTime(value) {
   });
 }
 
-export default function ChatBubble({ message, isMine, avatarUrl }) {
+export default function ChatBubble({ message, isMine, avatarUrl, isRead = false }) {
   const time = formatMessageTime(message.createdAt);
   const hasImage = Boolean(message.imageUrl);
 
@@ -51,6 +51,9 @@ export default function ChatBubble({ message, isMine, avatarUrl }) {
           ) : null}
           {isMine && message.status === "failed" ? (
             <Text style={styles.failedText}>Not sent</Text>
+          ) : null}
+          {isMine && isRead && !message.status ? (
+            <Text style={styles.readText}>Read</Text>
           ) : null}
         </View>
       </View>
@@ -155,6 +158,12 @@ const styles = StyleSheet.create({
     color: "#ffe7eb",
     fontSize: 11,
     marginTop: 4,
+  },
+  readText: {
+    color: "#7cf4c8",
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 2,
   },
   image: {
     width: 210,
