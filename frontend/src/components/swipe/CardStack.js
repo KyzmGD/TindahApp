@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 import UserCard from "./UserCard";
+import { useTheme } from "../../theme/ThemeContext";
 
 
 export default function CardStack({
@@ -11,6 +12,8 @@ export default function CardStack({
   onNope,
   onSuperLike,
 }) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
   const currentUser = users[0];
   const nextUser = users[1];
   const enterAnimation = useRef(new Animated.Value(0)).current;
@@ -37,9 +40,17 @@ export default function CardStack({
 
   if (!currentUser) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>No more profiles</Text>
-        <Text style={styles.emptyText}>
+      <View
+        style={[
+          styles.empty,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No more profiles</Text>
+        <Text style={[styles.emptyText, { color: colors.muted }]}>
           Check back later or widen your distance filters.
         </Text>
       </View>
@@ -105,6 +116,7 @@ const styles = StyleSheet.create({
   minHeight: 500,
   borderRadius: 22,
   backgroundColor: "#121016",
+  borderWidth: 1,
   alignItems: "center",
   justifyContent: "center",
   padding: 24,

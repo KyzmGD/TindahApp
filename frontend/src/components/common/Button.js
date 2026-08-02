@@ -1,20 +1,51 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function Button({ title, onPress, variant = "primary", disabled = false, loading = false, style }) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+  const isPrimary = variant === "primary";
+  const isGhost = variant === "ghost";
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
       style={({ hovered, pressed }) => [
         styles.base,
-        styles[variant],
-        hovered && styles.hovered,
+        {
+          backgroundColor: isPrimary
+            ? colors.primary
+            : isGhost
+              ? "transparent"
+              : colors.elevated,
+          borderColor: isPrimary ? colors.primaryStrong : colors.borderStrong,
+          shadowColor: colors.shadow,
+        },
+        hovered && {
+          borderColor: colors.accent,
+          shadowColor: colors.accent,
+          shadowOpacity: 0.22,
+          transform: [{ translateY: -2 }],
+        },
         (pressed || disabled || loading) && styles.pressed,
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={variant === "primary" ? "#fff" : "#ff4f7b"} /> : null}
-      {!loading ? <Text style={[styles.text, styles[`${variant}Text`]]}>{title}</Text> : null}
+      {loading ? <ActivityIndicator color={isPrimary ? "#fff" : colors.primary} /> : null}
+      {!loading ? (
+        <Text
+          style={[
+            styles.text,
+            {
+              color: isPrimary ? "#fff" : colors.text,
+            },
+            isGhost && { color: colors.primary },
+          ]}
+        >
+          {title}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -26,11 +57,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-    shadowColor: "#050506",
     shadowOpacity: 0.24,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
+    borderWidth: 1,
   },
   primary: {
     backgroundColor: "#ff4f7b",

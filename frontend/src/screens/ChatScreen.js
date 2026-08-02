@@ -57,6 +57,10 @@ function mergeMessage(currentMessages, nextMessage) {
 }
 
 function getAvatar(user) {
+  if (user?.avatarUrl) {
+    return user.avatarUrl;
+  }
+
   if (!user?.photos?.length) {
     return "https://i.pravatar.cc/300";
   }

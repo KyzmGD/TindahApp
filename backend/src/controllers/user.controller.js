@@ -365,6 +365,22 @@ function validateProfilePayload(payload, user) {
     }
   }
 
+  if (payload.avatarUrl !== undefined) {
+    if (typeof payload.avatarUrl !== "string") {
+      errors.avatarUrl = "Avatar URL must be text.";
+    } else if (payload.avatarUrl.trim().length > 1000) {
+      errors.avatarUrl = "Avatar URL must be 1000 characters or less.";
+    }
+  }
+
+  if (payload.avatarPublicId !== undefined) {
+    if (typeof payload.avatarPublicId !== "string") {
+      errors.avatarPublicId = "Avatar public id must be text.";
+    } else if (payload.avatarPublicId.trim().length > 240) {
+      errors.avatarPublicId = "Avatar public id must be 240 characters or less.";
+    }
+  }
+
   if (payload.birthDate !== undefined) {
     if (typeof payload.birthDate !== "string") {
       errors.birthDate = "Use YYYY-MM-DD format.";
@@ -572,6 +588,14 @@ function mapProfilePayloadToUser(user, payload) {
 
   if (payload.school !== undefined) {
     user.school = String(payload.school).trim();
+  }
+
+  if (payload.avatarUrl !== undefined) {
+    user.avatarUrl = String(payload.avatarUrl).trim();
+  }
+
+  if (payload.avatarPublicId !== undefined) {
+    user.avatarPublicId = String(payload.avatarPublicId).trim();
   }
 
   if (payload.birthDate !== undefined) {

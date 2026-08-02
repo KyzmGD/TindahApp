@@ -92,6 +92,8 @@ const userSchema = new mongoose.Schema(
     profileDetails: { type: profileDetailsSchema, default: () => ({}) },
     jobTitle: { type: String, trim: true, maxlength: 80 },
     school: { type: String, trim: true, maxlength: 120 },
+    avatarUrl: { type: String, trim: true, default: "" },
+    avatarPublicId: { type: String, trim: true, default: "" },
     photos: { type: [photoSchema], default: [] },
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
@@ -153,6 +155,8 @@ userSchema.methods.toProfileJSON = function toProfileJSON() {
     profileDetails: this.profileDetails,
     jobTitle: this.jobTitle,
     school: this.school,
+    avatarUrl: this.avatarUrl,
+    avatarPublicId: this.avatarPublicId,
     photos: this.photos,
     location: this.location,
     preferences: this.preferences,

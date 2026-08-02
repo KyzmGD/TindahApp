@@ -19,6 +19,7 @@ import {
   addPushNotificationResponseListener,
   getLastPushNotificationResponseData,
 } from "../services/pushNotifications";
+import { useTheme } from "../theme/ThemeContext";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -30,16 +31,31 @@ const TAB_META = {
 };
 
 function LoadingScreen() {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   return (
-    <View style={styles.loading}>
-      <ActivityIndicator color="#ff4f7b" size="large" />
+    <View style={[styles.loading, { backgroundColor: colors.screen }]}>
+      <ActivityIndicator color={colors.primary} size="large" />
     </View>
   );
 }
 
 function TindahTabBar({ state, descriptors, navigation }) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
+
   return (
-    <View style={styles.tabBar}>
+    <View
+      style={[
+        styles.tabBar,
+        {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          shadowColor: colors.shadow,
+        },
+      ]}
+    >
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
@@ -78,8 +94,16 @@ function TindahTabBar({ state, descriptors, navigation }) {
             onLongPress={onLongPress}
             style={({ hovered, pressed }) => [
               styles.tabItem,
-              isFocused && styles.tabItemActive,
-              hovered && styles.tabItemHover,
+              isFocused && {
+                backgroundColor: colors.primarySoft,
+                borderWidth: 1,
+                borderColor: colors.primary,
+              },
+              hovered && {
+                backgroundColor: colors.accentSoft,
+                borderWidth: 1,
+                borderColor: colors.accent,
+              },
               pressed && styles.tabItemPressed,
             ]}
           >
@@ -88,8 +112,8 @@ function TindahTabBar({ state, descriptors, navigation }) {
                 <Text
                   style={[
                     styles.tabIcon,
-                    isFocused && styles.tabIconActive,
-                    hovered && styles.tabIconHover,
+                    { color: isFocused ? colors.primary : colors.dim },
+                    hovered && { color: colors.text, transform: [{ scale: 1.08 }] },
                   ]}
                 >
                   {meta.icon}
@@ -97,8 +121,8 @@ function TindahTabBar({ state, descriptors, navigation }) {
                 <Text
                   style={[
                     styles.tabLabel,
-                    isFocused && styles.tabLabelActive,
-                    hovered && styles.tabLabelHover,
+                    { color: isFocused ? colors.primary : colors.dim },
+                    hovered && { color: colors.text },
                   ]}
                   numberOfLines={1}
                 >
@@ -130,6 +154,8 @@ function MainTabs() {
 
 export default function AppNavigator() {
   const { isAuthenticated, isBootstrapping } = useAuth();
+  const { mode, theme } = useTheme();
+  const colors = theme.colors;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -159,7 +185,21 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} onReady={flushPendingNotificationNavigation}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={flushPendingNotificationNavigation}
+      theme={{
+        dark: mode === "dark",
+        colors: {
+          primary: colors.primary,
+          background: colors.screen,
+          card: colors.surface,
+          text: colors.text,
+          border: colors.border,
+          notification: colors.primary,
+        },
+      }}
+    >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <>

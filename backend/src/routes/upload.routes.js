@@ -90,6 +90,33 @@ router.post(
 );
 
 router.post(
+  "/save-avatar",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const { url, publicId } = req.body;
+    const normalizedUrl = typeof url === "string" ? url.trim() : "";
+
+    if (!normalizedUrl) {
+      return res.status(400).json({
+        message: "Avatar URL is required",
+      });
+    }
+
+    req.user.avatarUrl = normalizedUrl;
+    req.user.avatarPublicId = publicId ? String(publicId).trim() : "";
+
+    await req.user.save();
+
+    return res.status(200).json({
+      message: "Avatar saved successfully",
+      user: req.user.toProfileJSON(),
+      avatarUrl: req.user.avatarUrl,
+      avatarPublicId: req.user.avatarPublicId,
+    });
+  }),
+);
+
+router.post(
   "/save-profile-photo",
   authMiddleware,
   asyncHandler(async (req, res) => {

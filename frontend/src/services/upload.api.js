@@ -99,3 +99,8 @@ export async function saveProfilePhoto(url, publicId) {
   const response = await api.post("/upload/save-profile-photo", { url, publicId });
   return response.data.photos;
 }
+
+export async function saveAvatar(url, publicId) {
+  const response = await api.post("/upload/save-avatar", { url, publicId });
+  return response.data.user;
+}

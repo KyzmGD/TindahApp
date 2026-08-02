@@ -10,7 +10,7 @@ const {
 const { userExists } = require("./userExistenceCache.service");
 const httpError = require("../utils/httpError");
 
-const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified isOnline lastActive";
+const MATCH_USER_SELECT = "name birthDate bio avatarUrl avatarPublicId photos interests jobTitle school isVerified isOnline lastActive";
 const IDEMPOTENCY_CACHE_TTL_MS = 5 * 60 * 1000;
 const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const swipeStateCache = new Map();

@@ -166,6 +166,43 @@ describe("profile image upload routes", () => {
     });
   });
 
+  it("saves avatar separately without changing profile photos", async () => {
+    const user = await registerUser();
+    await User.findByIdAndUpdate(user.user.id, {
+      photos: [
+        {
+          url: "https://example.com/gallery.jpg",
+          publicId: "gallery-photo",
+          isPrimary: true,
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .post("/api/v1/upload/save-avatar")
+      .set("Authorization", `Bearer ${user.token}`)
+      .send({
+        url: "https://res.cloudinary.com/demo/image/upload/v123/avatar.jpg",
+        publicId: "tinder-app/avatar",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe("Avatar saved successfully");
+    expect(response.body.user.avatarUrl).toBe(
+      "https://res.cloudinary.com/demo/image/upload/v123/avatar.jpg",
+    );
+    expect(response.body.user.photos).toHaveLength(1);
+    expect(response.body.user.photos[0].url).toBe("https://example.com/gallery.jpg");
+
+    const storedUser = await User.findById(user.user.id).lean();
+    expect(storedUser.avatarUrl).toBe(
+      "https://res.cloudinary.com/demo/image/upload/v123/avatar.jpg",
+    );
+    expect(storedUser.avatarPublicId).toBe("tinder-app/avatar");
+    expect(storedUser.photos).toHaveLength(1);
+    expect(storedUser.photos[0].url).toBe("https://example.com/gallery.jpg");
+  });
+
   it("prevents saving more than six profile photos", async () => {
     const user = await registerUser();
     await User.findByIdAndUpdate(user.user.id, {

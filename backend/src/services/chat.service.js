@@ -36,7 +36,7 @@ async function listMessages(matchId, userId, options = {}) {
 
   const [messages, total] = await Promise.all([
     Message.find({ match: matchId })
-      .populate("sender", "name photos")
+      .populate("sender", "name avatarUrl avatarPublicId photos")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -75,7 +75,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     const existingMessage = await Message.findOne({
       sender: senderId,
       clientMessageId: normalizedClientMessageId,
-    }).populate("sender", "name photos");
+    }).populate("sender", "name avatarUrl avatarPublicId photos");
 
     if (existingMessage) {
       existingMessage.$locals.wasCreated = false;
@@ -106,7 +106,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     const existingMessage = await Message.findOne({
       sender: senderId,
       clientMessageId: normalizedClientMessageId,
-    }).populate("sender", "name photos");
+    }).populate("sender", "name avatarUrl avatarPublicId photos");
 
     if (existingMessage) {
       existingMessage.$locals.wasCreated = false;
@@ -124,7 +124,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
   await match.save();
 
   message.$locals.wasCreated = true;
-  return message.populate("sender", "name photos");
+  return message.populate("sender", "name avatarUrl avatarPublicId photos");
 }
 
 async function markMessagesRead({ matchId, userId, messageIds = [] }) {

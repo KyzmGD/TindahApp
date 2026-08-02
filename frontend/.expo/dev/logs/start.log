@@ -1809,3 +1809,14 @@
 {"_e":"metro:client_log","_t":1785606334675,"level":"warn","data":["Animated: `useNativeDriver` is not supported because the native animated module is missing. Falling back to JS-based animation. To resolve this, add `RCTAnimation` module to this app, or remove `useNativeDriver`. Make sure to run `bundle exec pod install` first. Read more about autolinking: https://github.com/react-native-community/cli/blob/master/docs/autolinking.md"]}
 {"_e":"metro:client_log","_t":1785606339122,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
 {"_e":"metro:client_log","_t":1785606773803,"level":"warn","data":["[expo-image-picker] `ImagePicker.MediaTypeOptions` have been deprecated. Use `ImagePicker.MediaType` or an array of `ImagePicker.MediaType` instead."]}
+{"_e":"root:init","_t":1785644550056,"format":"v0-jsonl","version":"56.1.20"}
+{"_e":"env:mode","_t":1785644550058,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1785644550065,"mode":"development","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_URL":"http://localhost:5000/api"}}
+{"_e":"devserver:start","_t":1785644550783,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1785644551396,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1785644557497,"atlas":false,"workers":6,"host":"::","port":8081}
+{"_e":"root:init","_t":1785644611962,"format":"v0-jsonl","version":"56.1.20"}
+{"_e":"env:mode","_t":1785644611963,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1785644611967,"mode":"development","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_URL":"http://localhost:5000/api"}}
+{"_e":"devserver:start","_t":1785644612423,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1785644612776,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { getMatches } from "../services/swipe.api";
+import { useTheme } from "../theme/ThemeContext";
 
 function getOtherUser(match, currentUserId) {
   return match.users?.find((user) => user._id !== currentUserId && user.id !== currentUserId) || match.users?.[0];
@@ -9,6 +10,8 @@ function getOtherUser(match, currentUserId) {
 
 export default function ChatListScreen({ navigation }) {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const colors = theme.colors;
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,21 +52,31 @@ export default function ChatListScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#ff4f7b" size="large" />
+      <View style={[styles.center, { backgroundColor: colors.screen }]}>
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Matches</Text>
+    <View style={[styles.screen, { backgroundColor: colors.screen }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.title, { color: colors.text }]}>Matches</Text>
       </View>
       <Animated.FlatList
         data={matches}
         keyExtractor={(item) => item._id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#ff4f7b" />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />
+        }
         contentContainerStyle={matches.length ? styles.list : styles.emptyList}
         style={[
           styles.listSurface,
@@ -81,28 +94,43 @@ export default function ChatListScreen({ navigation }) {
         ]}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No matches yet</Text>
-            <Text style={styles.emptyText}>Keep exploring and your conversations will appear here.</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No matches yet</Text>
+            <Text style={[styles.emptyText, { color: colors.muted }]}>
+              Keep exploring and your conversations will appear here.
+            </Text>
           </View>
         }
         renderItem={({ item }) => {
           const otherUser = getOtherUser(item, user?.id);
-          const photoUrl = otherUser?.photos?.[0]?.url;
+          const avatarUrl = otherUser?.avatarUrl || otherUser?.photos?.[0]?.url;
 
           return (
             <Pressable
               style={({ hovered, pressed }) => [
                 styles.row,
-                hovered && styles.rowHover,
+                hovered && {
+                  borderColor: colors.border,
+                  backgroundColor: colors.elevated,
+                  transform: [{ translateX: 4 }],
+                },
                 pressed && styles.rowPressed,
               ]}
               onPress={() => navigation.navigate("Chat", { match: item, user: otherUser })}
             >
               {({ hovered }) => (
                 <>
-                  <View style={[styles.avatar, hovered && styles.avatarHover]}>
-                    {photoUrl ? (
-                      <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: colors.elevated },
+                      hovered && {
+                        borderColor: colors.primary,
+                        transform: [{ scale: 1.04 }],
+                      },
+                    ]}
+                  >
+                    {avatarUrl ? (
+                      <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
                     ) : (
                       <Image
                         source={{
@@ -113,17 +141,26 @@ export default function ChatListScreen({ navigation }) {
                     )}
                   </View>
                   <View style={styles.rowContent}>
-                    <Text style={[styles.name, hovered && styles.nameHover]}>
+                    <Text style={[styles.name, { color: colors.text }]}>
                       {otherUser?.name || "Match"}
                     </Text>
                     <Text
-                      style={[styles.message, hovered && styles.messageHover]}
+                      style={[
+                        styles.message,
+                        { color: hovered ? colors.text : colors.muted },
+                      ]}
                       numberOfLines={1}
                     >
                       {item.lastMessage?.text || "Start the conversation"}
                     </Text>
                   </View>
-                  <Text style={[styles.chevron, hovered && styles.chevronHover]}>
+                  <Text
+                    style={[
+                      styles.chevron,
+                      { color: hovered ? colors.text : colors.dim },
+                      hovered && { transform: [{ translateX: 3 }] },
+                    ]}
+                  >
                     {">"}
                   </Text>
                 </>
@@ -155,6 +192,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#121016",
+    borderBottomWidth: 1,
   },
   title: {
     color: "#ffffff",
