@@ -20,7 +20,6 @@ import {
   joinGamerRecruitment,
   listGamerRecruitments,
 } from "../services/gamerLobby.api";
-import useSwipeGesture from "../hooks/useSwipeGesture";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../theme/ThemeContext";
@@ -334,20 +333,34 @@ function RecruitmentCard({ post, gameConfig, colors, index }) {
   );
 }
 
-function SwipeRecruitmentCard({ post, gameConfig, colors }) {
+function SwipeRecruitmentCard({
+  post,
+  gameConfig,
+  colors,
+  currentUser,
+  joiningRecruitmentId,
+  closingRecruitmentId,
+  onJoin,
+  onClose,
+  onCopyCode,
+  onHide,
+}) {
   const owner = post.owner || {};
   const modeLabel = post.playMode === "ranked" ? "Ranked" : "Casual";
   const memberCount = post.memberCount || 1;
+  const isMine = getUserId(owner) === getUserId(currentUser);
+  const isBusy = Boolean(joiningRecruitmentId || closingRecruitmentId);
 
   return (
-    <View
-      style={[
+    <Pressable
+      style={({ hovered }) => [
         styles.swipeRecruitmentCard,
         {
           backgroundColor: colors.surface,
           borderColor: gameConfig.color,
           shadowColor: gameConfig.color,
         },
+        hovered && styles.recruitmentCardHover,
       ]}
     >
       <View style={styles.swipeCardTop}>
@@ -413,12 +426,23 @@ function SwipeRecruitmentCard({ post, gameConfig, colors }) {
             <Text style={[styles.swipeInfoValue, { color: colors.text }]}>{modeLabel}</Text>
           </View>
           {post.lobbyCode ? (
-            <View style={[styles.swipeInfoTile, { backgroundColor: colors.elevated }]}>
+            <Pressable
+              onPress={() => onCopyCode(post)}
+              style={({ hovered, pressed }) => [
+                styles.swipeInfoTile,
+                styles.codeTile,
+                { backgroundColor: colors.elevated, borderColor: hovered ? gameConfig.color : "transparent" },
+                pressed && styles.pressed,
+              ]}
+            >
               <Text style={[styles.panelLabel, { color: colors.dim }]}>Lobby code</Text>
-              <Text style={[styles.swipeInfoValue, { color: gameConfig.color }]}>
-                {post.lobbyCode}
-              </Text>
-            </View>
+              <View style={styles.codeTileRow}>
+                <Text style={[styles.swipeInfoValue, { color: gameConfig.color }]}>
+                  {post.lobbyCode}
+                </Text>
+                <Text style={[styles.copyInlineText, { color: gameConfig.color }]}>Copy</Text>
+              </View>
+            </Pressable>
           ) : null}
         </View>
         <View
@@ -428,37 +452,78 @@ function SwipeRecruitmentCard({ post, gameConfig, colors }) {
           ]}
         >
           <Text style={[styles.panelLabel, { color: colors.dim }]}>Description</Text>
-          <Text style={[styles.swipeDescriptionText, { color: colors.text }]}>
-            {post.description || post.note || "No description yet. Tap Join now! if this lobby fits your play style."}
-          </Text>
+          <ScrollView
+            style={styles.swipeDescriptionScroll}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <Text style={[styles.swipeDescriptionText, { color: colors.text }]}>
+              {post.description || post.note || "No description yet. Tap Join now! if this lobby fits your play style."}
+            </Text>
+          </ScrollView>
         </View>
       </View>
-    </View>
+      <View style={styles.cardActions}>
+        <Pressable
+          onPress={() => onHide(post)}
+          style={({ hovered, pressed }) => [
+            styles.cardActionButton,
+            styles.nopeButton,
+            { backgroundColor: colors.elevated },
+            hovered && styles.actionHover,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.nopeText}>Not today</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onHide(post)}
+          style={({ hovered, pressed }) => [
+            styles.cardActionButton,
+            styles.starButton,
+            { backgroundColor: colors.elevated },
+            hovered && styles.actionHover,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={styles.starText}>See you soon</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => (isMine ? onClose(post) : onJoin(post))}
+          disabled={isBusy}
+          style={({ hovered, pressed }) => [
+            styles.cardActionButton,
+            isMine ? styles.stopButton : styles.joinButton,
+            { backgroundColor: colors.elevated },
+            hovered && styles.actionHover,
+            pressed && styles.pressed,
+            isBusy && styles.disabled,
+          ]}
+        >
+          <Text style={isMine ? styles.stopText : styles.joinText}>
+            {isMine
+              ? closingRecruitmentId ? "Stopping..." : "Stop recruiting"
+              : joiningRecruitmentId ? "Joining..." : "Join now!"}
+          </Text>
+        </Pressable>
+      </View>
+    </Pressable>
   );
 }
 
-function GamerRecruitmentStack({ posts, gameConfig, colors, onPass, onJoin, onStar }) {
-  const currentPost = posts[0];
-  const nextPost = posts[1];
-  const enterAnimation = useRef(new Animated.Value(0)).current;
-  const { panHandlers, cardStyle } = useSwipeGesture({
-    currentUser: currentPost,
-    onSwipeLeft: onPass,
-    onSwipeRight: onJoin,
-    onSwipeUp: onStar,
-  });
-
-  useEffect(() => {
-    enterAnimation.setValue(0);
-    Animated.spring(enterAnimation, {
-      toValue: 1,
-      tension: 70,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, [currentPost?.id, enterAnimation]);
-
-  if (!currentPost) {
+function GamerRecruitmentBoard({
+  posts,
+  gameConfig,
+  colors,
+  currentUser,
+  joiningRecruitmentId,
+  closingRecruitmentId,
+  onJoin,
+  onClose,
+  onCopyCode,
+  onHide,
+}) {
+  if (!posts.length) {
     return (
       <View
         style={[
@@ -478,27 +543,58 @@ function GamerRecruitmentStack({ posts, gameConfig, colors, onPass, onJoin, onSt
   }
 
   return (
-    <View style={styles.swipeStack}>
-      {nextPost ? (
-        <View style={[styles.swipeStackCard, styles.nextSwipeCard]}>
-          <SwipeRecruitmentCard post={nextPost} gameConfig={gameConfig} colors={colors} />
-        </View>
-      ) : null}
-      <Animated.View
-        key={currentPost.id}
-        {...panHandlers}
-        style={[
-          styles.swipeStackCard,
-          styles.activeSwipeCard,
-          cardStyle,
-          { opacity: enterAnimation },
-        ]}
-      >
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <SwipeRecruitmentCard post={currentPost} gameConfig={gameConfig} colors={colors} />
-        </View>
-      </Animated.View>
+    <View style={styles.recruitmentBoard}>
+      {posts.map((post, index) => (
+        <RecruitmentBoardItem
+          key={getRecruitmentId(post)}
+          post={post}
+          index={index}
+          gameConfig={gameConfig}
+          colors={colors}
+          currentUser={currentUser}
+          joiningRecruitmentId={joiningRecruitmentId}
+          closingRecruitmentId={closingRecruitmentId}
+          onJoin={onJoin}
+          onClose={onClose}
+          onCopyCode={onCopyCode}
+          onHide={onHide}
+        />
+      ))}
     </View>
+  );
+}
+
+function RecruitmentBoardItem({ index, ...props }) {
+  const entrance = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(entrance, {
+      toValue: 1,
+      delay: index * 55,
+      tension: 70,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, [entrance, index]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          opacity: entrance,
+          transform: [
+            {
+              translateY: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [18, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <SwipeRecruitmentCard {...props} />
+    </Animated.View>
   );
 }
 
@@ -531,8 +627,6 @@ export default function GamerLobbyScreen({ navigation }) {
   const [closingRecruitmentId, setClosingRecruitmentId] = useState("");
   const [posting, setPosting] = useState(false);
   const hiddenRecruitmentIdsRef = useRef(new Set());
-  const currentPost = recruitments[0];
-  const isCurrentPostMine = getUserId(currentPost?.owner) === getUserId(currentUser);
   const selectedLobbyCodeRule = getLobbyCodeRule(selectedGameConfig.game);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -624,8 +718,14 @@ export default function GamerLobbyScreen({ navigation }) {
     }
   };
 
-  const dismissCurrentRecruitment = () => {
-    setRecruitments((current) => current.slice(1));
+  const hideRecruitment = (post) => {
+    const postId = getRecruitmentId(post);
+
+    if (postId) {
+      hiddenRecruitmentIdsRef.current.add(postId);
+    }
+
+    setRecruitments((current) => current.filter((item) => getRecruitmentId(item) !== postId));
   };
 
   const handleJoinRecruitment = async (post) => {
@@ -925,85 +1025,20 @@ export default function GamerLobbyScreen({ navigation }) {
             <Text style={[styles.emptyText, { color: colors.muted }]}>{error}</Text>
           </View>
         ) : (
-          <GamerRecruitmentStack
+          <GamerRecruitmentBoard
             posts={recruitments}
             gameConfig={selectedGameConfig}
             colors={colors}
-            onPass={dismissCurrentRecruitment}
+            currentUser={currentUser}
+            joiningRecruitmentId={joiningRecruitmentId}
+            closingRecruitmentId={closingRecruitmentId}
             onJoin={handleJoinRecruitment}
-            onStar={dismissCurrentRecruitment}
+            onClose={handleCloseRecruitment}
+            onCopyCode={copyLobbyCode}
+            onHide={hideRecruitment}
           />
         )}
       </ScrollView>
-      <View style={[styles.actions, { backgroundColor: colors.screen }]}>
-        {currentPost?.lobbyCode && !isCurrentPostMine ? (
-          <Pressable
-            onPress={() => copyLobbyCode(currentPost)}
-            style={({ hovered, pressed }) => [
-              styles.actionButton,
-              styles.copyCodeButton,
-              { backgroundColor: colors.elevated, shadowColor: colors.shadow },
-              hovered && styles.actionHover,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={[styles.copyCodeText, { color: selectedGameConfig.color }]}>Copy code</Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          onPress={dismissCurrentRecruitment}
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.nopeButton,
-            { backgroundColor: colors.elevated, shadowColor: colors.shadow },
-            hovered && styles.actionHover,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.nopeText}>Not today</Text>
-        </Pressable>
-        <Pressable
-          onPress={dismissCurrentRecruitment}
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.starButton,
-            { backgroundColor: colors.elevated, shadowColor: colors.shadow },
-            hovered && styles.actionHover,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Text style={styles.starText}>See you soon</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            if (!currentPost) {
-              return;
-            }
-
-            if (isCurrentPostMine) {
-              handleCloseRecruitment(currentPost);
-              return;
-            }
-
-            handleJoinRecruitment(currentPost);
-          }}
-          disabled={Boolean(joiningRecruitmentId || closingRecruitmentId)}
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            isCurrentPostMine ? styles.stopButton : styles.joinButton,
-            { backgroundColor: colors.elevated, shadowColor: colors.shadow },
-            hovered && styles.actionHover,
-            pressed && styles.pressed,
-            (joiningRecruitmentId || closingRecruitmentId) && styles.disabled,
-          ]}
-        >
-          <Text style={isCurrentPostMine ? styles.stopText : styles.joinText}>
-            {isCurrentPostMine
-              ? closingRecruitmentId ? "Stopping..." : "Stop recruiting"
-              : joiningRecruitmentId ? "Joining..." : "Join now!"}
-          </Text>
-        </Pressable>
-      </View>
       <Modal
         visible={Boolean(teamFound)}
         transparent
@@ -1747,36 +1782,23 @@ const styles = StyleSheet.create({
   cardList: {
     gap: 14,
   },
-  swipeStack: {
-    minHeight: 520,
-  },
-  swipeStackCard: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  activeSwipeCard: {
-    zIndex: 2,
-    userSelect: "none",
-  },
-  nextSwipeCard: {
-    transform: [{ scale: 0.95 }, { translateY: 16 }],
-    opacity: 0.78,
+  recruitmentBoard: {
+    gap: 18,
   },
   swipeRecruitmentCard: {
-    flex: 1,
-    minHeight: 520,
-    borderRadius: 22,
+    borderRadius: 18,
     borderWidth: 1,
     padding: 18,
     overflow: "hidden",
-    justifyContent: "space-between",
     shadowOpacity: 0.18,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 12 },
     elevation: 7,
+    gap: 20,
+  },
+  recruitmentCardHover: {
+    transform: [{ translateY: -3 }, { scale: 1.005 }],
+    shadowOpacity: 0.28,
   },
   swipeCardTop: {
     flexDirection: "row",
@@ -1829,7 +1851,9 @@ const styles = StyleSheet.create({
   },
   swipeCardCenter: {
     alignItems: "center",
-    gap: 10,
+    gap: 12,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   recruitingBadge: {
     minHeight: 34,
@@ -1858,9 +1882,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     textAlign: "center",
+    marginBottom: 6,
   },
   swipeInfoPanel: {
-    gap: 10,
+    gap: 12,
+    marginTop: 4,
   },
   swipeInfoGrid: {
     flexDirection: "row",
@@ -1876,18 +1902,37 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     justifyContent: "center",
   },
+  codeTile: {
+    borderWidth: 1,
+  },
+  codeTileRow: {
+    marginTop: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  copyInlineText: {
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
   swipeInfoValue: {
     marginTop: 3,
     fontSize: 18,
     fontWeight: "900",
   },
   swipeDescriptionBox: {
-    minHeight: 88,
+    minHeight: 98,
+    maxHeight: 160,
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 7,
+  },
+  swipeDescriptionScroll: {
+    maxHeight: 105,
   },
   swipeDescriptionText: {
     fontSize: 14,
@@ -1895,7 +1940,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   swipeEmpty: {
-    minHeight: 520,
+    minHeight: 260,
     borderRadius: 22,
     borderWidth: 1,
     alignItems: "center",
@@ -1903,16 +1948,14 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 8,
   },
-  actions: {
+  cardActions: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 10,
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 16,
+    paddingTop: 2,
   },
-  actionButton: {
+  cardActionButton: {
     minWidth: 104,
     minHeight: 52,
     borderRadius: 999,
@@ -1940,9 +1983,6 @@ const styles = StyleSheet.create({
   stopButton: {
     borderColor: "#ff5d72",
   },
-  copyCodeButton: {
-    borderColor: "#f5b342",
-  },
   nopeText: {
     color: "#ffffff",
     fontSize: 13,
@@ -1960,10 +2000,6 @@ const styles = StyleSheet.create({
   },
   stopText: {
     color: "#ff5d72",
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  copyCodeText: {
     fontSize: 13,
     fontWeight: "900",
   },
