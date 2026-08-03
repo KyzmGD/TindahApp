@@ -1,5 +1,10 @@
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const {
+  GAME_NAMES,
+  LOBBY_GROUPS,
+  getLobbyGroupForRank,
+} = require("../services/gamingLobby.service");
 
 const photoSchema = new mongoose.Schema(
   {
@@ -65,6 +70,34 @@ const pushTokenSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const gamingProfileSchema = new mongoose.Schema(
+  {
+    gameName: {
+      type: String,
+      enum: GAME_NAMES,
+      required: true,
+    },
+    currentRank: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 80,
+    },
+    lobbyGroup: {
+      type: String,
+      enum: LOBBY_GROUPS,
+      required: true,
+    },
+    inGameID: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: "",
+    },
+  },
+  { _id: false },
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -109,6 +142,17 @@ const userSchema = new mongoose.Schema(
         max: { type: Number, default: 60, min: 18, max: 100 },
       },
     },
+    gamingProfiles: {
+      type: [gamingProfileSchema],
+      default: [],
+      validate: {
+        validator(profiles) {
+          const gameNames = (profiles || []).map((profile) => profile.gameName);
+          return new Set(gameNames).size === gameNames.length;
+        },
+        message: "Only one gaming profile is allowed per game.",
+      },
+    },
     pushTokens: {
       type: [pushTokenSchema],
       default: [],
@@ -131,6 +175,19 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ location: "2dsphere" });
+userSchema.index({ "gamingProfiles.gameName": 1, "gamingProfiles.lobbyGroup": 1 });
+
+userSchema.pre("validate", function setGamingLobbyGroups() {
+  if (Array.isArray(this.gamingProfiles)) {
+    this.gamingProfiles.forEach((profile) => {
+      const lobbyGroup = getLobbyGroupForRank(profile.gameName, profile.currentRank);
+
+      if (lobbyGroup) {
+        profile.lobbyGroup = lobbyGroup;
+      }
+    });
+  }
+});
 
 userSchema.virtual("age").get(function getAge() {
   if (!this.birthDate) return null;
@@ -158,6 +215,7 @@ userSchema.methods.toProfileJSON = function toProfileJSON() {
     avatarUrl: this.avatarUrl,
     avatarPublicId: this.avatarPublicId,
     photos: this.photos,
+    gamingProfiles: this.gamingProfiles,
     location: this.location,
     preferences: this.preferences,
     isVerified: this.isVerified,

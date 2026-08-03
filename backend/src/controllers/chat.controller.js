@@ -33,6 +33,9 @@ const createMessage = asyncHandler(async (req, res) => {
 
   req.app.get("io")?.to(req.params.matchId).emit("message:new", message);
   req.app.get("io")?.to(req.params.matchId).emit("receive_message", message);
+  if (message.receiver) {
+    req.app.get("io")?.to(`user:${message.receiver.toString()}`).emit("message:notification", message);
+  }
   if (message.$locals?.wasCreated) {
     await sendOfflineMessagePush({ io: req.app.get("io"), message });
   }

@@ -8,7 +8,7 @@ function getOtherUser(match, currentUserId) {
   return match.users?.find((user) => user._id !== currentUserId && user.id !== currentUserId) || match.users?.[0];
 }
 
-export default function ChatListScreen({ navigation }) {
+export default function ChatListScreen({ navigation, onUnreadChange }) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -20,7 +20,8 @@ export default function ChatListScreen({ navigation }) {
   const loadMatches = useCallback(async () => {
     const data = await getMatches();
     setMatches(data);
-  }, []);
+    onUnreadChange?.(data.some((match) => Number(match.unreadCount) > 0));
+  }, [onUnreadChange]);
 
   useEffect(() => {
     loadMatches()
@@ -147,13 +148,34 @@ export default function ChatListScreen({ navigation }) {
                     <Text
                       style={[
                         styles.message,
-                        { color: hovered ? colors.text : colors.muted },
+                        {
+                          color: Number(item.unreadCount) > 0
+                            ? colors.text
+                            : hovered ? colors.text : colors.muted,
+                        },
                       ]}
                       numberOfLines={1}
                     >
                       {item.lastMessage?.text || "Start the conversation"}
                     </Text>
+                    <View style={styles.metaRow}>
+                      {item.source && item.source !== "dating" ? (
+                        <Text style={[styles.sourceBadge, { color: colors.accent, borderColor: colors.accent }]}>
+                          {item.source === "mixed" ? "Dating + Gamer" : "Gamer"}
+                        </Text>
+                      ) : null}
+                      {Number(item.unreadCount) > 0 ? (
+                        <Text style={[styles.rowUnreadText, { color: colors.primary }]}>
+                          {item.unreadCount} unread
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
+                  {Number(item.unreadCount) > 0 ? (
+                    <View style={[styles.rowUnreadBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.rowUnreadBadgeText}>!</Text>
+                    </View>
+                  ) : null}
                   <Text
                     style={[
                       styles.chevron,
@@ -258,6 +280,37 @@ const styles = StyleSheet.create({
   rowContent: {
     flex: 1,
     gap: 4,
+  },
+  metaRow: {
+    minHeight: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sourceBadge: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    fontSize: 10,
+    fontWeight: "900",
+    overflow: "hidden",
+  },
+  rowUnreadText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  rowUnreadBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowUnreadBadgeText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "900",
   },
   name: {
     color: "#ffffff",

@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 
+const unreadCountSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    count: { type: Number, min: 0, default: 0 },
+  },
+  { _id: false },
+);
+
+const gamerContextSchema = new mongoose.Schema(
+  {
+    recruitment: { type: mongoose.Schema.Types.ObjectId, ref: "GamerRecruitment" },
+    teamMatch: { type: mongoose.Schema.Types.ObjectId, ref: "GamerTeamMatch" },
+    gameName: String,
+    currentRank: String,
+    lobbyGroup: String,
+    teamSize: Number,
+    playMode: String,
+    lobbyCode: String,
+  },
+  { _id: false },
+);
+
 const matchSchema = new mongoose.Schema(
   {
     users: {
@@ -12,12 +34,26 @@ const matchSchema = new mongoose.Schema(
       },
     },
     participantsKey: { type: String, required: true },
+    source: {
+      type: String,
+      enum: ["dating", "gamer_lobby", "mixed"],
+      default: "dating",
+      index: true,
+    },
+    gamerContext: {
+      type: gamerContextSchema,
+      default: undefined,
+    },
     status: { type: String, enum: ["active", "unmatched"], default: "active" },
     unmatchedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     lastMessage: {
       text: String,
       sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       sentAt: Date,
+    },
+    unreadCounts: {
+      type: [unreadCountSchema],
+      default: [],
     },
     matchedAt: { type: Date, default: Date.now },
   },
@@ -32,5 +68,6 @@ matchSchema.pre("validate", function setParticipantsKey() {
 
 matchSchema.index({ users: 1, status: 1 });
 matchSchema.index({ participantsKey: 1 }, { unique: true });
+matchSchema.index({ source: 1, status: 1, updatedAt: -1 });
 
 module.exports = mongoose.model("Match", matchSchema);

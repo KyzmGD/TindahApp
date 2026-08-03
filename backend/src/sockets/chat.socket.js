@@ -71,6 +71,9 @@ function registerChatSocket(server, app) {
 
         socket.join(payload.matchId);
         io.to(payload.matchId).emit("receive_message", message);
+        if (message.receiver) {
+          io.to(`user:${message.receiver.toString()}`).emit("message:notification", message);
+        }
         if (message.$locals?.wasCreated) {
           await sendOfflineMessagePush({ io, message });
         }

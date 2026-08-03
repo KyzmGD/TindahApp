@@ -609,6 +609,112 @@ describe("PUT /api/v1/users/profile", () => {
     ]);
   });
 
+  it("saves gaming profiles with auto-calculated lobby groups", async () => {
+    const user = await User.create({
+      name: "Gaming User",
+      email: "gaming-user@example.com",
+      passwordHash: "hashed-password",
+      birthDate: new Date("1998-01-01T00:00:00.000Z"),
+      gender: "man",
+    });
+
+    const response = await request(app)
+      .put("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${signUserToken(user)}`)
+      .send({
+        gamingProfiles: [
+          {
+            gameName: "Valorant",
+            currentRank: "Bạch Kim 2",
+            lobbyGroup: "group1",
+            inGameID: "TuanDat#VN",
+          },
+          {
+            gameName: "PUBGMobile",
+            currentRank: "Quán Quân",
+            inGameID: "DatPUBG",
+          },
+          {
+            gameName: "LienQuan",
+            currentRank: "Tinh Anh",
+            inGameID: "DatLQ",
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.gamingProfiles).toEqual([
+      {
+        gameName: "Valorant",
+        currentRank: "Bạch Kim 2",
+        lobbyGroup: "group2",
+        inGameID: "TuanDat#VN",
+      },
+      {
+        gameName: "PUBGMobile",
+        currentRank: "Quán Quân",
+        lobbyGroup: "group3",
+        inGameID: "DatPUBG",
+      },
+      {
+        gameName: "LienQuan",
+        currentRank: "Tinh Anh",
+        lobbyGroup: "group3",
+        inGameID: "DatLQ",
+      },
+    ]);
+
+    const storedUser = await User.findById(user._id).lean();
+    expect(storedUser.gamingProfiles.map((profile) => profile.lobbyGroup)).toEqual([
+      "group2",
+      "group3",
+      "group3",
+    ]);
+  });
+
+  it("rejects invalid gaming profile payloads", async () => {
+    const user = await User.create({
+      name: "Invalid Gaming User",
+      email: "invalid-gaming-user@example.com",
+      passwordHash: "hashed-password",
+      birthDate: new Date("1998-01-01T00:00:00.000Z"),
+      gender: "woman",
+    });
+
+    const response = await request(app)
+      .put("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${signUserToken(user)}`)
+      .send({
+        gamingProfiles: [
+          {
+            gameName: "CSGO",
+            currentRank: "Global Elite",
+            inGameID: "invalid",
+          },
+          {
+            gameName: "Valorant",
+            currentRank: "Unknown Rank",
+            inGameID: "x".repeat(81),
+          },
+          {
+            gameName: "Valorant",
+            currentRank: "Gold",
+          },
+        ],
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.details).toMatchObject({
+      "gamingProfiles.0.gameName": "Select a supported game.",
+      "gamingProfiles.1.currentRank": "Current rank does not match a supported lobby group.",
+      "gamingProfiles.1.inGameID": "In-game ID must be 80 characters or less.",
+      "gamingProfiles.2.gameName": "Only one gaming profile is allowed per game.",
+    });
+
+    const storedUser = await User.findById(user._id).lean();
+    expect(storedUser.gamingProfiles).toEqual([]);
+  });
+
   it("rejects attempts to change account gender from the profile API", async () => {
     const user = await User.create({
       name: "Locked Gender User",

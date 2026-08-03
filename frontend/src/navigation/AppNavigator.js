@@ -1,9 +1,10 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useEffect } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import {
   flushPendingNotificationNavigation,
   navigateFromNotificationData,
@@ -12,6 +13,7 @@ import {
 import ChatListScreen from "../screens/ChatListScreen";
 import ChatScreen from "../screens/ChatScreen";
 import ExploreScreen from "../screens/ExploreScreen";
+import GamerLobbyScreen from "../screens/GamerLobbyScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import ProfileSettingsScreen from "../screens/ProfileSettingsScreen";
@@ -19,6 +21,7 @@ import {
   addPushNotificationResponseListener,
   getLastPushNotificationResponseData,
 } from "../services/pushNotifications";
+import { getMatches } from "../services/swipe.api";
 import { useTheme } from "../theme/ThemeContext";
 
 const Stack = createNativeStackNavigator();
@@ -26,9 +29,34 @@ const Tab = createBottomTabNavigator();
 
 const TAB_META = {
   Explore: { label: "Explore", icon: "T" },
+  GamerLobby: { label: "Gamer", icon: "G" },
   Matches: { label: "Matches", icon: "M" },
   Profile: { label: "Profile", icon: "P" },
 };
+
+const GAME_THEME = {
+  Valorant: { label: "Valorant", icon: "V", color: "#ff4655" },
+  PUBGMobile: { label: "PUBG Mobile", icon: "P", color: "#f5b342" },
+  FreeFire: { label: "Free Fire", icon: "F", color: "#ff7a1a" },
+  TFT: { label: "TFT", icon: "T", color: "#6dd6ff" },
+  LienQuan: { label: "Lien Quan", icon: "L", color: "#8f7cff" },
+};
+
+function getUserId(user) {
+  if (typeof user === "string") {
+    return user;
+  }
+
+  return user?.id || user?._id || "";
+}
+
+function getAvatar(user) {
+  return user?.avatarUrl || user?.photos?.[0]?.url || "https://i.pravatar.cc/300";
+}
+
+function getGameTheme(gameName) {
+  return GAME_THEME[gameName] || GAME_THEME.Valorant;
+}
 
 function LoadingScreen() {
   const { theme } = useTheme();
@@ -41,7 +69,12 @@ function LoadingScreen() {
   );
 }
 
-function TindahTabBar({ state, descriptors, navigation }) {
+function TindahTabBar({
+  state,
+  descriptors,
+  navigation,
+  hasUnreadMatches,
+}) {
   const { theme } = useTheme();
   const colors = theme.colors;
 
@@ -118,6 +151,11 @@ function TindahTabBar({ state, descriptors, navigation }) {
                 >
                   {meta.icon}
                 </Text>
+                {route.name === "Matches" && hasUnreadMatches ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>!</Text>
+                  </View>
+                ) : null}
                 <Text
                   style={[
                     styles.tabLabel,
@@ -137,25 +175,55 @@ function TindahTabBar({ state, descriptors, navigation }) {
   );
 }
 
-function MainTabs() {
+function MainTabs({ hasUnreadMatches, onUnreadMatchesChange }) {
   return (
     <Tab.Navigator
-      tabBar={(props) => <TindahTabBar {...props} />}
+      tabBar={(props) => (
+        <TindahTabBar
+          {...props}
+          hasUnreadMatches={hasUnreadMatches}
+        />
+      )}
       screenOptions={{
         headerShown: false,
       }}
     >
       <Tab.Screen name="Explore" component={ExploreScreen} />
-      <Tab.Screen name="Matches" component={ChatListScreen} />
+      <Tab.Screen name="GamerLobby" component={GamerLobbyScreen} />
+      <Tab.Screen name="Matches">
+        {(props) => (
+          <ChatListScreen
+            {...props}
+            onUnreadChange={onUnreadMatchesChange}
+          />
+        )}
+      </Tab.Screen>
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isBootstrapping } = useAuth();
+  const { isAuthenticated, isBootstrapping, user } = useAuth();
+  const { socket } = useSocket();
   const { mode, theme } = useTheme();
   const colors = theme.colors;
+  const [teamFound, setTeamFound] = useState(null);
+  const [teamDissolved, setTeamDissolved] = useState(null);
+  const [hasUnreadMatches, setHasUnreadMatches] = useState(false);
+  const refreshUnreadMatches = useCallback(async () => {
+    if (!isAuthenticated) {
+      setHasUnreadMatches(false);
+      return;
+    }
+
+    try {
+      const matches = await getMatches();
+      setHasUnreadMatches(matches.some((match) => Number(match.unreadCount) > 0));
+    } catch {
+      setHasUnreadMatches(false);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -180,9 +248,71 @@ export default function AppNavigator() {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    refreshUnreadMatches();
+  }, [refreshUnreadMatches]);
+
+  useEffect(() => {
+    if (!socket || !isAuthenticated) {
+      return undefined;
+    }
+
+    const onTeamFound = (payload) => {
+      setTeamFound(payload);
+    };
+    const onTeamDissolved = (payload) => {
+      setTeamDissolved(payload);
+    };
+    const onMessageNotification = (message) => {
+      const senderId = getUserId(message?.sender);
+
+      if (senderId && senderId !== getUserId(user)) {
+        setHasUnreadMatches(true);
+      }
+    };
+    const onReadMessage = (payload) => {
+      if (payload?.userId === getUserId(user)) {
+        refreshUnreadMatches();
+      }
+    };
+
+    socket.on("gamer_lobby:team_found", onTeamFound);
+    socket.on("gamer_lobby:team_dissolved", onTeamDissolved);
+    socket.on("message:notification", onMessageNotification);
+    socket.on("read_message", onReadMessage);
+
+    return () => {
+      socket.off("gamer_lobby:team_found", onTeamFound);
+      socket.off("gamer_lobby:team_dissolved", onTeamDissolved);
+      socket.off("message:notification", onMessageNotification);
+      socket.off("read_message", onReadMessage);
+    };
+  }, [isAuthenticated, refreshUnreadMatches, socket, user]);
+
+  const openTeamChat = () => {
+    const chatMatch = teamFound?.chatMatch;
+
+    if (!chatMatch?._id) {
+      setTeamFound(null);
+      navigationRef.navigate("Main", { screen: "Matches" });
+      return;
+    }
+
+    const otherUser = chatMatch.users?.find((item) => getUserId(item) !== getUserId(user));
+    setTeamFound(null);
+    setHasUnreadMatches(false);
+    navigationRef.navigate("Chat", {
+      match: chatMatch,
+      user: otherUser,
+    });
+  };
+
   if (isBootstrapping) {
     return <LoadingScreen />;
   }
+
+  const teamFoundGame = getGameTheme(teamFound?.recruitment?.gameName);
+  const dissolvedGame = getGameTheme(teamDissolved?.recruitment?.gameName);
 
   return (
     <NavigationContainer
@@ -200,17 +330,137 @@ export default function AppNavigator() {
         },
       }}
     >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
-          <>
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="Chat" component={ChatScreen} />
-            <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
-          </>
-        ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        )}
-      </Stack.Navigator>
+      <>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isAuthenticated ? (
+            <>
+              <Stack.Screen name="Main">
+                {() => (
+                  <MainTabs
+                    hasUnreadMatches={hasUnreadMatches}
+                    onUnreadMatchesChange={setHasUnreadMatches}
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="Chat" component={ChatScreen} />
+              <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
+            </>
+          ) : (
+            <Stack.Screen name="Login" component={LoginScreen} />
+          )}
+        </Stack.Navigator>
+        <Modal
+          visible={Boolean(teamFound)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setTeamFound(null)}
+        >
+          <View style={[styles.teamFoundOverlay, { backgroundColor: colors.overlay }]}>
+            <View
+              style={[
+                styles.teamFoundCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: teamFoundGame.color,
+                  shadowColor: teamFoundGame.color,
+                },
+              ]}
+            >
+              <View style={[styles.teamFoundIcon, { backgroundColor: teamFoundGame.color }]}>
+                <Text style={styles.teamFoundIconText}>{teamFoundGame.icon}</Text>
+              </View>
+              <Text style={[styles.teamFoundTitle, { color: colors.text }]}>Teammate found</Text>
+              <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
+                {teamFoundGame.label} - Team {teamFound?.teamMatch?.teamSize} -{" "}
+                {teamFound?.teamMatch?.playMode === "ranked" ? "Ranked" : "Casual"}
+              </Text>
+              <View style={styles.teamFoundUsers}>
+                <View style={styles.teamFoundUser}>
+                  <Image source={{ uri: getAvatar(teamFound?.teamMatch?.owner) }} style={styles.teamFoundAvatar} />
+                  <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
+                    {teamFound?.teamMatch?.owner?.name || "Captain"}
+                  </Text>
+                </View>
+                <View style={[styles.teamFoundConnector, { backgroundColor: teamFoundGame.color }]} />
+                <View style={styles.teamFoundUser}>
+                  <Image source={{ uri: getAvatar(teamFound?.teamMatch?.joiner) }} style={styles.teamFoundAvatar} />
+                  <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
+                    {teamFound?.teamMatch?.joiner?.name || "Teammate"}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.teamFoundActions}>
+                <Pressable
+                  onPress={openTeamChat}
+                  style={({ hovered, pressed }) => [
+                    styles.teamFoundButton,
+                    { backgroundColor: teamFoundGame.color },
+                    hovered && styles.teamFoundButtonHover,
+                    pressed && styles.tabItemPressed,
+                  ]}
+                >
+                  <Text style={styles.teamFoundButtonText}>Go to chat</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setTeamFound(null)}
+                  style={({ hovered, pressed }) => [
+                    styles.teamFoundSecondaryButton,
+                    { backgroundColor: colors.elevated, borderColor: teamFoundGame.color },
+                    hovered && styles.teamFoundButtonHover,
+                    pressed && styles.tabItemPressed,
+                  ]}
+                >
+                  <Text style={[styles.teamFoundSecondaryText, { color: teamFoundGame.color }]}>
+                    Keep finding
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          visible={Boolean(teamDissolved)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setTeamDissolved(null)}
+        >
+          <View style={[styles.teamFoundOverlay, { backgroundColor: colors.overlay }]}>
+            <View
+              style={[
+                styles.teamFoundCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: dissolvedGame.color,
+                  shadowColor: dissolvedGame.color,
+                },
+              ]}
+            >
+              <View style={[styles.teamFoundIcon, { backgroundColor: dissolvedGame.color }]}>
+                <Text style={styles.teamFoundIconText}>{dissolvedGame.icon}</Text>
+              </View>
+              <Text style={[styles.teamFoundTitle, { color: colors.text }]}>
+                Đội bạn đã giải tán
+              </Text>
+              <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
+                The recruiter stopped the {dissolvedGame.label} lobby.
+              </Text>
+              <View style={styles.teamFoundActions}>
+                <Pressable
+                  onPress={() => setTeamDissolved(null)}
+                  style={({ hovered, pressed }) => [
+                    styles.teamFoundButton,
+                    { backgroundColor: dissolvedGame.color },
+                    hovered && styles.teamFoundButtonHover,
+                    pressed && styles.tabItemPressed,
+                  ]}
+                >
+                  <Text style={styles.teamFoundButtonText}>Got it</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </>
     </NavigationContainer>
   );
 }
@@ -278,11 +528,131 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
   },
+  unreadBadge: {
+    position: "absolute",
+    top: 7,
+    right: "31%",
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: "#ff5d72",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#ffffff",
+  },
+  unreadBadgeText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+    lineHeight: 14,
+  },
   tabIconActive: {
     color: "#ff4f7b",
   },
   tabIconHover: {
     color: "#ffffff",
     transform: [{ scale: 1.08 }],
+  },
+  teamFoundOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 22,
+  },
+  teamFoundCard: {
+    width: "100%",
+    maxWidth: 390,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 22,
+    alignItems: "center",
+    gap: 16,
+    shadowOpacity: 0.28,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 10,
+  },
+  teamFoundIcon: {
+    width: 74,
+    height: 74,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teamFoundIconText: {
+    color: "#ffffff",
+    fontSize: 34,
+    fontWeight: "900",
+  },
+  teamFoundTitle: {
+    fontSize: 27,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  teamFoundSubtitle: {
+    marginTop: -8,
+    fontSize: 14,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  teamFoundUsers: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  teamFoundUser: {
+    flex: 1,
+    alignItems: "center",
+    gap: 8,
+  },
+  teamFoundAvatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  teamFoundUserName: {
+    maxWidth: "100%",
+    fontSize: 14,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  teamFoundConnector: {
+    width: 38,
+    height: 5,
+    borderRadius: 999,
+  },
+  teamFoundActions: {
+    width: "100%",
+    gap: 10,
+  },
+  teamFoundButton: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teamFoundButtonHover: {
+    transform: [{ translateY: -2 }, { scale: 1.01 }],
+  },
+  teamFoundButtonText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  teamFoundSecondaryButton: {
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  teamFoundSecondaryText: {
+    fontSize: 15,
+    fontWeight: "900",
   },
 });

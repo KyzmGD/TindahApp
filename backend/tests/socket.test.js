@@ -2,6 +2,7 @@ const http = require("http");
 const request = require("supertest");
 const { io: createClient } = require("socket.io-client");
 const app = require("../src/app");
+const Match = require("../src/models/Match");
 const Message = require("../src/models/Message");
 const User = require("../src/models/User");
 const { resetPresenceForTesting } = require("../src/services/presence.service");
@@ -227,6 +228,11 @@ describe("chat socket realtime", () => {
 
     const readMessage = await Message.findById(ack.message._id).lean();
     expect(readMessage.readBy.map((userId) => userId.toString())).toContain(bob.user.id);
+    const matchAfterRead = await Match.findById(aliceBobMatch._id).lean();
+    const bobUnread = matchAfterRead.unreadCounts.find(
+      (entry) => entry.user.toString() === bob.user.id,
+    );
+    expect(bobUnread?.count || 0).toBe(0);
 
     const offlineEventPromise = waitForEvent(aliceSocket, "presence:update");
     bobSocket.disconnect();

@@ -110,6 +110,7 @@ const updateMe = asyncHandler(async (req, res) => {
     "avatarUrl",
     "avatarPublicId",
     "photos",
+    "gamingProfiles",
     "location",
     "preferences",
   ];

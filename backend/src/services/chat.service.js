@@ -58,6 +58,49 @@ async function listMessages(matchId, userId, options = {}) {
   };
 }
 
+function getUnreadCount(match, userId) {
+  const userIdString = userId.toString();
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userIdString,
+  );
+
+  return unreadEntry?.count || 0;
+}
+
+function incrementUnreadCount(match, userId) {
+  const userIdString = userId.toString();
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userIdString,
+  );
+
+  if (unreadEntry) {
+    unreadEntry.count = Math.max(0, unreadEntry.count || 0) + 1;
+    return;
+  }
+
+  match.unreadCounts.push({
+    user: userId,
+    count: 1,
+  });
+}
+
+async function resetUnreadCount(matchId, userId) {
+  const match = await Match.findById(matchId);
+
+  if (!match) {
+    return;
+  }
+
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userId.toString(),
+  );
+
+  if (unreadEntry) {
+    unreadEntry.count = 0;
+    await match.save();
+  }
+}
+
 async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId }) {
   const trimmedText = typeof text === "string" ? text.trim() : "";
   const trimmedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
@@ -121,6 +164,9 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     sender: senderId,
     sentAt: message.createdAt,
   };
+  if (receiverId) {
+    incrementUnreadCount(match, receiverId);
+  }
   await match.save();
 
   message.$locals.wasCreated = true;
@@ -155,6 +201,7 @@ async function markMessagesRead({ matchId, userId, messageIds = [] }) {
     { _id: { $in: readMessageIds } },
     { $addToSet: { readBy: userId } },
   );
+  await resetUnreadCount(matchId, userId);
 
   return readMessageIds;
 }
@@ -165,4 +212,5 @@ module.exports = {
   markMessagesRead,
   assertUserInActiveMatch,
   normalizeMessagePagination,
+  getUnreadCount,
 };
