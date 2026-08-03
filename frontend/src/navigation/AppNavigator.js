@@ -419,6 +419,11 @@ export default function AppNavigator() {
                 <Text style={styles.teamFoundIconText}>{teamFoundGame.icon}</Text>
               </View>
               <Text style={[styles.teamFoundTitle, { color: colors.text }]}>Teammate found</Text>
+              {teamFound?.teamMatch?.teamName ? (
+                <Text style={[styles.teamFoundTeamName, { color: teamFoundGame.color }]} numberOfLines={2}>
+                  {teamFound.teamMatch.teamName}
+                </Text>
+              ) : null}
               <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
                 {teamFoundGame.label} - Team {teamFound?.teamMatch?.teamSize} -{" "}
                 {teamFound?.teamMatch?.playMode === "ranked" ? "Ranked" : "Casual"}
@@ -488,7 +493,7 @@ export default function AppNavigator() {
                 <Text style={styles.teamFoundIconText}>{dissolvedGame.icon}</Text>
               </View>
               <Text style={[styles.teamFoundTitle, { color: colors.text }]}>
-                Đội bạn đã giải tán
+                Your team has been dissolved
               </Text>
               <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
                 The recruiter stopped the {dissolvedGame.label} lobby.
@@ -664,6 +669,12 @@ const styles = StyleSheet.create({
     marginTop: -8,
     fontSize: 14,
     fontWeight: "800",
+    textAlign: "center",
+  },
+  teamFoundTeamName: {
+    marginTop: -8,
+    fontSize: 18,
+    fontWeight: "900",
     textAlign: "center",
   },
   teamFoundUsers: {

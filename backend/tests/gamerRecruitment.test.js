@@ -62,6 +62,7 @@ describe("Gamer recruitment posts", () => {
         currentRank: "Gold",
         teamSize: 4,
         playMode: "ranked",
+        teamName: "Late Night TFT Squad",
         description: "Looking for a consistent squad.",
       });
 
@@ -72,6 +73,7 @@ describe("Gamer recruitment posts", () => {
       lobbyGroup: "group1",
       teamSize: 4,
       playMode: "ranked",
+      teamName: "Late Night TFT Squad",
       description: "Looking for a consistent squad.",
       note: "Looking for a consistent squad.",
       status: "open",
@@ -87,6 +89,7 @@ describe("Gamer recruitment posts", () => {
     const savedPost = await GamerRecruitment.findById(response.body.recruitment.id);
     expect(savedPost.lobbyGroup).toBe("group1");
     expect(savedPost.owner.toString()).toBe(owner._id.toString());
+    expect(savedPost.teamName).toBe("Late Night TFT Squad");
     expect(savedPost.description).toBe("Looking for a consistent squad.");
   });
 
@@ -128,6 +131,7 @@ describe("Gamer recruitment posts", () => {
         currentRank: "Heroic 1 star",
         teamSize: 2,
         playMode: "casual",
+        teamName: "Heroic Duo",
         lobbyCode: "123456",
         description: "Need a duo for tonight.",
       });
@@ -139,8 +143,30 @@ describe("Gamer recruitment posts", () => {
       lobbyGroup: "group2",
       teamSize: 2,
       playMode: "casual",
+      teamName: "Heroic Duo",
       lobbyCode: "123456",
       description: "Need a duo for tonight.",
+    });
+  });
+
+  it("requires a team name when creating a recruitment post", async () => {
+    const owner = await createUser({
+      email: "missing-team-name@example.com",
+    });
+
+    const response = await request(app)
+      .post("/api/v1/gamer-lobby/recruitments")
+      .set("Authorization", `Bearer ${signUserToken(owner)}`)
+      .send({
+        gameName: "TFT",
+        currentRank: "Gold",
+        teamSize: 4,
+        playMode: "ranked",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.details).toMatchObject({
+      teamName: "Team name is required.",
     });
   });
 
@@ -158,6 +184,7 @@ describe("Gamer recruitment posts", () => {
         currentRank: "Gold",
         teamSize: 2,
         playMode: "ranked",
+        teamName: "Code Test Valorant",
         lobbyCode: "ABC12",
       });
 
@@ -174,6 +201,7 @@ describe("Gamer recruitment posts", () => {
         currentRank: "Diamond",
         teamSize: 4,
         playMode: "casual",
+        teamName: "Code Test Lien Quan",
         lobbyCode: "A12345",
       });
 
@@ -190,6 +218,7 @@ describe("Gamer recruitment posts", () => {
         currentRank: "Gold",
         teamSize: 2,
         playMode: "ranked",
+        teamName: "Code Test Valorant",
         lobbyCode: "ab12c3",
       });
 
@@ -225,6 +254,7 @@ describe("Gamer recruitment posts", () => {
       currentRank: "Gold",
       teamSize: 2,
       playMode: "casual",
+      teamName: "Flexible TFT Squad",
       description: "Need one flexible player tonight.",
     });
 
@@ -234,6 +264,7 @@ describe("Gamer recruitment posts", () => {
       currentRank: "Master",
       teamSize: 4,
       playMode: "ranked",
+      teamName: "Master TFT Stack",
     });
 
     await GamerRecruitment.create({
@@ -243,6 +274,7 @@ describe("Gamer recruitment posts", () => {
       teamSize: 4,
       playMode: "ranked",
       lobbyCode: "VAL123",
+      teamName: "Valorant Gold Stack",
     });
 
     const response = await request(app)
@@ -301,6 +333,7 @@ describe("Gamer recruitment posts", () => {
       teamSize: 4,
       playMode: "ranked",
       lobbyCode: "ABC123",
+      teamName: "Entry Fraggers",
       description: "Need one entry player.",
     });
 
@@ -312,7 +345,7 @@ describe("Gamer recruitment posts", () => {
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({
       isTeamFound: true,
-      message: "Đã tìm thấy đồng đội",
+      message: "Teammate found",
     });
     expect(response.body.recruitment).toMatchObject({
       id: recruitment._id.toString(),
@@ -324,6 +357,7 @@ describe("Gamer recruitment posts", () => {
       slotsRemaining: 2,
       playMode: "ranked",
       description: "Need one entry player.",
+      teamName: "Entry Fraggers",
       status: "open",
     });
     expect(response.body.teamMatch).toMatchObject({
@@ -333,6 +367,7 @@ describe("Gamer recruitment posts", () => {
       teamSize: 4,
       playMode: "ranked",
       lobbyCode: "ABC123",
+      teamName: "Entry Fraggers",
       description: "Need one entry player.",
       status: "active",
     });
@@ -354,6 +389,8 @@ describe("Gamer recruitment posts", () => {
         teamSize: 4,
         playMode: "ranked",
         lobbyCode: "ABC123",
+        teamName: "Entry Fraggers",
+        description: "Need one entry player.",
       }),
     });
     expect(response.body.chatMatch.users.map((user) => user.id).sort()).toEqual([
@@ -421,6 +458,7 @@ describe("Gamer recruitment posts", () => {
       currentRank: "Gold",
       teamSize: 2,
       playMode: "casual",
+      teamName: "Owner Test Squad",
     });
 
     const response = await request(app)
@@ -443,6 +481,7 @@ describe("Gamer recruitment posts", () => {
       currentRank: "Crown",
       teamSize: 4,
       playMode: "ranked",
+      teamName: "Crown Push Squad",
       description: "Need two more.",
     });
 
@@ -497,6 +536,7 @@ describe("Gamer recruitment posts", () => {
       currentRank: "Gold",
       teamSize: 4,
       playMode: "ranked",
+      teamName: "Closing TFT Squad",
       description: "Closing this lobby.",
     });
     await GamerTeamMatch.create({
@@ -508,6 +548,7 @@ describe("Gamer recruitment posts", () => {
       lobbyGroup: "group1",
       teamSize: 4,
       playMode: "ranked",
+      teamName: "Closing TFT Squad",
       description: "Closing this lobby.",
     });
     app.set("io", { to });
@@ -524,7 +565,7 @@ describe("Gamer recruitment posts", () => {
     });
     expect(to).toHaveBeenCalledWith(`user:${joiner._id}`);
     expect(emit).toHaveBeenCalledWith("gamer_lobby:team_dissolved", {
-      message: "Đội bạn đã giải tán",
+      message: "Your team has been dissolved",
       recruitment: expect.objectContaining({
         id: recruitment._id.toString(),
         status: "closed",

@@ -58,6 +58,12 @@ const gamerRecruitmentSchema = new mongoose.Schema(
       maxlength: 6,
       default: "",
     },
+    teamName: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      required: true,
+    },
     note: {
       type: String,
       trim: true,

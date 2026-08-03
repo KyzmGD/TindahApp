@@ -97,6 +97,7 @@ function validateRecruitmentPayload(payload = {}) {
   const lobbyCode = String(payload.lobbyCode || "")
     .trim()
     .toUpperCase();
+  const teamName = String(payload.teamName ?? payload.team ?? payload.title ?? "").trim();
   const description = String(
     payload.description ?? payload.desc ?? payload.note ?? "",
   ).trim();
@@ -132,6 +133,12 @@ function validateRecruitmentPayload(payload = {}) {
     errors.lobbyCode = "Lobby code can contain up to 6 letters or numbers.";
   }
 
+  if (!teamName) {
+    errors.teamName = "Team name is required.";
+  } else if (teamName.length > 60) {
+    errors.teamName = "Team name must be 60 characters or fewer.";
+  }
+
   if (description.length > 300) {
     errors.description = "Description must be 300 characters or fewer.";
   }
@@ -145,6 +152,7 @@ function validateRecruitmentPayload(payload = {}) {
       teamSize,
       playMode,
       lobbyCode,
+      teamName,
       note: description.slice(0, 160),
       description,
     },
@@ -178,6 +186,7 @@ function mapRecruitmentPost(post) {
     slotsRemaining: Math.max(0, (post.teamSize || 0) - memberCount),
     playMode: post.playMode,
     lobbyCode: post.lobbyCode || "",
+    teamName: post.teamName || "",
     description: post.description || post.note || "",
     note: post.description || post.note || "",
     status: post.status,
@@ -205,6 +214,7 @@ function mapGamerTeamMatch(teamMatch) {
     teamSize: teamMatch.teamSize,
     playMode: teamMatch.playMode,
     lobbyCode: teamMatch.lobbyCode || "",
+    teamName: teamMatch.teamName || "",
     description: teamMatch.description,
     status: teamMatch.status,
     matchedAt: teamMatch.matchedAt,
@@ -259,6 +269,8 @@ function buildGamerMatchContext(recruitment, teamMatchId) {
     teamSize: recruitment.teamSize,
     playMode: recruitment.playMode,
     lobbyCode: recruitment.lobbyCode || "",
+    teamName: recruitment.teamName || "",
+    description: recruitment.description || recruitment.note || "",
   };
 }
 
@@ -503,7 +515,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
 
     return {
       isTeamFound: true,
-      message: "Đã tìm thấy đồng đội",
+      message: "Teammate found",
       recruitment: mapRecruitmentPost(recruitment),
       teamMatch: mapGamerTeamMatch(existingMatch),
       chatMatch: mapChatMatch(chatMatch),
@@ -557,6 +569,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
       teamSize: reservedRecruitment.teamSize,
       playMode: reservedRecruitment.playMode,
       lobbyCode: reservedRecruitment.lobbyCode || "",
+      teamName: reservedRecruitment.teamName || "",
       description: reservedRecruitment.description || reservedRecruitment.note || "",
       matchedAt: new Date(),
     });
@@ -578,7 +591,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
 
     return {
       isTeamFound: true,
-      message: "Đã tìm thấy đồng đội",
+      message: "Teammate found",
       recruitment: mapRecruitmentPost(reservedRecruitment),
       teamMatch: mapGamerTeamMatch(populatedMatch),
       chatMatch: mapChatMatch(chatMatch),
@@ -603,7 +616,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
 
     return {
       isTeamFound: true,
-      message: "Đã tìm thấy đồng đội",
+      message: "Teammate found",
       recruitment: mapRecruitmentPost(recruitment),
       teamMatch: mapGamerTeamMatch(match),
       chatMatch: mapChatMatch(chatMatch),

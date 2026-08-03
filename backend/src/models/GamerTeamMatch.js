@@ -68,6 +68,12 @@ const gamerTeamMatchSchema = new mongoose.Schema(
       maxlength: 6,
       default: "",
     },
+    teamName: {
+      type: String,
+      trim: true,
+      maxlength: 60,
+      default: "",
+    },
     description: {
       type: String,
       trim: true,

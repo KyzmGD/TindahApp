@@ -77,7 +77,7 @@ const closeRecruitmentPost = asyncHandler(async (req, res) => {
   if (result.wasClosed) {
     result.dissolvedUserIds.forEach((userId) => {
       io?.to(`user:${userId}`).emit("gamer_lobby:team_dissolved", {
-        message: "Đội bạn đã giải tán",
+        message: "Your team has been dissolved",
         recruitment: result.recruitment,
       });
     });

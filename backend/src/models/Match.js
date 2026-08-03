@@ -18,6 +18,8 @@ const gamerContextSchema = new mongoose.Schema(
     teamSize: Number,
     playMode: String,
     lobbyCode: String,
+    teamName: String,
+    description: String,
   },
   { _id: false },
 );

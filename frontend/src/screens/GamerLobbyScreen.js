@@ -4,6 +4,7 @@ import {
   Animated,
   Alert,
   Image,
+  ImageBackground,
   Modal,
   Platform,
   Pressable,
@@ -27,13 +28,26 @@ import { useTheme } from "../theme/ThemeContext";
 
 const FALLBACK_AVATAR = "https://i.pravatar.cc/300";
 const LOBBY_CODE_GAMES = ["Valorant", "FreeFire", "LienQuan"];
+const GAME_BACKGROUNDS = {
+  Valorant: require("../../assets/games/e1ba56c2480992f0e85b03258b12647e03222869-854x484.png"),
+  PUBGMobile: require("../../assets/games/pubg-playerunknowns-battlegrounds-lighthouse-z425.jpg"),
+  FreeFire: require("../../assets/games/freefire2.webp"),
+  TFT: require("../../assets/games/tft1.jpg"),
+  LienQuan: require("../../assets/games/lienquan1.jpg"),
+};
+const RECRUITMENT_BACKGROUNDS = {
+  Valorant: require("../../assets/games/valorant2.png"),
+  PUBGMobile: require("../../assets/games/pubg2.jpg"),
+  FreeFire: require("../../assets/games/freefire2.jpg"),
+};
 
 const GAME_CONFIGS = [
   {
     game: "Valorant",
     label: "Valorant",
     icon: "V",
-    color: "#ff4655",
+    logo: require("../../assets/games/logovalorant.jpg"),
+    color: "#ff5a66",
     lobbies: [
       { value: "group1", label: "Iron-Gold", detail: "Iron, Bronze, Silver, Gold", defaultRank: "Gold" },
       { value: "group2", label: "Plat-Asc", detail: "Platinum, Diamond, Ascendant", defaultRank: "Platinum" },
@@ -44,6 +58,7 @@ const GAME_CONFIGS = [
     game: "PUBGMobile",
     label: "PUBG Mobile",
     icon: "P",
+    logo: require("../../assets/games/logopubg.webp"),
     color: "#f5b342",
     lobbies: [
       { value: "group1", label: "Bronze-Plat", detail: "Bronze, Silver, Gold, Platinum", defaultRank: "Platinum" },
@@ -55,6 +70,7 @@ const GAME_CONFIGS = [
     game: "FreeFire",
     label: "Free Fire",
     icon: "F",
+    logo: require("../../assets/games/logofreefire.jpg"),
     color: "#ff7a1a",
     lobbies: [
       { value: "group1", label: "Plat-Diamond", detail: "Platinum, Diamond", defaultRank: "Diamond" },
@@ -65,6 +81,7 @@ const GAME_CONFIGS = [
     game: "TFT",
     label: "TFT",
     icon: "T",
+    logo: require("../../assets/games/logotft.jpg"),
     color: "#6dd6ff",
     lobbies: [
       { value: "group1", label: "Bronze-Gold", detail: "Bronze, Silver, Gold", defaultRank: "Gold" },
@@ -76,6 +93,7 @@ const GAME_CONFIGS = [
     game: "LienQuan",
     label: "Lien Quan",
     icon: "L",
+    logo: require("../../assets/games/logolienquan.jpg"),
     color: "#8f7cff",
     lobbies: [
       { value: "group1", label: "Bronze-Gold", detail: "Bronze, Silver, Gold", defaultRank: "Gold" },
@@ -259,6 +277,7 @@ function RecruitmentCard({ post, gameConfig, colors, index }) {
   const entrance = useRef(new Animated.Value(0)).current;
   const owner = post.owner || {};
   const memberCount = post.memberCount || 1;
+  const teamName = String(post.teamName || "").trim() || `${gameConfig.label} squad`;
 
   useEffect(() => {
     Animated.timing(entrance, {
@@ -300,10 +319,10 @@ function RecruitmentCard({ post, gameConfig, colors, index }) {
         </View>
         <View style={styles.identity}>
           <Text style={[styles.recruitmentTitle, { color: colors.text }]} numberOfLines={1}>
-            {owner.name || "Gamer"} is recruiting
+            {teamName}
           </Text>
           <Text style={[styles.distance, { color: colors.muted }]}>
-            {owner.isOnline ? "Online now" : "Recently active"}
+            Posted by {owner.name || "Gamer"} - {owner.isOnline ? "Online now" : "Recently active"}
           </Text>
         </View>
         <View style={[styles.recruitmentMode, { backgroundColor: gameConfig.color }]}>
@@ -351,6 +370,7 @@ function SwipeRecruitmentCard({
   const memberCount = post.memberCount || 1;
   const isMine = getUserId(owner) === getUserId(currentUser);
   const isBusy = Boolean(joiningRecruitmentId || closingRecruitmentId);
+  const teamName = String(post.teamName || "").trim() || `${gameConfig.label} squad`;
 
   return (
     <Pressable
@@ -396,10 +416,10 @@ function SwipeRecruitmentCard({
         </View>
         <View style={[styles.recruitingBadge, { backgroundColor: colors.elevated }]}>
           <View style={[styles.recruitingDot, { backgroundColor: colors.success }]} />
-          <Text style={[styles.recruitingText, { color: colors.success }]}>Đang chiêu mộ</Text>
+          <Text style={[styles.recruitingText, { color: colors.success }]}>Recruiting now</Text>
         </View>
         <Text style={[styles.swipeName, { color: colors.text }]} numberOfLines={1}>
-          {gameConfig.label} squad
+          {teamName}
         </Text>
         <Text style={[styles.swipeSubtitle, { color: colors.muted }]}>
           {modeLabel} - {memberCount}/{post.teamSize} players - {post.lobbyGroup?.toUpperCase()}
@@ -526,20 +546,22 @@ function GamerRecruitmentBoard({
 }) {
   if (!posts.length) {
     return (
-      <View
-        style={[
+      <Pressable
+        style={({ hovered }) => [
           styles.swipeEmpty,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.border,
+            borderColor: hovered ? gameConfig.color : colors.border,
+            shadowColor: gameConfig.color,
           },
+          hovered && styles.floatingPanelHover,
         ]}
       >
         <Text style={[styles.emptyTitle, { color: colors.text }]}>No recruitment posts</Text>
         <Text style={[styles.emptyText, { color: colors.muted }]}>
           Open Recruit and post your own squad request for this lobby.
         </Text>
-      </View>
+      </Pressable>
     );
   }
 
@@ -603,7 +625,7 @@ export default function GamerLobbyScreen({ navigation }) {
   const { user: currentUser } = useAuth();
   const { socket } = useSocket();
   const { theme } = useTheme();
-  const colors = theme.colors;
+  const baseColors = theme.colors;
   const { width: screenWidth } = useWindowDimensions();
   const compactHeader = screenWidth < 430;
   const [selectedGame, setSelectedGame] = useState(GAME_CONFIGS[0].game);
@@ -611,6 +633,131 @@ export default function GamerLobbyScreen({ navigation }) {
     () => GAME_CONFIGS.find((config) => config.game === selectedGame) || GAME_CONFIGS[0],
     [selectedGame],
   );
+  const activeGameBackground = GAME_BACKGROUNDS[selectedGameConfig.game];
+  const activeRecruitmentBackground = RECRUITMENT_BACKGROUNDS[selectedGameConfig.game];
+  const colors = useMemo(() => {
+    if (selectedGameConfig.game === "Valorant") {
+      return {
+        ...baseColors,
+        screen: "#050711",
+        surface: "rgba(9,15,28,0.78)",
+        elevated: "rgba(15,23,42,0.82)",
+        elevatedAlt: "rgba(28,38,64,0.9)",
+        border: "rgba(45,212,191,0.24)",
+        borderStrong: "rgba(255,90,102,0.5)",
+        text: "#f9fafb",
+        muted: "#d9e2e2",
+        dim: "#9fb3bb",
+        primary: "#ff5a66",
+        primaryStrong: "#ff3347",
+        primarySoft: "rgba(255,90,102,0.18)",
+        accent: "#2dd4bf",
+        accentSoft: "rgba(45,212,191,0.16)",
+        success: "#2dd4bf",
+        danger: "#ff5a66",
+        overlay: "rgba(4,8,18,0.72)",
+        shadow: "#2dd4bf",
+      };
+    }
+
+    if (selectedGameConfig.game === "PUBGMobile") {
+      return {
+        ...baseColors,
+        screen: "#061014",
+        surface: "rgba(8,21,24,0.8)",
+        elevated: "rgba(23,30,25,0.84)",
+        elevatedAlt: "rgba(45,48,32,0.9)",
+        border: "rgba(245,179,66,0.28)",
+        borderStrong: "rgba(245,179,66,0.58)",
+        text: "#fff8df",
+        muted: "#ead7a6",
+        dim: "#b8aa7f",
+        primary: "#f5b342",
+        primaryStrong: "#ff9f1a",
+        primarySoft: "rgba(245,179,66,0.2)",
+        accent: "#28d4e8",
+        accentSoft: "rgba(40,212,232,0.15)",
+        success: "#f5b342",
+        danger: "#ff6b35",
+        overlay: "rgba(4,8,7,0.72)",
+        shadow: "#f5b342",
+      };
+    }
+
+    if (selectedGameConfig.game === "FreeFire") {
+      return {
+        ...baseColors,
+        screen: "#130806",
+        surface: "rgba(24,12,8,0.8)",
+        elevated: "rgba(42,22,13,0.84)",
+        elevatedAlt: "rgba(68,31,14,0.92)",
+        border: "rgba(255,122,26,0.3)",
+        borderStrong: "rgba(255,196,87,0.6)",
+        text: "#fff6e7",
+        muted: "#f1c899",
+        dim: "#ba8c68",
+        primary: "#ff7a1a",
+        primaryStrong: "#ff4d00",
+        primarySoft: "rgba(255,122,26,0.2)",
+        accent: "#ffc857",
+        accentSoft: "rgba(255,200,87,0.15)",
+        success: "#ffc857",
+        danger: "#ff4d00",
+        overlay: "rgba(12,5,3,0.74)",
+        shadow: "#ff7a1a",
+      };
+    }
+
+    if (selectedGameConfig.game === "TFT") {
+      return {
+        ...baseColors,
+        screen: "#050917",
+        surface: "rgba(8,14,32,0.8)",
+        elevated: "rgba(16,24,48,0.84)",
+        elevatedAlt: "rgba(28,38,72,0.92)",
+        border: "rgba(109,214,255,0.3)",
+        borderStrong: "rgba(255,211,102,0.56)",
+        text: "#f7fbff",
+        muted: "#c9daf6",
+        dim: "#93a7c7",
+        primary: "#6dd6ff",
+        primaryStrong: "#38bdf8",
+        primarySoft: "rgba(109,214,255,0.18)",
+        accent: "#ffd166",
+        accentSoft: "rgba(255,209,102,0.15)",
+        success: "#a7f3d0",
+        danger: "#ff6b9a",
+        overlay: "rgba(3,7,18,0.74)",
+        shadow: "#6dd6ff",
+      };
+    }
+
+    if (selectedGameConfig.game === "LienQuan") {
+      return {
+        ...baseColors,
+        screen: "#070618",
+        surface: "rgba(12,10,32,0.8)",
+        elevated: "rgba(25,18,52,0.84)",
+        elevatedAlt: "rgba(42,28,78,0.92)",
+        border: "rgba(143,124,255,0.32)",
+        borderStrong: "rgba(255,214,102,0.58)",
+        text: "#fbf8ff",
+        muted: "#d9d0ff",
+        dim: "#aa9dd2",
+        primary: "#8f7cff",
+        primaryStrong: "#7c5cff",
+        primarySoft: "rgba(143,124,255,0.2)",
+        accent: "#ffd666",
+        accentSoft: "rgba(255,214,102,0.15)",
+        success: "#7ef7d4",
+        danger: "#ff6b9a",
+        overlay: "rgba(5,4,18,0.74)",
+        shadow: "#8f7cff",
+      };
+    }
+
+    return baseColors;
+  }, [baseColors, selectedGameConfig.game]);
   const [selectedLobby, setSelectedLobby] = useState(selectedGameConfig.lobbies[0].value);
   const selectedLobbyConfig = useMemo(
     () =>
@@ -621,6 +768,7 @@ export default function GamerLobbyScreen({ navigation }) {
   const [recruitments, setRecruitments] = useState([]);
   const [teamSize, setTeamSize] = useState(4);
   const [playMode, setPlayMode] = useState("ranked");
+  const [recruitmentTeamName, setRecruitmentTeamName] = useState("");
   const [recruitmentLobbyCode, setRecruitmentLobbyCode] = useState("");
   const [recruitmentNote, setRecruitmentNote] = useState("");
   const [recruitmentError, setRecruitmentError] = useState("");
@@ -835,6 +983,14 @@ export default function GamerLobbyScreen({ navigation }) {
     }
 
     const normalizedLobbyCode = normalizeLobbyCode(recruitmentLobbyCode, selectedGameConfig.game);
+    const normalizedTeamName = recruitmentTeamName.trim();
+
+    if (!normalizedTeamName) {
+      const message = "Team name is required.";
+      setRecruitmentError(message);
+      Alert.alert("Missing team name", message);
+      return;
+    }
 
     if (
       selectedLobbyCodeRule.required &&
@@ -853,8 +1009,9 @@ export default function GamerLobbyScreen({ navigation }) {
         currentRank: selectedLobbyConfig.defaultRank,
         teamSize,
         playMode,
+        teamName: normalizedTeamName,
         lobbyCode: normalizedLobbyCode,
-        description: recruitmentNote,
+        description: recruitmentNote.trim(),
       });
       const createdRecruitment = data.recruitment;
       const createdRecruitmentId = getRecruitmentId(createdRecruitment);
@@ -867,6 +1024,7 @@ export default function GamerLobbyScreen({ navigation }) {
         createdRecruitment,
         ...current.filter((post) => getRecruitmentId(post) !== createdRecruitmentId),
       ]);
+      setRecruitmentTeamName("");
       setRecruitmentNote("");
       setRecruitmentLobbyCode("");
       setRecruitmentVisible(false);
@@ -885,41 +1043,72 @@ export default function GamerLobbyScreen({ navigation }) {
     }
   };
 
-  const renderGameChip = (config) => {
+  const renderGameChip = (config, variant = "main") => {
     const selected = selectedGame === config.game;
+    const isSheet = variant === "sheet";
 
     return (
       <Pressable
         key={config.game}
         onPress={() => handleSelectGame(config.game)}
         style={({ hovered, pressed }) => [
-          styles.gameChip,
-          compactHeader && styles.gameChipCompact,
+          isSheet ? styles.sheetGameChip : styles.gameChip,
+          !isSheet && compactHeader && styles.gameChipCompact,
           {
-            backgroundColor: selected ? config.color : colors.elevated,
+            backgroundColor: selected ? colors.primarySoft : colors.elevated,
             borderColor: selected ? config.color : colors.border,
+            shadowColor: config.color,
           },
-          hovered && styles.gameChipHover,
+          hovered && [styles.gameChipHover, { borderColor: config.color }],
           pressed && styles.pressed,
         ]}
+        accessibilityLabel={config.label}
       >
-        <Text style={[styles.gameIcon, { color: selected ? "#ffffff" : config.color }]}>
-          {config.icon}
-        </Text>
-        <Text style={[styles.gameLabel, { color: selected ? "#ffffff" : colors.text }]}>
-          {config.label}
-        </Text>
+        {({ hovered }) => (
+          <>
+            <View
+              style={[
+                styles.gameLogoFrame,
+                {
+                  borderColor: selected || hovered ? config.color : "transparent",
+                },
+              ]}
+            >
+              <Image source={config.logo} style={styles.gameLogo} resizeMode="cover" />
+              {hovered ? (
+                <View style={[styles.gameNameOverlay, { backgroundColor: `${config.color}e6` }]}>
+                  <Text style={styles.gameNameOverlayText} numberOfLines={1}>
+                    {config.label}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </>
+        )}
       </Pressable>
     );
   };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
+      {activeGameBackground ? (
+        <ImageBackground
+          source={activeGameBackground}
+          style={styles.gameBackgroundLayer}
+          imageStyle={styles.gameBackgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.gameBackgroundTint} />
+        </ImageBackground>
+      ) : null}
       <View
         style={[
           styles.header,
           compactHeader && styles.headerCompact,
-          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+          {
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border,
+          },
         ]}
       >
         <View style={styles.headerCopy}>
@@ -941,7 +1130,10 @@ export default function GamerLobbyScreen({ navigation }) {
               hovered && {
                 backgroundColor: colors.elevatedAlt,
                 borderColor: colors.success,
-                transform: [{ translateY: -1 }],
+                shadowColor: colors.success,
+                shadowOpacity: 0.24,
+                shadowRadius: 14,
+                transform: [{ translateY: -2 }, { scale: 1.03 }],
               },
               pressed && styles.pressed,
               (refreshing || loading) && styles.disabled,
@@ -962,7 +1154,10 @@ export default function GamerLobbyScreen({ navigation }) {
               hovered && {
                 backgroundColor: colors.elevatedAlt,
                 borderColor: selectedGameConfig.color,
-                transform: [{ translateY: -1 }],
+                shadowColor: selectedGameConfig.color,
+                shadowOpacity: 0.26,
+                shadowRadius: 16,
+                transform: [{ translateY: -2 }, { scale: 1.03 }],
               },
               pressed && styles.pressed,
             ]}
@@ -985,14 +1180,9 @@ export default function GamerLobbyScreen({ navigation }) {
             {GAME_CONFIGS.map(renderGameChip)}
           </View>
         ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            alwaysBounceHorizontal
-            contentContainerStyle={styles.gameStrip}
-          >
+          <View style={styles.gameStrip}>
             {GAME_CONFIGS.map(renderGameChip)}
-          </ScrollView>
+          </View>
         )}
 
         <View style={styles.lobbySection}>
@@ -1013,7 +1203,10 @@ export default function GamerLobbyScreen({ navigation }) {
                     },
                     hovered && {
                       borderColor: selectedGameConfig.color,
-                      transform: [{ translateY: -2 }],
+                      shadowColor: selectedGameConfig.color,
+                      shadowOpacity: 0.22,
+                      shadowRadius: 14,
+                      transform: [{ translateY: -4 }, { scale: 1.015 }],
                     },
                     pressed && styles.pressed,
                   ]}
@@ -1041,10 +1234,20 @@ export default function GamerLobbyScreen({ navigation }) {
             <Text style={[styles.loadingText, { color: colors.muted }]}>Finding teammates...</Text>
           </View>
         ) : error ? (
-          <View style={[styles.empty, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Pressable
+            style={({ hovered }) => [
+              styles.empty,
+              {
+                backgroundColor: colors.surface,
+                borderColor: hovered ? selectedGameConfig.color : colors.border,
+                shadowColor: selectedGameConfig.color,
+              },
+              hovered && styles.floatingPanelHover,
+            ]}
+          >
             <Text style={[styles.emptyTitle, { color: colors.text }]}>Lobby unavailable</Text>
             <Text style={[styles.emptyText, { color: colors.muted }]}>{error}</Text>
-          </View>
+          </Pressable>
         ) : (
           <GamerRecruitmentBoard
             posts={recruitments}
@@ -1088,6 +1291,17 @@ export default function GamerLobbyScreen({ navigation }) {
               </Text>
             </View>
             <Text style={[styles.teamFoundTitle, { color: colors.text }]}>Teammate found</Text>
+            {teamFound?.teamMatch?.teamName ? (
+              <Text
+                style={[
+                  styles.teamFoundTeamName,
+                  { color: getGameConfig(teamFound?.recruitment?.gameName).color },
+                ]}
+                numberOfLines={2}
+              >
+                {teamFound.teamMatch.teamName}
+              </Text>
+            ) : null}
             <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
               {getGameConfig(teamFound?.recruitment?.gameName).label} - Team{" "}
               {teamFound?.teamMatch?.teamSize} -{" "}
@@ -1170,17 +1384,31 @@ export default function GamerLobbyScreen({ navigation }) {
             style={[
               styles.filtersSheet,
               {
-                backgroundColor: colors.screen,
+                backgroundColor: activeRecruitmentBackground ? "rgba(4,8,18,0.92)" : colors.screen,
                 borderColor: colors.border,
               },
             ]}
           >
-            <View style={[styles.sheetHandle, { backgroundColor: colors.borderStrong }]} />
+            {activeRecruitmentBackground ? (
+              <ImageBackground
+                source={activeRecruitmentBackground}
+                style={styles.recruitmentBackgroundLayer}
+                imageStyle={styles.recruitmentBackgroundImage}
+                resizeMode="cover"
+              >
+                <View style={styles.recruitmentBackgroundTint} />
+              </ImageBackground>
+            ) : null}
+            {activeRecruitmentBackground ? null : (
+              <View style={[styles.sheetHandle, { backgroundColor: colors.borderStrong }]} />
+            )}
             <View
               style={[
                 styles.filtersHeader,
                 {
-                  backgroundColor: colors.surface,
+                  backgroundColor: activeRecruitmentBackground
+                    ? "rgba(8,13,28,0.74)"
+                    : colors.surface,
                   borderBottomColor: colors.border,
                 },
               ]}
@@ -1220,32 +1448,7 @@ export default function GamerLobbyScreen({ navigation }) {
             >
               <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Game</Text>
               <View style={styles.sheetGameGrid}>
-                {GAME_CONFIGS.map((config) => {
-                  const selected = selectedGame === config.game;
-
-                  return (
-                    <Pressable
-                      key={config.game}
-                      onPress={() => handleSelectGame(config.game)}
-                      style={({ hovered, pressed }) => [
-                        styles.sheetGameChip,
-                        {
-                          backgroundColor: selected ? config.color : colors.elevated,
-                          borderColor: selected ? config.color : colors.border,
-                        },
-                        hovered && { borderColor: config.color, transform: [{ translateY: -2 }] },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[styles.gameIcon, { color: selected ? "#ffffff" : config.color }]}>
-                        {config.icon}
-                      </Text>
-                      <Text style={[styles.gameLabel, { color: selected ? "#ffffff" : colors.text }]}>
-                        {config.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {GAME_CONFIGS.map((config) => renderGameChip(config, "sheet"))}
               </View>
 
               <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Rank lobby</Text>
@@ -1265,7 +1468,10 @@ export default function GamerLobbyScreen({ navigation }) {
                         },
                         hovered && {
                           borderColor: selectedGameConfig.color,
-                          transform: [{ translateY: -2 }],
+                          shadowColor: selectedGameConfig.color,
+                          shadowOpacity: 0.22,
+                          shadowRadius: 14,
+                          transform: [{ translateY: -4 }, { scale: 1.015 }],
                         },
                         pressed && styles.pressed,
                       ]}
@@ -1345,6 +1551,27 @@ export default function GamerLobbyScreen({ navigation }) {
                 })}
               </View>
 
+              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Team name</Text>
+              <TextInput
+                value={recruitmentTeamName}
+                onChangeText={setRecruitmentTeamName}
+                maxLength={60}
+                placeholder={`Example: ${selectedGameConfig.label} night squad`}
+                placeholderTextColor={colors.dim}
+                autoCapitalize="words"
+                style={[
+                  styles.teamNameInput,
+                  {
+                    backgroundColor: colors.elevated,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
+              />
+              <Text style={[styles.descriptionCounter, { color: colors.muted }]}>
+                {recruitmentTeamName.length}/60
+              </Text>
+
               {LOBBY_CODE_GAMES.includes(selectedGameConfig.game) ? (
                 <>
                   <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Lobby code</Text>
@@ -1414,6 +1641,20 @@ export default function GamerLobbyScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  gameBackgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  gameBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  gameBackgroundTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,8,18,0.22)",
   },
   header: {
     paddingTop: 16,
@@ -1510,57 +1751,98 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   gameStrip: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
-    paddingRight: 42,
+    alignItems: "center",
+    justifyContent: "center",
   },
   gameGridCompact: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    justifyContent: "center",
   },
   gameChip: {
-    width: 112,
-    minHeight: 62,
+    width: 74,
+    aspectRatio: 1,
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    alignItems: "flex-start",
+    padding: 0,
+    alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    overflow: "visible",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   gameChipCompact: {
-    flexGrow: 1,
-    flexBasis: "31%",
-    minWidth: 96,
-    maxWidth: "48%",
-    minHeight: 58,
-    paddingHorizontal: 12,
+    width: 72,
+    minWidth: 72,
+    maxWidth: 72,
+    minHeight: 72,
+    flexGrow: 0,
+    flexBasis: 72,
   },
   gameChipHover: {
-    transform: [{ translateY: -2 }, { scale: 1.02 }],
+    transform: [{ translateY: -6 }, { scale: 1.09 }, { rotate: "-1deg" }],
+    shadowOpacity: 0.42,
+    shadowRadius: 18,
   },
-  gameIcon: {
-    fontSize: 19,
-    fontWeight: "900",
+  gameLogoFrame: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  gameLabel: {
-    fontSize: 13,
+  gameLogo: {
+    width: "100%",
+    height: "100%",
+  },
+  gameNameOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    minHeight: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  gameNameOverlayText: {
+    color: "#ffffff",
+    fontSize: 10,
     fontWeight: "900",
+    textAlign: "center",
   },
   sheetGameGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    justifyContent: "center",
   },
   sheetGameChip: {
-    flexGrow: 1,
-    flexBasis: "44%",
-    minHeight: 62,
+    width: 76,
+    minWidth: 76,
+    maxWidth: 76,
+    aspectRatio: 1,
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 14,
+    padding: 0,
+    alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    overflow: "visible",
+    flexGrow: 0,
+    flexBasis: 76,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   lobbySection: {
     gap: 10,
@@ -1584,6 +1866,10 @@ const styles = StyleSheet.create({
     padding: 12,
     justifyContent: "center",
     gap: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   lobbyOptionTitle: {
     fontSize: 14,
@@ -1642,6 +1928,15 @@ const styles = StyleSheet.create({
   },
   codeInputGroup: {
     gap: 8,
+  },
+  teamNameInput: {
+    minHeight: 54,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 17,
+    fontWeight: "800",
   },
   codeInput: {
     minHeight: 54,
@@ -1770,6 +2065,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
   },
+  recruitmentBackgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  recruitmentBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+  },
+  recruitmentBackgroundTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(4,8,18,0.48)",
+  },
   sheetHandle: {
     alignSelf: "center",
     width: 58,
@@ -1777,6 +2086,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     marginTop: 10,
     marginBottom: 2,
+    zIndex: 2,
   },
   filtersHeader: {
     minHeight: 72,
@@ -1784,6 +2094,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 18,
+    zIndex: 2,
   },
   headerSide: {
     width: 72,
@@ -1817,6 +2128,7 @@ const styles = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 34,
     gap: 18,
+    zIndex: 2,
   },
   filtersSectionTitle: {
     fontSize: 24,
@@ -2097,6 +2409,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  teamFoundTeamName: {
+    marginTop: -8,
+    fontSize: 18,
+    fontWeight: "900",
+    textAlign: "center",
+  },
   teamFoundUsers: {
     width: "100%",
     flexDirection: "row",
@@ -2280,6 +2598,13 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.78,
     transform: [{ scale: 0.97 }],
+  },
+  floatingPanelHover: {
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    transform: [{ translateY: -3 }, { scale: 1.005 }],
+    elevation: 5,
   },
   disabled: {
     opacity: 0.55,
