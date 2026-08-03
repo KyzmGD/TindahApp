@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  ImageBackground,
   Modal,
   Pressable,
   RefreshControl,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Slider from "@react-native-community/slider";
@@ -26,6 +28,7 @@ const GENDER_OPTIONS = [
   { label: "Other", value: "other" },
 ];
 const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
+const EXPLORE_BACKGROUND = require("../../assets/explore-hearts-bg.png");
 const SEARCH_FILTER_CONFIGS = {
   interests: {
     icon: "TAG",
@@ -294,10 +297,23 @@ function ExploreSkeleton({ colors }) {
   );
 }
 
+function TindahLogo({ color }) {
+  return (
+    <View style={styles.brandMark} accessible={false}>
+      <View style={[styles.brandEnvelope, { borderColor: color }]}>
+        <View style={[styles.brandEnvelopeLine, styles.brandEnvelopeLineLeft, { backgroundColor: color }]} />
+        <View style={[styles.brandEnvelopeLine, styles.brandEnvelopeLineRight, { backgroundColor: color }]} />
+        <Text style={[styles.brandHeart, { color }]}>{"\u2665"}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function ExploreScreen() {
   const { user, updateProfile } = useAuth();
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
   const [users, setUsers] = useState([]);
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -311,6 +327,18 @@ export default function ExploreScreen() {
   const [activeSearchFilterId, setActiveSearchFilterId] = useState(null);
   const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
   const pulse = useRef(new Animated.Value(0)).current;
+  const cardFrameStyle = useMemo(() => {
+    const isWide = viewportWidth >= 768;
+    const horizontalSpace = isWide ? 96 : 34;
+    const maxWidth = isWide ? 430 : 372;
+    const minHeight = isWide ? 470 : 410;
+    const maxHeight = isWide ? 585 : 540;
+
+    return {
+      width: Math.min(Math.max(viewportWidth - horizontalSpace, 288), maxWidth),
+      height: Math.min(Math.max(viewportHeight * 0.58, minHeight), maxHeight),
+    };
+  }, [viewportHeight, viewportWidth]);
 
   const loadProfiles = useCallback(async () => {
     setError("");
@@ -573,26 +601,35 @@ const [matchedMatch, setMatchedMatch] =
 };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.screen }]}>
+    <ImageBackground
+      source={EXPLORE_BACKGROUND}
+      style={[styles.screen, { backgroundColor: colors.screen }]}
+      imageStyle={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View pointerEvents="none" style={styles.backgroundTint} />
       <View
         style={[
           styles.header,
           {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.border,
+            backgroundColor: "rgba(14,10,17,0.82)",
+            borderBottomColor: "rgba(255,255,255,0.08)",
           },
         ]}
       >
-        <Text style={[styles.logo, { color: colors.primary }]}>Tindah</Text>
+        <View style={styles.brand}>
+          <TindahLogo color={colors.primary} />
+          <Text style={[styles.logo, { color: colors.primary }]}>Tindah</Text>
+        </View>
         <Pressable
           style={({ hovered, pressed }) => [
             styles.filterButton,
             {
-              backgroundColor: colors.elevated,
-              borderColor: colors.border,
+              backgroundColor: "rgba(32,24,38,0.78)",
+              borderColor: "rgba(255,255,255,0.1)",
             },
             hovered && {
-              backgroundColor: colors.elevatedAlt,
+              backgroundColor: "rgba(255,79,123,0.18)",
               borderColor: colors.accent,
               transform: [{ translateY: -1 }],
             },
@@ -630,9 +667,11 @@ const [matchedMatch, setMatchedMatch] =
         }
       >
         {loading ? (
-          <ExploreSkeleton colors={colors} />
+          <View style={[styles.cardFrame, cardFrameStyle]}>
+            <ExploreSkeleton colors={colors} />
+          </View>
         ) : error ? (
-          <View style={styles.errorBox}>
+          <View style={[styles.errorBox, cardFrameStyle]}>
             <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
             <Pressable
               style={({ hovered, pressed }) => [
@@ -650,13 +689,15 @@ const [matchedMatch, setMatchedMatch] =
             </Pressable>
           </View>
         ) : (
-          <CardStack
-            users={users}
-            remaining={remaining}
-            onNope={(user) => handleSwipe(user, "nope")}
-            onLike={(user) => handleSwipe(user, "like")}
-            onSuperLike={(user) => handleSwipe(user, "superlike")}
-          />
+          <View style={[styles.cardFrame, cardFrameStyle]}>
+            <CardStack
+              users={users}
+              remaining={remaining}
+              onNope={(user) => handleSwipe(user, "nope")}
+              onLike={(user) => handleSwipe(user, "like")}
+              onSuperLike={(user) => handleSwipe(user, "superlike")}
+            />
+          </View>
         )}
       </ScrollView>
       <MatchModal
@@ -1066,7 +1107,7 @@ const [matchedMatch, setMatchedMatch] =
           </View>
         </View>
       </Modal>
-      <View style={[styles.actions, { backgroundColor: colors.screen }]}>
+      <View style={styles.actions}>
         <Pressable
           style={({ hovered, pressed }) => [
             styles.actionButton,
@@ -1154,7 +1195,7 @@ const [matchedMatch, setMatchedMatch] =
           </Animated.Text>
         </Pressable>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -1162,6 +1203,16 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#050506",
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+    opacity: 1,
+  },
+  backgroundTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,6,0.34)",
   },
   header: {
     paddingTop: 16,
@@ -1172,6 +1223,49 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "#121016",
     borderBottomWidth: 1,
+  },
+  brand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  brandMark: {
+    width: 38,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandEnvelope: {
+    width: 34,
+    height: 25,
+    borderWidth: 2,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,79,123,0.08)",
+    overflow: "hidden",
+    transform: [{ rotate: "-2deg" }],
+  },
+  brandEnvelopeLine: {
+    position: "absolute",
+    width: 24,
+    height: 2,
+    top: 7,
+    opacity: 0.9,
+  },
+  brandEnvelopeLineLeft: {
+    left: -3,
+    transform: [{ rotate: "31deg" }],
+  },
+  brandEnvelopeLineRight: {
+    right: -3,
+    transform: [{ rotate: "-31deg" }],
+  },
+  brandHeart: {
+    marginTop: 3,
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 15,
   },
   logo: {
     color: "#ff4f7b",
@@ -1195,8 +1289,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    padding: 16,
-    paddingBottom: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 22,
+  },
+  cardFrame: {
+    alignSelf: "center",
+    borderRadius: 28,
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.26,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 9,
   },
   loading: {
     flex: 1,
@@ -1327,8 +1433,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 20,
+    paddingTop: 12,
     paddingBottom: 16,
-    backgroundColor: "#050506",
+    backgroundColor: "transparent",
+    borderTopWidth: 0,
   },
   actionButton: {
     width: 70,

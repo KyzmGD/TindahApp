@@ -28,10 +28,34 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_META = {
-  Explore: { label: "Explore", icon: "T" },
-  GamerLobby: { label: "Gamer", icon: "G" },
-  Matches: { label: "Matches", icon: "M" },
-  Profile: { label: "Profile", icon: "P" },
+  Explore: {
+    label: "Explore",
+    icon: "T",
+    color: "#ff4f7b",
+    soft: "rgba(255,79,123,0.18)",
+    border: "rgba(255,79,123,0.5)",
+  },
+  GamerLobby: {
+    label: "Games",
+    icon: "G",
+    color: "#20c7ff",
+    soft: "rgba(32,199,255,0.18)",
+    border: "rgba(32,199,255,0.5)",
+  },
+  Matches: {
+    label: "Matches",
+    icon: "M",
+    color: "#c27bff",
+    soft: "rgba(194,123,255,0.18)",
+    border: "rgba(194,123,255,0.48)",
+  },
+  Profile: {
+    label: "Profile",
+    icon: "P",
+    color: "#34d399",
+    soft: "rgba(52,211,153,0.16)",
+    border: "rgba(52,211,153,0.44)",
+  },
 };
 
 const GAME_THEME = {
@@ -75,7 +99,7 @@ function TindahTabBar({
   navigation,
   hasUnreadMatches,
 }) {
-  const { theme } = useTheme();
+  const { mode, theme } = useTheme();
   const colors = theme.colors;
 
   return (
@@ -83,9 +107,9 @@ function TindahTabBar({
       style={[
         styles.tabBar,
         {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          shadowColor: colors.shadow,
+          backgroundColor: "rgba(18,12,24,0.9)",
+          borderTopColor: "rgba(255,255,255,0.1)",
+          shadowColor: mode === "dark" ? "#ff4f7b" : colors.shadow,
         },
       ]}
     >
@@ -95,6 +119,9 @@ function TindahTabBar({
         const meta = TAB_META[route.name] || {
           label: options.tabBarLabel || options.title || route.name,
           icon: route.name.charAt(0),
+          color: colors.primary,
+          soft: colors.primarySoft,
+          border: colors.primary,
         };
 
         const onPress = () => {
@@ -127,15 +154,22 @@ function TindahTabBar({
             onLongPress={onLongPress}
             style={({ hovered, pressed }) => [
               styles.tabItem,
-              isFocused && {
-                backgroundColor: colors.primarySoft,
-                borderWidth: 1,
-                borderColor: colors.primary,
-              },
               hovered && {
-                backgroundColor: colors.accentSoft,
+                backgroundColor: "rgba(255,255,255,0.1)",
                 borderWidth: 1,
-                borderColor: colors.accent,
+                borderColor: "rgba(255,255,255,0.34)",
+                transform: [{ translateY: -1 }],
+              },
+              isFocused && {
+                backgroundColor: meta.soft,
+                borderWidth: 1,
+                borderColor: meta.border,
+                shadowColor: meta.color,
+                shadowOpacity: 0.34,
+              },
+              hovered && isFocused && {
+                backgroundColor: meta.soft,
+                borderColor: "rgba(255,255,255,0.5)",
               },
               pressed && styles.tabItemPressed,
             ]}
@@ -145,8 +179,8 @@ function TindahTabBar({
                 <Text
                   style={[
                     styles.tabIcon,
-                    { color: isFocused ? colors.primary : colors.dim },
-                    hovered && { color: colors.text, transform: [{ scale: 1.08 }] },
+                    { color: isFocused ? meta.color : colors.dim },
+                    hovered && { color: "rgba(255,255,255,0.92)", transform: [{ scale: 1.08 }] },
                   ]}
                 >
                   {meta.icon}
@@ -159,13 +193,28 @@ function TindahTabBar({
                 <Text
                   style={[
                     styles.tabLabel,
-                    { color: isFocused ? colors.primary : colors.dim },
-                    hovered && { color: colors.text },
+                    { color: isFocused ? meta.color : colors.dim },
+                    hovered && { color: "rgba(255,255,255,0.92)" },
                   ]}
                   numberOfLines={1}
                 >
                   {meta.label}
                 </Text>
+                <View
+                  style={[
+                    styles.tabIndicator,
+                    {
+                      backgroundColor: isFocused
+                        ? meta.color
+                        : hovered
+                          ? "rgba(255,255,255,0.72)"
+                          : "transparent",
+                      shadowColor: isFocused ? meta.color : "rgba(255,255,255,0.72)",
+                    },
+                    isFocused && styles.tabIndicatorActive,
+                    hovered && !isFocused && styles.tabIndicatorHover,
+                  ]}
+                />
               </>
             )}
           </Pressable>
@@ -481,21 +530,26 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     paddingBottom: 12,
     borderTopWidth: 1,
-    borderTopColor: "#2c2334",
-    backgroundColor: "#121016",
-    shadowColor: "#20c7ff",
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(18,12,24,0.88)",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
     shadowOffset: { width: 0, height: -8 },
     elevation: 10,
   },
   tabItem: {
     flex: 1,
     height: 52,
-    borderRadius: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 5,
+    overflow: "hidden",
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
   },
   tabItemActive: {
     backgroundColor: "rgba(255,79,123,0.14)",
@@ -516,6 +570,7 @@ const styles = StyleSheet.create({
     color: "#a79aaa",
     fontSize: 12,
     fontWeight: "700",
+    lineHeight: 15,
   },
   tabLabelActive: {
     color: "#ff4f7b",
@@ -527,6 +582,21 @@ const styles = StyleSheet.create({
     color: "#a79aaa",
     fontSize: 16,
     fontWeight: "900",
+  },
+  tabIndicator: {
+    position: "absolute",
+    bottom: 2,
+    width: 18,
+    height: 2,
+    borderRadius: 999,
+  },
+  tabIndicatorActive: {
+    width: 26,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+  },
+  tabIndicatorHover: {
+    width: 20,
   },
   unreadBadge: {
     position: "absolute",

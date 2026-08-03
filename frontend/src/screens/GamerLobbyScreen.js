@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -603,6 +604,8 @@ export default function GamerLobbyScreen({ navigation }) {
   const { socket } = useSocket();
   const { theme } = useTheme();
   const colors = theme.colors;
+  const { width: screenWidth } = useWindowDimensions();
+  const compactHeader = screenWidth < 430;
   const [selectedGame, setSelectedGame] = useState(GAME_CONFIGS[0].game);
   const selectedGameConfig = useMemo(
     () => GAME_CONFIGS.find((config) => config.game === selectedGame) || GAME_CONFIGS[0],
@@ -882,14 +885,50 @@ export default function GamerLobbyScreen({ navigation }) {
     }
   };
 
+  const renderGameChip = (config) => {
+    const selected = selectedGame === config.game;
+
+    return (
+      <Pressable
+        key={config.game}
+        onPress={() => handleSelectGame(config.game)}
+        style={({ hovered, pressed }) => [
+          styles.gameChip,
+          compactHeader && styles.gameChipCompact,
+          {
+            backgroundColor: selected ? config.color : colors.elevated,
+            borderColor: selected ? config.color : colors.border,
+          },
+          hovered && styles.gameChipHover,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={[styles.gameIcon, { color: selected ? "#ffffff" : config.color }]}>
+          {config.icon}
+        </Text>
+        <Text style={[styles.gameLabel, { color: selected ? "#ffffff" : colors.text }]}>
+          {config.label}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.screen }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <View>
+      <View
+        style={[
+          styles.header,
+          compactHeader && styles.headerCompact,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
+        <View style={styles.headerCopy}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>Team up mode</Text>
-          <Text style={[styles.title, { color: colors.text }]}>Gamer Lobby</Text>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+            Gamer Lobby
+          </Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
           <Pressable
             onPress={refresh}
             disabled={refreshing || loading}
@@ -941,38 +980,20 @@ export default function GamerLobbyScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />
         }
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.gameStrip}
-        >
-          {GAME_CONFIGS.map((config) => {
-            const selected = selectedGame === config.game;
-
-            return (
-              <Pressable
-                key={config.game}
-                onPress={() => handleSelectGame(config.game)}
-                style={({ hovered, pressed }) => [
-                  styles.gameChip,
-                  {
-                    backgroundColor: selected ? config.color : colors.elevated,
-                    borderColor: selected ? config.color : colors.border,
-                  },
-                  hovered && styles.gameChipHover,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={[styles.gameIcon, { color: selected ? "#ffffff" : config.color }]}>
-                  {config.icon}
-                </Text>
-                <Text style={[styles.gameLabel, { color: selected ? "#ffffff" : colors.text }]}>
-                  {config.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        {compactHeader ? (
+          <View style={styles.gameGridCompact}>
+            {GAME_CONFIGS.map(renderGameChip)}
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            alwaysBounceHorizontal
+            contentContainerStyle={styles.gameStrip}
+          >
+            {GAME_CONFIGS.map(renderGameChip)}
+          </ScrollView>
+        )}
 
         <View style={styles.lobbySection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Lobby rank</Text>
@@ -1402,6 +1423,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
+  },
+  headerCompact: {
+    alignItems: "flex-start",
+    flexDirection: "column",
+    paddingHorizontal: 18,
+    gap: 10,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
     fontSize: 12,
@@ -1411,6 +1443,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "900",
+    lineHeight: 34,
   },
   livePill: {
     minHeight: 34,
@@ -1436,11 +1469,16 @@ const styles = StyleSheet.create({
     gap: 8,
     flexShrink: 1,
   },
+  headerActionsCompact: {
+    width: "100%",
+    justifyContent: "space-between",
+    flexShrink: 0,
+  },
   headerRefreshButton: {
     minHeight: 36,
     borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1452,10 +1490,11 @@ const styles = StyleSheet.create({
     minHeight: 36,
     borderRadius: 18,
     borderWidth: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
-    maxWidth: 154,
+    flexShrink: 1,
+    maxWidth: 178,
   },
   headerRecruitText: {
     fontSize: 13,
@@ -1472,10 +1511,15 @@ const styles = StyleSheet.create({
   },
   gameStrip: {
     gap: 10,
-    paddingRight: 16,
+    paddingRight: 42,
+  },
+  gameGridCompact: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   gameChip: {
-    minWidth: 112,
+    width: 112,
     minHeight: 62,
     borderRadius: 8,
     borderWidth: 1,
@@ -1483,6 +1527,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "center",
     gap: 3,
+  },
+  gameChipCompact: {
+    flexGrow: 1,
+    flexBasis: "31%",
+    minWidth: 96,
+    maxWidth: "48%",
+    minHeight: 58,
+    paddingHorizontal: 12,
   },
   gameChipHover: {
     transform: [{ translateY: -2 }, { scale: 1.02 }],

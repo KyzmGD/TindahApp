@@ -1,4 +1,4 @@
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, StyleSheet, Text, View } from "react-native";
 
 const fallbackImages = [
   "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
@@ -15,6 +15,7 @@ export default function UserCard({ user, style, remaining = 0 }) {
     fallbackImages[
       Math.abs((user?.name || "A").charCodeAt(0)) % fallbackImages.length
     ];
+  const avatarUrl = user?.avatarUrl || primaryPhoto || imageUrl;
   const matchScore = user?.matchScore ?? 92;
   const interests = (
     user?.interests || ["Dating", "Coffee", "Indie music"]
@@ -43,17 +44,26 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
         <View style={styles.content}>
           <View style={styles.profileRow}>
-            <Text selectable={false} style={styles.name} numberOfLines={1}>
-              {user?.name || "New profile"}
-              {user?.age ? <Text selectable={false} style={styles.age}> {user.age}</Text> : null}
-            </Text>
-          </View>
+            <View style={styles.avatarFrame}>
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            </View>
+            <View style={styles.identityCopy}>
+              <Text selectable={false} style={styles.name} numberOfLines={1}>
+                {user?.name || "New profile"}
+                {user?.age ? <Text selectable={false} style={styles.age}> {user.age}</Text> : null}
+              </Text>
 
-          {user?.jobTitle || user?.school ? (
-            <Text selectable={false} style={styles.meta} numberOfLines={1}>
-              {[user.jobTitle, user.school].filter(Boolean).join(" at ")}
-            </Text>
-          ) : null}
+              {user?.jobTitle || user?.school ? (
+                <Text selectable={false} style={styles.meta} numberOfLines={1}>
+                  {[user.jobTitle, user.school].filter(Boolean).join(" at ")}
+                </Text>
+              ) : (
+                <Text selectable={false} style={styles.meta} numberOfLines={1}>
+                  Profile preview
+                </Text>
+              )}
+            </View>
+          </View>
 
           <View style={styles.tagRow}>
             {interests.map((interest) => (
@@ -87,15 +97,15 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
+    borderRadius: 28,
     backgroundColor: "#111018",
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(32,199,255,0.16)",
-    shadowColor: "#20c7ff",
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
+    borderColor: "rgba(255,255,255,0.28)",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.22,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 14 },
     elevation: 8,
     userSelect: "none",
   },
@@ -104,16 +114,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   imageRadius: {
-    borderRadius: 21,
+    borderRadius: 27,
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(5,5,6,0.38)",
+    backgroundColor: "rgba(5,5,6,0.28)",
   },
   topOverlay: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 18,
+    padding: 14,
     zIndex: 2,
   },
   headerBadge: {
@@ -151,17 +161,39 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   content: {
-    paddingHorizontal: 22,
-    paddingBottom: 14,
-    gap: 10,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
+    gap: 9,
   },
   profileRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  avatarFrame: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    backgroundColor: "rgba(18,16,22,0.72)",
+    overflow: "hidden",
+    shadowColor: "#050506",
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+  },
+  identityCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   name: {
     color: "#ffffff",
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: "800",
   },
   age: {
@@ -212,9 +244,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(18,16,22,0.88)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
-    margin: 20,
-    borderRadius: 20,
-    padding: 16,
+    margin: 16,
+    borderRadius: 18,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

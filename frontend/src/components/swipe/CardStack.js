@@ -92,7 +92,8 @@ export default function CardStack({
 const styles = StyleSheet.create({
   stack: {
     flex: 1,
-    minHeight: 500,
+    width: "100%",
+    height: "100%",
   },
   card: {
     position: "absolute",
@@ -113,7 +114,8 @@ const styles = StyleSheet.create({
   },
   empty: {
   flex: 1,
-  minHeight: 500,
+  width: "100%",
+  height: "100%",
   borderRadius: 22,
   backgroundColor: "#121016",
   borderWidth: 1,
