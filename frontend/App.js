@@ -5,18 +5,29 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { SocketProvider } from "./src/context/SocketContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { configurePushNotificationHandler } from "./src/services/pushNotifications";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
 
 configurePushNotificationHandler();
 
-export default function App() {
+function AppContent() {
+  const { mode, theme } = useTheme();
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.screen }}>
       <AuthProvider>
         <SocketProvider>
-          <StatusBar style="dark" />
+          <StatusBar style={mode === "dark" ? "light" : "dark"} />
           <AppNavigator />
         </SocketProvider>
       </AuthProvider>
     </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

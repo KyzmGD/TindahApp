@@ -6,6 +6,11 @@ const {
   buildDiscoveryMatchStage,
   formatDiscoveryCandidate,
 } = require("../services/matching.service");
+const {
+  GAME_NAMES,
+  getLobbyGroupForRank,
+  normalizeGamingProfiles,
+} = require("../services/gamingLobby.service");
 const httpError = require("../utils/httpError");
 
 const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
@@ -15,6 +20,7 @@ const MAX_ALLOWED_AGE = 100;
 const MIN_DISTANCE_KM = 2;
 const MAX_DISTANCE_KM = 100;
 const MAX_PROFILE_PHOTOS = 6;
+const MAX_GAMING_PROFILES = GAME_NAMES.length;
 const MAX_PUSH_TOKENS_PER_USER = 20;
 const ALLOWED_PUSH_TOKEN_PROVIDERS = ["expo", "web"];
 const ALLOWED_PUSH_TOKEN_PLATFORMS = ["ios", "android", "web", "unknown"];
@@ -268,6 +274,55 @@ function normalizePhotos(photos) {
   }));
 }
 
+function validateGamingProfilesPayload(gamingProfiles, errors) {
+  if (gamingProfiles === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(gamingProfiles)) {
+    errors.gamingProfiles = "Gaming profiles must be an array.";
+    return;
+  }
+
+  if (gamingProfiles.length > MAX_GAMING_PROFILES) {
+    errors.gamingProfiles = `A user can add at most ${MAX_GAMING_PROFILES} gaming profiles.`;
+    return;
+  }
+
+  const seenGames = new Set();
+
+  gamingProfiles.forEach((profile, index) => {
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+      errors[`gamingProfiles.${index}`] = "Gaming profile must be an object.";
+      return;
+    }
+
+    const gameName = typeof profile.gameName === "string" ? profile.gameName.trim() : "";
+    const currentRank = typeof profile.currentRank === "string" ? profile.currentRank.trim() : "";
+    const inGameID = profile.inGameID === undefined ? "" : String(profile.inGameID).trim();
+
+    if (!GAME_NAMES.includes(gameName)) {
+      errors[`gamingProfiles.${index}.gameName`] = "Select a supported game.";
+    } else if (seenGames.has(gameName)) {
+      errors[`gamingProfiles.${index}.gameName`] = "Only one gaming profile is allowed per game.";
+    } else {
+      seenGames.add(gameName);
+    }
+
+    if (!currentRank) {
+      errors[`gamingProfiles.${index}.currentRank`] = "Current rank is required.";
+    } else if (currentRank.length > 80) {
+      errors[`gamingProfiles.${index}.currentRank`] = "Current rank must be 80 characters or less.";
+    } else if (gameName && !getLobbyGroupForRank(gameName, currentRank)) {
+      errors[`gamingProfiles.${index}.currentRank`] = "Current rank does not match a supported lobby group.";
+    }
+
+    if (inGameID.length > 80) {
+      errors[`gamingProfiles.${index}.inGameID`] = "In-game ID must be 80 characters or less.";
+    }
+  });
+}
+
 function getNormalizedPushTokenPayload(payload = {}) {
   const provider = payload.provider ? String(payload.provider).trim().toLowerCase() : "expo";
   const platform = payload.platform ? String(payload.platform).trim().toLowerCase() : "unknown";
@@ -362,6 +417,22 @@ function validateProfilePayload(payload, user) {
       errors.school = "School must be text.";
     } else if (school.length > 120) {
       errors.school = "School must be 120 characters or less.";
+    }
+  }
+
+  if (payload.avatarUrl !== undefined) {
+    if (typeof payload.avatarUrl !== "string") {
+      errors.avatarUrl = "Avatar URL must be text.";
+    } else if (payload.avatarUrl.trim().length > 1000) {
+      errors.avatarUrl = "Avatar URL must be 1000 characters or less.";
+    }
+  }
+
+  if (payload.avatarPublicId !== undefined) {
+    if (typeof payload.avatarPublicId !== "string") {
+      errors.avatarPublicId = "Avatar public id must be text.";
+    } else if (payload.avatarPublicId.trim().length > 240) {
+      errors.avatarPublicId = "Avatar public id must be 240 characters or less.";
     }
   }
 
@@ -496,6 +567,8 @@ function validateProfilePayload(payload, user) {
     }
   }
 
+  validateGamingProfilesPayload(payload.gamingProfiles, errors);
+
   const genderPreference = payload.genderPreference ?? payload.interestedIn;
   if (genderPreference !== undefined) {
     if (!isStringOrStringArray(genderPreference)) {
@@ -574,6 +647,14 @@ function mapProfilePayloadToUser(user, payload) {
     user.school = String(payload.school).trim();
   }
 
+  if (payload.avatarUrl !== undefined) {
+    user.avatarUrl = String(payload.avatarUrl).trim();
+  }
+
+  if (payload.avatarPublicId !== undefined) {
+    user.avatarPublicId = String(payload.avatarPublicId).trim();
+  }
+
   if (payload.birthDate !== undefined) {
     user.birthDate = new Date(`${payload.birthDate}T00:00:00.000Z`);
   } else {
@@ -606,6 +687,11 @@ function mapProfilePayloadToUser(user, payload) {
   const normalizedPhotos = normalizePhotos(payload.photos);
   if (normalizedPhotos !== undefined) {
     user.photos = normalizedPhotos;
+  }
+
+  const normalizedGamingProfiles = normalizeGamingProfiles(payload.gamingProfiles);
+  if (normalizedGamingProfiles !== undefined) {
+    user.gamingProfiles = normalizedGamingProfiles;
   }
 }
 
@@ -863,6 +949,7 @@ const explore = asyncHandler(async (req, res) => {
           gender: 1,
           bio: 1,
           photos: 1,
+          gamingProfiles: 1,
           location: 1,
           distanceMeters: 1,
           distanceKm: {
@@ -883,6 +970,7 @@ const explore = asyncHandler(async (req, res) => {
       age: user.age,
       bio: user.bio,
       photos: user.photos,
+      gamingProfiles: user.gamingProfiles,
       location: user.location,
       distanceMeters: user.distanceMeters,
       distanceKm: user.distanceKm,

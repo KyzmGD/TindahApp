@@ -6,6 +6,18 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+function isConfiguredValue(value) {
+  return typeof value === "string" && value.trim() && !value.trim().startsWith("your_");
+}
+
+function hasCloudinaryConfig() {
+  return Boolean(
+    isConfiguredValue(process.env.CLOUDINARY_CLOUD_NAME) &&
+      isConfiguredValue(process.env.CLOUDINARY_API_KEY) &&
+      isConfiguredValue(process.env.CLOUDINARY_API_SECRET),
+  );
+}
+
 function normalizeUploadInput(input, mimeType = "image/jpeg") {
   if (Buffer.isBuffer(input)) {
     return `data:${mimeType};base64,${input.toString("base64")}`;
@@ -20,6 +32,7 @@ function uploadImageToCloudinary(input, folder, mimeType) {
       normalizeUploadInput(input, mimeType),
       {
         folder,
+        resource_type: "image",
       },
       (error, result) => {
         if (error) {
@@ -27,12 +40,17 @@ function uploadImageToCloudinary(input, folder, mimeType) {
           return;
         }
 
-        resolve(result.secure_url);
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+          storage: "cloudinary",
+        });
       },
     );
   });
 }
 
 module.exports = {
+  hasCloudinaryConfig,
   uploadImageToCloudinary,
 };

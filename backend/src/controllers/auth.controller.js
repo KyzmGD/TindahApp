@@ -107,7 +107,10 @@ const updateMe = asyncHandler(async (req, res) => {
     "interests",
     "jobTitle",
     "school",
+    "avatarUrl",
+    "avatarPublicId",
     "photos",
+    "gamingProfiles",
     "location",
     "preferences",
   ];

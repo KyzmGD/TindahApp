@@ -1,8 +1,18 @@
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { assertUserInActiveMatch, sendMessage } = require("../services/chat.service");
+const {
+  assertUserInActiveMatch,
+  markMessagesRead,
+  sendMessage,
+} = require("../services/chat.service");
 const { sendOfflineMessagePush } = require("../services/messageNotification.service");
+const {
+  emitPresenceToActiveMatchRooms,
+  getPresenceSnapshot,
+  markUserOfflineIfNoSockets,
+  markUserOnline,
+} = require("../services/presence.service");
 
 function registerChatSocket(server, app) {
   const io = new Server(server, {
@@ -39,9 +49,11 @@ function registerChatSocket(server, app) {
 
     socket.on("match:join", async (matchId, callback) => {
       try {
-        await assertUserInActiveMatch(matchId, socket.user._id);
+        const match = await assertUserInActiveMatch(matchId, socket.user._id);
         socket.join(matchId);
-        callback?.({ ok: true });
+        const users = await getPresenceSnapshot(match.users);
+        socket.emit("presence:snapshot", { matchId, users });
+        callback?.({ ok: true, presence: users });
       } catch (error) {
         callback?.({ ok: false, message: error.message });
       }
@@ -59,6 +71,9 @@ function registerChatSocket(server, app) {
 
         socket.join(payload.matchId);
         io.to(payload.matchId).emit("receive_message", message);
+        if (message.receiver) {
+          io.to(`user:${message.receiver.toString()}`).emit("message:notification", message);
+        }
         if (message.$locals?.wasCreated) {
           await sendOfflineMessagePush({ io, message });
         }
@@ -81,6 +96,45 @@ function registerChatSocket(server, app) {
         callback?.({ ok: false, message: error.message });
       }
     });
+
+    socket.on("read_message", async (payload = {}, callback) => {
+      try {
+        const messageIds = await markMessagesRead({
+          matchId: payload.matchId,
+          userId: socket.user._id,
+          messageIds: payload.messageIds,
+        });
+        const event = {
+          matchId: payload.matchId,
+          userId: socket.user._id.toString(),
+          messageIds,
+          readAt: new Date().toISOString(),
+        };
+
+        io.to(payload.matchId).emit("read_message", event);
+        callback?.({ ok: true, ...event });
+      } catch (error) {
+        callback?.({ ok: false, message: error.message });
+      }
+    });
+
+    socket.on("disconnect", async () => {
+      try {
+        const presence = await markUserOfflineIfNoSockets(socket.user._id);
+
+        if (presence) {
+          await emitPresenceToActiveMatchRooms(io, presence);
+        }
+      } catch (error) {
+        console.warn("Presence offline update failed:", error.message);
+      }
+    });
+
+    markUserOnline(socket.user._id)
+      .then((presence) => emitPresenceToActiveMatchRooms(io, presence))
+      .catch((error) => {
+        console.warn("Presence online update failed:", error.message);
+      });
   });
 
   app?.set("io", io);

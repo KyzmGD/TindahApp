@@ -1,4 +1,8 @@
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+
+const MAP_ICON = require("../../../assets/figma-explore/map.png");
+const CLOCK_ICON = require("../../../assets/figma-explore/clock.png");
 
 const fallbackImages = [
   "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80",
@@ -19,7 +23,15 @@ export default function UserCard({ user, style, remaining = 0 }) {
   const interests = (
     user?.interests || ["Dating", "Coffee", "Indie music"]
   ).slice(0, 3);
-  const extraTags = ["NON-SMOKER"];
+  const gamingProfile = user?.gamingProfiles?.[0];
+  const mainGame = gamingProfile?.gameName || interests[0] || "Dating";
+  const rank = gamingProfile?.currentRank || "Ready";
+  const winRate = user?.winRate ? `${user.winRate}%` : `${matchScore}%`;
+  const playTime = user?.preferredPlayTime || "Late Night";
+  const parsedDistanceKm = Number(user?.distanceKm);
+  const distanceKm = Number.isFinite(parsedDistanceKm)
+    ? Math.max(0, Math.round(parsedDistanceKm))
+    : 2;
 
   return (
     <View style={[styles.card, style]}>
@@ -30,6 +42,20 @@ export default function UserCard({ user, style, remaining = 0 }) {
         resizeMode="cover"
       >
         <View style={styles.scrim} />
+        <View style={styles.colorScrim} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            "rgba(6,14,32,0)",
+            "rgba(6,14,32,0.12)",
+            "rgba(6,14,32,0.46)",
+            "rgba(6,14,32,0.76)",
+          ]}
+          locations={[0, 0.32, 0.68, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.bottomGradient}
+        />
 
         <View style={styles.topOverlay}>
           <View style={styles.headerBadge}>
@@ -42,42 +68,37 @@ export default function UserCard({ user, style, remaining = 0 }) {
         </View>
 
         <View style={styles.content}>
-          <View style={styles.profileRow}>
+          <View style={styles.identityCopy}>
             <Text selectable={false} style={styles.name} numberOfLines={1}>
               {user?.name || "New profile"}
-              {user?.age ? <Text selectable={false} style={styles.age}> {user.age}</Text> : null}
+              {user?.age ? <Text selectable={false} style={styles.age}>, {user.age}</Text> : null}
             </Text>
+            <View style={styles.metaRow}>
+              <Image source={MAP_ICON} style={styles.metaIcon} resizeMode="contain" />
+              <Text selectable={false} style={styles.meta} numberOfLines={1}>
+                {`${distanceKm} km away \u2022 Online now`}
+              </Text>
+            </View>
           </View>
 
-          {user?.jobTitle || user?.school ? (
-            <Text selectable={false} style={styles.meta} numberOfLines={1}>
-              {[user.jobTitle, user.school].filter(Boolean).join(" at ")}
-            </Text>
-          ) : null}
-
-          <View style={styles.tagRow}>
-            {interests.map((interest) => (
-              <View key={interest} style={styles.tagBubble}>
-                <Text selectable={false} style={styles.tagBubbleText}>{interest}</Text>
-              </View>
-            ))}
+          <View style={styles.statsGrid}>
+            <View style={styles.statTile}>
+              <Text selectable={false} style={styles.statLabel}>Main game</Text>
+              <Text selectable={false} style={styles.statValuePink} numberOfLines={1}>{mainGame}</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text selectable={false} style={styles.statLabel}>Rank</Text>
+              <Text selectable={false} style={styles.statValuePurple} numberOfLines={1}>{rank}</Text>
+            </View>
+            <View style={styles.statTile}>
+              <Text selectable={false} style={styles.statLabel}>Win rate</Text>
+              <Text selectable={false} style={styles.statValueBlue}>{winRate}</Text>
+            </View>
           </View>
 
-          <View style={styles.tagRowBottom}>
-            {extraTags.map((tag) => (
-              <View key={tag} style={styles.tagBubbleSecondary}>
-                <Text selectable={false} style={styles.tagBubbleSecondaryText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.promptCard}>
-          <Text selectable={false} style={styles.promptText} numberOfLines={2}>
-            {user?.bio || "No bio yet. Start the conversation."}
-          </Text>
-          <View style={styles.commentButton}>
-            <Text selectable={false} style={styles.commentText}>Comment...</Text>
+          <View style={styles.playTimeTag}>
+            <Image source={CLOCK_ICON} style={styles.playTimeIcon} resizeMode="contain" />
+            <Text selectable={false} style={styles.playTimeText} numberOfLines={1}>{playTime}</Text>
           </View>
         </View>
       </ImageBackground>
@@ -87,16 +108,16 @@ export default function UserCard({ user, style, remaining = 0 }) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22,
-    backgroundColor: "#111018",
+    borderRadius: 32,
+    backgroundColor: "#222a3d",
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(32,199,255,0.16)",
-    shadowColor: "#20c7ff",
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+    borderColor: "rgba(255,255,255,0.16)",
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
     userSelect: "none",
   },
   image: {
@@ -104,23 +125,34 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   imageRadius: {
-    borderRadius: 21,
+    borderRadius: 31,
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(5,5,6,0.38)",
+    backgroundColor: "rgba(6,14,32,0.06)",
+  },
+  bottomGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "74%",
+  },
+  colorScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(49,49,192,0.08)",
   },
   topOverlay: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 18,
+    padding: 14,
     zIndex: 2,
   },
   headerBadge: {
-    backgroundColor: "rgba(18,16,22,0.84)",
+    backgroundColor: "rgba(6,14,32,0.82)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     alignSelf: "flex-start",
@@ -131,16 +163,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   matchBadge: {
-    backgroundColor: "rgba(18,16,22,0.84)",
+    backgroundColor: "rgba(6,14,32,0.82)",
     borderWidth: 1,
-    borderColor: "rgba(255,209,102,0.5)",
+    borderColor: "rgba(255,179,181,0.46)",
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: "center",
   },
   matchScore: {
-    color: "#ffd166",
+    color: "#ffb3b5",
     fontWeight: "900",
     fontSize: 16,
   },
@@ -151,89 +183,105 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   content: {
-    paddingHorizontal: 22,
-    paddingBottom: 14,
-    gap: 10,
+    paddingHorizontal: 26,
+    paddingBottom: 42,
+    gap: 16,
+    zIndex: 2,
   },
-  profileRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  identityCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   name: {
-    color: "#ffffff",
-    fontSize: 36,
-    fontWeight: "800",
+    color: "#dae2fd",
+    fontSize: 40,
+    fontWeight: "900",
+    letterSpacing: 0,
   },
   age: {
-    fontWeight: "500",
+    fontWeight: "700",
   },
   meta: {
-    color: "#f3f4f8",
-    fontSize: 15,
-    fontWeight: "700",
+    color: "#c0c1ff",
+    fontFamily: "Inter",
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "400",
+    flexShrink: 1,
   },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagRowBottom: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagBubble: {
-    backgroundColor: "rgba(18,16,22,0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(255,79,123,0.26)",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  tagBubbleText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  tagBubbleSecondary: {
-    backgroundColor: "rgba(18,16,22,0.72)",
-    borderWidth: 1,
-    borderColor: "rgba(32,199,255,0.24)",
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  tagBubbleSecondaryText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  promptCard: {
-    backgroundColor: "rgba(18,16,22,0.88)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    margin: 20,
-    borderRadius: 20,
-    padding: 16,
+  metaRow: {
+    marginTop: 3,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
-  promptText: {
-    color: "#ffffff",
-    fontSize: 14,
+  metaIcon: {
+    width: 12,
+    height: 15,
+    tintColor: "#c0c1ff",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  statTile: {
     flex: 1,
+    minHeight: 72,
+    borderRadius: 16,
+    backgroundColor: "rgba(11,19,38,0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
   },
-  commentButton: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 18,
+  statLabel: {
+    color: "#e6bcbd",
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  statValuePink: {
+    marginTop: 5,
+    color: "#ffb3b5",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  statValuePurple: {
+    marginTop: 5,
+    color: "#ddb7ff",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  statValueBlue: {
+    marginTop: 3,
+    color: "#c0c1ff",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  playTimeTag: {
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    minHeight: 36,
+    borderRadius: 999,
+    backgroundColor: "rgba(6,14,32,0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(192,193,255,0.14)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
   },
-  commentText: {
-    color: "#ffffff",
-    fontWeight: "800",
+  playTimeIcon: {
+    width: 14,
+    height: 14,
+    tintColor: "#c0c1ff",
+  },
+  playTimeText: {
+    color: "#dae2fd",
+    fontFamily: "Inter",
     fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
   },
 });

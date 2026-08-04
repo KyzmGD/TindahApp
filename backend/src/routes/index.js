@@ -6,6 +6,7 @@ const chatRoutes = require("./chat.routes");
 const messageRoutes = require("./message.routes");
 const uploadRoutes = require("./upload.routes");
 const userRoutes = require("./user.routes");
+const gamerLobbyRoutes = require("./gamerLobby.routes");
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use("/upload", uploadRoutes);
 router.use("/v1/upload", uploadRoutes);
 router.use("/users", userRoutes);
 router.use("/v1/users", userRoutes);
+router.use("/v1/gamer-lobby", gamerLobbyRoutes);
 
 module.exports = router;

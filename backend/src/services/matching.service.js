@@ -10,7 +10,7 @@ const {
 const { userExists } = require("./userExistenceCache.service");
 const httpError = require("../utils/httpError");
 
-const MATCH_USER_SELECT = "name birthDate bio photos interests jobTitle school isVerified";
+const MATCH_USER_SELECT = "name birthDate bio avatarUrl avatarPublicId photos gamingProfiles interests jobTitle school isVerified isOnline lastActive";
 const IDEMPOTENCY_CACHE_TTL_MS = 5 * 60 * 1000;
 const ALLOWED_GENDERS = ["woman", "man", "nonbinary", "other"];
 const swipeStateCache = new Map();
@@ -94,6 +94,10 @@ async function upsertMatch(userId, targetId, participantsKey) {
   }).populate("users", MATCH_USER_SELECT);
 
   if (existingMatch) {
+    if (existingMatch.source === "gamer_lobby") {
+      existingMatch.source = "mixed";
+      await existingMatch.save();
+    }
     writeCache(activeMatchCache, participantsKey, existingMatch);
     return existingMatch;
   }
@@ -123,9 +127,38 @@ async function upsertMatch(userId, targetId, participantsKey) {
       },
       { returnDocument: "after" },
     ).populate("users", MATCH_USER_SELECT);
+    if (match?.source === "gamer_lobby") {
+      match.source = "mixed";
+      await match.save();
+    }
     writeCache(activeMatchCache, participantsKey, match);
     return match;
   }
+}
+
+function getUnreadCountForUser(match, userId) {
+  const userIdString = userId.toString();
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userIdString,
+  );
+
+  return unreadEntry?.count || 0;
+}
+
+function formatMatchForUser(match, userId) {
+  const data = typeof match.toObject === "function" ? match.toObject() : match;
+
+  return {
+    ...data,
+    _id: data._id?.toString?.() || data._id,
+    id: data._id?.toString?.() || data.id,
+    users: (data.users || []).map((user) => ({
+      ...user,
+      _id: user._id?.toString?.() || user._id,
+      id: user._id?.toString?.() || user.id,
+    })),
+    unreadCount: getUnreadCountForUser(match, userId),
+  };
 }
 
 function normalizeLimit(limit, fallback = 20, max = 50) {
@@ -337,9 +370,11 @@ async function createOrUpdateSwipe(userId, targetId, direction) {
 }
 
 async function listMatches(userId) {
-  return Match.find({ users: userId, status: "active" })
-    .populate("users", `${MATCH_USER_SELECT} lastActive`)
+  const matches = await Match.find({ users: userId, status: "active" })
+    .populate("users", MATCH_USER_SELECT)
     .sort({ updatedAt: -1 });
+
+  return matches.map((match) => formatMatchForUser(match, userId));
 }
 
 module.exports = {

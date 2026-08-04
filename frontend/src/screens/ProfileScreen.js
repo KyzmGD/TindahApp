@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -15,8 +16,8 @@ import { useAuth } from "../context/AuthContext";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "react-native";
 import {
-  uploadImage,
-  saveProfilePhoto,
+  uploadProfileImage,
+  saveAvatar,
 } from "../services/upload.api";
 
 const GENDER_OPTIONS = [
@@ -61,13 +62,11 @@ function getGenderColor(value) {
 }
 
 const getAvatar = (user) => {
-  if (!user?.photos?.length) return null;
+  if (user?.avatarUrl) {
+    return user.avatarUrl;
+  }
 
-  const primary = user.photos.find(
-    (photo) => photo.isPrimary
-  );
-
-  return primary?.url || user.photos[0]?.url;
+  return null;
 };
 
 const getSearchFilters = (user) => ({
@@ -95,7 +94,12 @@ export default function ProfileScreen({ navigation }) {
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [pendingAvatar, setPendingAvatar] = useState(null);
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState(() => getAvatar(user));
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSaving, setAvatarSaving] = useState(false);
   const filtersAnimation = useRef(new Animated.Value(0)).current;
+  const avatarPreviewUrl = pendingAvatar?.url || savedAvatarUrl || getAvatar(user);
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -123,6 +127,11 @@ export default function ProfileScreen({ navigation }) {
     }).start();
   }, [filtersAnimation]);
 
+  useEffect(() => {
+    setPendingAvatar(null);
+    setSavedAvatarUrl(getAvatar(user));
+  }, [user?.avatarUrl]);
+
   const toggleGenderPreference = (value) => {
     setForm((current) => {
       const selected = current.genderPreference.includes(value)
@@ -136,40 +145,67 @@ export default function ProfileScreen({ navigation }) {
     });
   };
   const pickAvatar = async () => {
-
-  try {
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality:0.8,
-    });
-
-
-    if(result.canceled){
+    if (avatarUploading || avatarSaving) {
       return;
     }
 
+    try {
+      setAvatarUploading(true);
+      setMessage("");
 
-    const imageUri = result.assets[0].uri;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
 
+      if (result.canceled) {
+        return;
+      }
 
-    const url = await uploadImage(imageUri);
+      const uploadedImage = await uploadProfileImage(result.assets[0]);
 
+      setPendingAvatar(uploadedImage);
+      setMessage(
+        uploadedImage.storage === "cloudinary"
+          ? "Avatar uploaded to Cloudinary. Tap Save avatar to apply."
+          : "Avatar uploaded locally. Tap Save avatar to apply.",
+      );
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
-    await saveProfilePhoto(url);
+  const confirmAvatar = async () => {
+    if (!pendingAvatar || avatarSaving) {
+      return;
+    }
 
-await refreshUser();
+    const avatarToSave = pendingAvatar;
 
-setMessage("Avatar updated");
+    try {
+      setAvatarSaving(true);
+      setMessage("Saving avatar...");
+      setPendingAvatar(null);
+      setSavedAvatarUrl(avatarToSave.url);
+      await saveAvatar(avatarToSave.url, avatarToSave.publicId);
+      setPendingAvatar(null);
+      setMessage("Avatar saved");
+      await refreshUser();
+    } catch (error) {
+      setPendingAvatar(avatarToSave);
+      setSavedAvatarUrl(getAvatar(user));
+      setMessage(error.message || "Could not save avatar.");
+    } finally {
+      setAvatarSaving(false);
+    }
+  };
 
-
-  } catch(error){
-
-    setMessage(error.message);
-
-  }
-
-};
+  const cancelAvatar = () => {
+    setPendingAvatar(null);
+    setMessage("");
+  };
   const save = async () => {
     setSaving(true);
     setMessage("");
@@ -201,43 +237,84 @@ setMessage("Avatar updated");
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Pressable
-  style={styles.avatar}
-  onPress={pickAvatar}
->
-  {getAvatar(user) ? (
-    <Image
-      source={{
-        uri: getAvatar(user),
-      }}
-      style={styles.avatarImage}
-    />
-  ) : (
-    <Pressable
-  style={styles.avatar}
-  onPress={pickAvatar}
->
+            disabled={avatarUploading || avatarSaving}
+            style={({ hovered, pressed }) => [
+              styles.avatar,
+              hovered && styles.avatarHover,
+              pressed && styles.avatarPressed,
+              pendingAvatar && styles.avatarPending,
+            ]}
+            onPress={pickAvatar}
+          >
+            {({ hovered }) => (
+              <>
+                {avatarPreviewUrl ? (
+                  <Image
+                    source={{
+                      uri: avatarPreviewUrl,
+                    }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {user?.name?.[0] || "U"}
+                  </Text>
+                )}
 
-{
- user?.photos?.length > 0 ?
+                {(hovered || avatarUploading) ? (
+                  <View style={styles.avatarOverlay}>
+                    {avatarUploading ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <View style={styles.cameraIcon}>
+                        <View style={styles.cameraTop} />
+                        <View style={styles.cameraLens} />
+                      </View>
+                    )}
+                    <Text style={styles.avatarOverlayText}>
+                      {avatarUploading ? "Uploading" : "Change"}
+                    </Text>
+                  </View>
+                ) : null}
 
- <Image
-   source={{
-     uri:user.photos[0].url
-   }}
-   style={styles.avatarImage}
- />
-
- :
-
- <Text style={styles.avatarText}>
-   {user?.name?.[0] || "U"}
- </Text>
-
-}
-
-</Pressable>
-  )}
-</Pressable>
+                {pendingAvatar ? (
+                  <View style={styles.avatarPreviewBadge}>
+                    <Text style={styles.avatarPreviewText}>Preview</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </Pressable>
+          {pendingAvatar ? (
+            <View style={styles.avatarActions}>
+              <Pressable
+                disabled={avatarSaving}
+                style={({ hovered, pressed }) => [
+                  styles.avatarSaveButton,
+                  hovered && styles.avatarSaveButtonHover,
+                  pressed && styles.avatarActionPressed,
+                ]}
+                onPress={confirmAvatar}
+              >
+                {avatarSaving ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.avatarSaveText}>Save avatar</Text>
+                )}
+              </Pressable>
+              <Pressable
+                disabled={avatarSaving}
+                style={({ hovered, pressed }) => [
+                  styles.avatarCancelButton,
+                  hovered && styles.avatarCancelButtonHover,
+                  pressed && styles.avatarActionPressed,
+                ]}
+                onPress={cancelAvatar}
+              >
+                <Text style={styles.avatarCancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <Text style={styles.title}>{user?.name || "Your profile"}</Text>
           <Text style={styles.email}>{user?.email}</Text>
         </View>
@@ -381,6 +458,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ff4f7b",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+    shadowColor: "#ff4f7b",
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  avatarHover: {
+    borderColor: "#20c7ff",
+    transform: [{ translateY: -2 }, { scale: 1.04 }],
+  },
+  avatarPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.96 }],
+  },
+  avatarPending: {
+    borderColor: "#ffd166",
   },
   avatarText: {
     color: "#fff",
@@ -393,10 +489,109 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   avatarImage: {
-  width: "100%",
-  height: "100%",
-  borderRadius: 46,
-},
+    width: "100%",
+    height: "100%",
+    borderRadius: 46,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(5,5,6,0.58)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
+  cameraIcon: {
+    width: 31,
+    height: 23,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cameraTop: {
+    position: "absolute",
+    top: -6,
+    width: 13,
+    height: 6,
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    backgroundColor: "#ffffff",
+  },
+  cameraLens: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+  },
+  avatarOverlayText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  avatarPreviewBadge: {
+    position: "absolute",
+    bottom: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,209,102,0.94)",
+  },
+  avatarPreviewText: {
+    color: "#17120a",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  avatarActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  avatarSaveButton: {
+    minHeight: 36,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ff4f7b",
+    borderWidth: 1,
+    borderColor: "#ff7aa2",
+  },
+  avatarSaveButtonHover: {
+    backgroundColor: "#ff2f6d",
+    borderColor: "#20c7ff",
+    transform: [{ translateY: -1 }],
+  },
+  avatarSaveText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  avatarCancelButton: {
+    minHeight: 36,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1c1720",
+    borderWidth: 1,
+    borderColor: "#403449",
+  },
+  avatarCancelButtonHover: {
+    borderColor: "#ffffff",
+    backgroundColor: "#2a2133",
+    transform: [{ translateY: -1 }],
+  },
+  avatarCancelText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  avatarActionPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.96 }],
+  },
   email: {
     color: "#cbbdd2",
     fontWeight: "600",

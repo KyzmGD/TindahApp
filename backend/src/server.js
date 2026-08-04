@@ -1,5 +1,7 @@
+const path = require("path");
+
 require("dotenv").config({
-  path: "./.env",
+  path: path.join(__dirname, "..", ".env"),
 });
 
 const http = require("http");

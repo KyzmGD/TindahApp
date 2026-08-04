@@ -36,7 +36,7 @@ async function listMessages(matchId, userId, options = {}) {
 
   const [messages, total] = await Promise.all([
     Message.find({ match: matchId })
-      .populate("sender", "name photos")
+      .populate("sender", "name avatarUrl avatarPublicId photos")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -58,6 +58,49 @@ async function listMessages(matchId, userId, options = {}) {
   };
 }
 
+function getUnreadCount(match, userId) {
+  const userIdString = userId.toString();
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userIdString,
+  );
+
+  return unreadEntry?.count || 0;
+}
+
+function incrementUnreadCount(match, userId) {
+  const userIdString = userId.toString();
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userIdString,
+  );
+
+  if (unreadEntry) {
+    unreadEntry.count = Math.max(0, unreadEntry.count || 0) + 1;
+    return;
+  }
+
+  match.unreadCounts.push({
+    user: userId,
+    count: 1,
+  });
+}
+
+async function resetUnreadCount(matchId, userId) {
+  const match = await Match.findById(matchId);
+
+  if (!match) {
+    return;
+  }
+
+  const unreadEntry = (match.unreadCounts || []).find(
+    (entry) => entry.user?.toString() === userId.toString(),
+  );
+
+  if (unreadEntry) {
+    unreadEntry.count = 0;
+    await match.save();
+  }
+}
+
 async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId }) {
   const trimmedText = typeof text === "string" ? text.trim() : "";
   const trimmedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
@@ -75,7 +118,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     const existingMessage = await Message.findOne({
       sender: senderId,
       clientMessageId: normalizedClientMessageId,
-    }).populate("sender", "name photos");
+    }).populate("sender", "name avatarUrl avatarPublicId photos");
 
     if (existingMessage) {
       existingMessage.$locals.wasCreated = false;
@@ -106,7 +149,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     const existingMessage = await Message.findOne({
       sender: senderId,
       clientMessageId: normalizedClientMessageId,
-    }).populate("sender", "name photos");
+    }).populate("sender", "name avatarUrl avatarPublicId photos");
 
     if (existingMessage) {
       existingMessage.$locals.wasCreated = false;
@@ -121,15 +164,53 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     sender: senderId,
     sentAt: message.createdAt,
   };
+  if (receiverId) {
+    incrementUnreadCount(match, receiverId);
+  }
   await match.save();
 
   message.$locals.wasCreated = true;
-  return message.populate("sender", "name photos");
+  return message.populate("sender", "name avatarUrl avatarPublicId photos");
+}
+
+async function markMessagesRead({ matchId, userId, messageIds = [] }) {
+  await assertUserInActiveMatch(matchId, userId);
+
+  const filter = {
+    match: matchId,
+    receiver: userId,
+    readBy: { $ne: userId },
+  };
+
+  const normalizedMessageIds = Array.isArray(messageIds)
+    ? messageIds.filter((messageId) => mongoose.Types.ObjectId.isValid(messageId))
+    : [];
+
+  if (normalizedMessageIds.length) {
+    filter._id = { $in: normalizedMessageIds };
+  }
+
+  const messages = await Message.find(filter).select("_id").lean();
+
+  if (!messages.length) {
+    return [];
+  }
+
+  const readMessageIds = messages.map((message) => message._id.toString());
+  await Message.updateMany(
+    { _id: { $in: readMessageIds } },
+    { $addToSet: { readBy: userId } },
+  );
+  await resetUnreadCount(matchId, userId);
+
+  return readMessageIds;
 }
 
 module.exports = {
   listMessages,
   sendMessage,
+  markMessagesRead,
   assertUserInActiveMatch,
   normalizeMessagePagination,
+  getUnreadCount,
 };

@@ -122,6 +122,19 @@ export function SocketProvider({ children }) {
     [socket],
   );
 
+  const markMessagesRead = useCallback(
+    (matchId, messageIds = []) =>
+      new Promise((resolve) => {
+        if (!socket?.connected || !matchId) {
+          resolve({ ok: false });
+          return;
+        }
+
+        socket.emit("read_message", { matchId, messageIds }, resolve);
+      }),
+    [socket],
+  );
+
   const sendMessageRealtime = useCallback(
     ({ matchId, text, imageUrl, clientMessageId }) => {
       const pendingMessage = {
@@ -157,11 +170,20 @@ export function SocketProvider({ children }) {
       socket,
       isConnected,
       joinMatch,
+      markMessagesRead,
       setTyping,
       sendMessageRealtime,
       flushPendingMessages: () => flushPendingMessages(socket),
     }),
-    [flushPendingMessages, isConnected, joinMatch, sendMessageRealtime, setTyping, socket],
+    [
+      flushPendingMessages,
+      isConnected,
+      joinMatch,
+      markMessagesRead,
+      sendMessageRealtime,
+      setTyping,
+      socket,
+    ],
   );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

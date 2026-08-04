@@ -1,0 +1,23 @@
+Header Section Valorant page : 
+
+1. Font chữ Valorant Lobby : 48 , ExtraBold
+2. Font chữ " TEAM UP MODE " : Bold, 14h
+
+3. Font chữ " Find a team now " : 14, Bold
+
+4. Padding nút " Find a team now " với chữ : 24 12
+
+5. Kích thước nút " Find a team now " : 198.95 Hug x 46 Hug
+
+6. Kích thước nút refresh : 40 hug x 40 hugh
+
+Game selection group : 
+
+1. Font chữ ở nút Valorant ( khi click chuột ) : Bold, 14
+
+2. Font chữ các game còn lại
+
+Filters Sidebar : 
+
+1. Font chữ " Lobby rank filter " : 14, Bold
+

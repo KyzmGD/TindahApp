@@ -24,6 +24,7 @@ describe("uploadImageToCloudinary", () => {
         callback(null, {
           secure_url:
             "https://res.cloudinary.com/demo/image/upload/v123/sample.jpg",
+          public_id: "tinder-app/sample",
         });
       },
     );
@@ -33,9 +34,11 @@ describe("uploadImageToCloudinary", () => {
       "tinder-app",
     );
 
-    expect(result).toBe(
-      "https://res.cloudinary.com/demo/image/upload/v123/sample.jpg",
-    );
+    expect(result).toEqual({
+      url: "https://res.cloudinary.com/demo/image/upload/v123/sample.jpg",
+      publicId: "tinder-app/sample",
+      storage: "cloudinary",
+    });
     expect(cloudinary.v2.uploader.upload).toHaveBeenCalled();
   });
 
@@ -45,6 +48,7 @@ describe("uploadImageToCloudinary", () => {
         callback(null, {
           secure_url:
             "https://res.cloudinary.com/demo/image/upload/v123/buffer-image.jpg",
+          public_id: "tinder-app/buffer-image",
         });
       },
     );
@@ -52,12 +56,14 @@ describe("uploadImageToCloudinary", () => {
     const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
     const result = await uploadImageToCloudinary(jpegBuffer, "tinder-app");
 
-    expect(result).toBe(
-      "https://res.cloudinary.com/demo/image/upload/v123/buffer-image.jpg",
-    );
+    expect(result).toEqual({
+      url: "https://res.cloudinary.com/demo/image/upload/v123/buffer-image.jpg",
+      publicId: "tinder-app/buffer-image",
+      storage: "cloudinary",
+    });
     expect(cloudinary.v2.uploader.upload).toHaveBeenCalledWith(
       expect.stringMatching(/^data:image\/jpeg;base64,/),
-      { folder: "tinder-app" },
+      { folder: "tinder-app", resource_type: "image" },
       expect.any(Function),
     );
   });

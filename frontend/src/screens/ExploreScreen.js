@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
+  ImageBackground,
   Modal,
   Pressable,
   RefreshControl,
@@ -9,14 +11,17 @@ import {
   StyleSheet,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Slider from "@react-native-community/slider";
+import { LinearGradient } from "expo-linear-gradient";
 import CardStack from "../components/swipe/CardStack";
 import { discover, sendSwipe } from "../services/swipe.api";
 import MatchModal from "../components/common/MatchModal";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../theme/ThemeContext";
 
 const GENDER_OPTIONS = [
   { label: "Women", value: "woman" },
@@ -25,6 +30,32 @@ const GENDER_OPTIONS = [
   { label: "Other", value: "other" },
 ];
 const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
+const EXPLORE_BACKGROUND = require("../../assets/explore-hearts-bg.png");
+const STITCH_TINDAH_LOGO = require("../../assets/tindah_logo_stitch.png");
+const HEART_ICON = require("../../assets/figma-explore/heart.png");
+const STAR_ICON = require("../../assets/figma-explore/star.png");
+const CANCEL_ICON = require("../../assets/figma-explore/cancel.png");
+const DESKTOP_SIDEBAR_WIDTH = 288;
+const LIVE_ACTIVITY_ITEMS = [
+  {
+    title: "Top gamers nearby",
+    detail: "2.4k online",
+    accent: "#ffb3b5",
+    icon: "SH",
+  },
+  {
+    title: "Active parties",
+    detail: "842 rooms",
+    accent: "#c0c1ff",
+    icon: "GP",
+  },
+  {
+    title: "Match found",
+    detail: "In your area",
+    accent: "#ddb7ff",
+    icon: "FX",
+  },
+];
 const SEARCH_FILTER_CONFIGS = {
   interests: {
     icon: "TAG",
@@ -160,8 +191,207 @@ function getFilterForm(user) {
   };
 }
 
+function SkeletonBlock({ style, animatedStyle, colors }) {
+  return (
+    <Animated.View
+      style={[
+        styles.skeletonBlock,
+        { backgroundColor: colors.skeletonBase },
+        animatedStyle,
+        style,
+      ]}
+    />
+  );
+}
+
+function ExploreSkeleton({ colors }) {
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 820,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0,
+          duration: 820,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [shimmer]);
+
+  const animatedStyle = {
+    opacity: shimmer.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.42, 1],
+    }),
+  };
+
+  return (
+    <View
+      style={[
+        styles.skeletonCard,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          shadowColor: colors.shadow,
+        },
+      ]}
+    >
+      <View style={styles.skeletonTopRow}>
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonPillSmall}
+        />
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonMatchBadge}
+        />
+      </View>
+
+      <View style={styles.skeletonCenter}>
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonPhotoGlow}
+        />
+      </View>
+
+      <View style={styles.skeletonBottom}>
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonPill}
+        />
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonName}
+        />
+        <SkeletonBlock
+          colors={colors}
+          animatedStyle={animatedStyle}
+          style={styles.skeletonLine}
+        />
+        <View style={styles.skeletonTagRow}>
+          <SkeletonBlock
+            colors={colors}
+            animatedStyle={animatedStyle}
+            style={styles.skeletonTag}
+          />
+          <SkeletonBlock
+            colors={colors}
+            animatedStyle={animatedStyle}
+            style={styles.skeletonTag}
+          />
+          <SkeletonBlock
+            colors={colors}
+            animatedStyle={animatedStyle}
+            style={styles.skeletonTagShort}
+          />
+        </View>
+        <View
+          style={[
+            styles.skeletonPrompt,
+            {
+              backgroundColor: colors.elevated,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <SkeletonBlock
+            colors={colors}
+            animatedStyle={animatedStyle}
+            style={styles.skeletonPromptLine}
+          />
+          <SkeletonBlock
+            colors={colors}
+            animatedStyle={animatedStyle}
+            style={styles.skeletonPromptAction}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function LiveActivityPanel({ colors, isCompact }) {
+  return (
+    <View
+      style={[
+        styles.activityPanel,
+        {
+          backgroundColor: "rgba(23,31,51,0.58)",
+          borderColor: "rgba(255,255,255,0.08)",
+          shadowColor: colors.accent,
+        },
+        isCompact && styles.activityPanelCompact,
+      ]}
+    >
+      <View style={styles.activityHeader}>
+        <Text style={[styles.activityTitle, { color: colors.text }]}>Live Activity</Text>
+        <View style={[styles.activityPing, { backgroundColor: colors.accent }]} />
+      </View>
+      <View style={styles.activityList}>
+        {LIVE_ACTIVITY_ITEMS.map((item, index) => (
+          <Pressable
+            key={item.title}
+            style={({ hovered, pressed }) => [
+              styles.activityItem,
+              {
+                backgroundColor: index === 2 ? "rgba(45,52,73,0.72)" : "rgba(11,19,38,0.56)",
+                borderColor: hovered ? item.accent : "rgba(255,255,255,0.06)",
+              },
+              hovered && {
+                transform: [{ translateX: -4 }, { scale: 1.015 }],
+                shadowColor: item.accent,
+                shadowOpacity: 0.18,
+                shadowRadius: 12,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <View style={[styles.activityIcon, { backgroundColor: `${item.accent}26` }]}>
+              <Text style={[styles.activityIconText, { color: item.accent }]}>{item.icon}</Text>
+            </View>
+            <View style={styles.activityCopy}>
+              <Text style={[styles.activityItemTitle, { color: colors.text }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={[styles.activityItemDetail, { color: item.accent }]} numberOfLines={2}>
+                {item.detail}
+              </Text>
+            </View>
+            <Text style={[styles.activityTime, { color: colors.muted }]}>
+              {index === 0 ? "Now" : index === 1 ? "5m" : "12m"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function ExploreScreen() {
   const { user, updateProfile } = useAuth();
+  const { theme } = useTheme();
+  const colors = theme.colors;
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isDesktopShell = viewportWidth >= 1024;
+  const mainViewportWidth = isDesktopShell
+    ? viewportWidth - DESKTOP_SIDEBAR_WIDTH
+    : viewportWidth;
+  const isWideLayout = mainViewportWidth >= 880;
+  const isMediumLayout = mainViewportWidth >= 680;
   const [users, setUsers] = useState([]);
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -175,6 +405,44 @@ export default function ExploreScreen() {
   const [activeSearchFilterId, setActiveSearchFilterId] = useState(null);
   const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
   const pulse = useRef(new Animated.Value(0)).current;
+  const cardHover = useRef(new Animated.Value(0)).current;
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const animateCardHover = useCallback((hovered) => {
+    setIsCardHovered(hovered);
+    Animated.spring(cardHover, {
+      toValue: hovered ? 1 : 0,
+      tension: 150,
+      friction: 13,
+      useNativeDriver: true,
+    }).start();
+  }, [cardHover]);
+  const cardHoverStyle = {
+    transform: [
+      {
+        translateY: cardHover.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -7],
+        }),
+      },
+      {
+        scale: cardHover.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.012],
+        }),
+      },
+    ],
+  };
+  const cardFrameStyle = useMemo(() => {
+    const horizontalSpace = isWideLayout ? 0 : 34;
+    const maxWidth = isWideLayout ? 420 : 372;
+    const minHeight = isMediumLayout ? 510 : 430;
+    const maxHeight = isWideLayout ? 560 : 540;
+
+    return {
+      width: Math.min(Math.max(mainViewportWidth - horizontalSpace, 288), maxWidth),
+      height: Math.min(Math.max(viewportHeight * 0.6, minHeight), maxHeight),
+    };
+  }, [isMediumLayout, isWideLayout, mainViewportWidth, viewportHeight]);
 
   const loadProfiles = useCallback(async () => {
     setError("");
@@ -436,25 +704,200 @@ const [matchedMatch, setMatchedMatch] =
   }
 };
 
-  return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>Tindah</Text>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.filterButton,
-            hovered && styles.filterButtonHover,
-            pressed && styles.buttonPressed,
+  const renderSwipeActions = () => (
+    <View style={styles.actions}>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.nope,
+          {
+            backgroundColor: "rgba(34,42,61,0.8)",
+            shadowColor: "#ffb4ab",
+            shadowOpacity: 0.38,
+            shadowRadius: 18,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 8,
+          },
+          hovered && {
+            backgroundColor: "rgba(45,52,73,0.94)",
+            transform: [{ translateY: -4 }, { scale: 1.08 }],
+            shadowOpacity: 0.3,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "nope")}
+      >
+        <Image
+          source={CANCEL_ICON}
+          style={styles.cancelActionIcon}
+          resizeMode="contain"
+        />
+      </Pressable>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.superLike,
+          {
+            backgroundColor: "#3131c0",
+            shadowColor: "#b0b2ff",
+            shadowOpacity: 0.5,
+            shadowRadius: 22,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 10,
+          },
+          hovered && {
+            backgroundColor: "#3f3fe0",
+            transform: [{ translateY: -8 }, { scale: 1.1 }],
+            shadowOpacity: 0.42,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "superlike")}
+      >
+        <Animated.Image
+          source={STAR_ICON}
+          resizeMode="contain"
+          style={[
+            styles.starActionIcon,
+            {
+              transform: [
+                {
+                  scale: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.08],
+                  }),
+                },
+              ],
+            },
           ]}
-          onPress={openFilters}
-        >
-          <Text style={styles.filterText}>Filters</Text>
-        </Pressable>
+        />
+      </Pressable>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.like,
+          {
+            backgroundColor: "transparent",
+            shadowColor: "#ff5167",
+            shadowOpacity: 0.52,
+            shadowRadius: 26,
+            shadowOffset: { width: 0, height: 12 },
+            elevation: 12,
+          },
+          hovered && {
+            transform: [{ translateY: -5 }, { scale: 1.11 }],
+            shadowOpacity: 0.46,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "like")}
+      >
+        {({ hovered }) => (
+          <LinearGradient
+            colors={hovered ? ["#ffc1c3", "#ff6376"] : ["#ffb3b5", "#ff5167"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.likeGradient}
+          >
+            <Animated.Image
+              source={HEART_ICON}
+              resizeMode="contain"
+              style={[
+                styles.heartActionIcon,
+                {
+                  transform: [
+                    {
+                      scale: pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </LinearGradient>
+        )}
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <ImageBackground
+      source={EXPLORE_BACKGROUND}
+      style={[styles.screen, { backgroundColor: colors.screen }]}
+      imageStyle={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View pointerEvents="none" style={styles.backgroundTint} />
+      <View pointerEvents="none" style={styles.hexLayer}>
+        {Array.from({ length: 11 }).map((_, row) => (
+          <View key={`hex-${row}`} style={styles.hexRow}>
+            {Array.from({ length: 10 }).map((__, col) => (
+              <View key={`hex-${row}-${col}`} style={styles.hexCell} />
+            ))}
+          </View>
+        ))}
+      </View>
+      <View
+        style={[
+          styles.header,
+          isDesktopShell && styles.headerDesktop,
+          {
+            backgroundColor: "rgba(11,19,38,0.84)",
+            borderBottomColor: "rgba(255,255,255,0.08)",
+          },
+        ]}
+      >
+        {!isDesktopShell ? (
+          <View style={styles.brand}>
+            <Image source={STITCH_TINDAH_LOGO} style={styles.stitchLogo} resizeMode="contain" />
+            <Text style={[styles.logo, { color: "#dae2fd" }]}>Tindah</Text>
+          </View>
+        ) : (
+          <View />
+        )}
+        <View style={styles.headerRight}>
+          {isMediumLayout ? (
+            <View style={styles.playerCopy}>
+              <Text style={[styles.playerName, { color: colors.text }]} numberOfLines={1}>
+                {user?.name || "Pro Player"}
+              </Text>
+              <Text style={[styles.playerLevel, { color: colors.muted }]}>Level 42</Text>
+            </View>
+          ) : null}
+          <Pressable
+            style={({ hovered, pressed }) => [
+              styles.filterButton,
+              {
+                backgroundColor: "rgba(23,31,51,0.74)",
+                borderColor: "rgba(255,255,255,0.1)",
+              },
+              hovered && {
+                backgroundColor: "rgba(255,81,103,0.2)",
+                borderColor: colors.primary,
+                transform: [{ translateY: -2 }, { scale: 1.03 }],
+              },
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={openFilters}
+          >
+            <Text style={[styles.filterText, { color: colors.text }]}>Filters</Text>
+          </Pressable>
+        </View>
       </View>
 
       {matchBanner ? (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{matchBanner}</Text>
+        <View
+          style={[
+            styles.banner,
+            {
+              backgroundColor: colors.elevated,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.bannerText, { color: colors.text }]}>{matchBanner}</Text>
         </View>
       ) : null}
 
@@ -465,37 +908,61 @@ const [matchedMatch, setMatchedMatch] =
           <RefreshControl
             refreshing={refreshing}
             onRefresh={refresh}
-            tintColor="#ff4f7b"
+            tintColor={colors.primary}
           />
         }
       >
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color="#ff4f7b" size="large" />
+        <View style={[styles.exploreLayout, isWideLayout && styles.exploreLayoutWide]}>
+          <View style={[styles.swipeColumn, isWideLayout && styles.swipeColumnWide]}>
+            <View style={styles.stackGhostBack} />
+            <View style={styles.stackGhostFront} />
+            {loading ? (
+              <View style={[styles.cardFrame, cardFrameStyle]}>
+                <ExploreSkeleton colors={colors} />
+              </View>
+            ) : error ? (
+              <View style={[styles.errorBox, cardFrameStyle]}>
+                <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+                <Pressable
+                  style={({ hovered, pressed }) => [
+                    styles.retryButton,
+                    { backgroundColor: colors.primary },
+                    hovered && {
+                      backgroundColor: colors.primaryStrong,
+                      transform: [{ translateY: -2 }, { scale: 1.03 }],
+                    },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={refresh}
+                >
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Animated.View
+                onPointerEnter={() => animateCardHover(true)}
+                onPointerLeave={() => animateCardHover(false)}
+                style={[
+                  styles.cardFrame,
+                  cardFrameStyle,
+                  cardHoverStyle,
+                  isCardHovered && styles.cardFrameHover,
+                ]}
+              >
+                <CardStack
+                  users={users}
+                  remaining={remaining}
+                  onNope={(user) => handleSwipe(user, "nope")}
+                  onLike={(user) => handleSwipe(user, "like")}
+                  onSuperLike={(user) => handleSwipe(user, "superlike")}
+                />
+              </Animated.View>
+            )}
+            {renderSwipeActions()}
           </View>
-        ) : error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable
-              style={({ hovered, pressed }) => [
-                styles.retryButton,
-                hovered && styles.retryButtonHover,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={refresh}
-            >
-              <Text style={styles.retryText}>Try again</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <CardStack
-            users={users}
-            remaining={remaining}
-            onNope={(user) => handleSwipe(user, "nope")}
-            onLike={(user) => handleSwipe(user, "like")}
-            onSuperLike={(user) => handleSwipe(user, "superlike")}
-          />
-        )}
+          {isWideLayout ? <LiveActivityPanel colors={colors} /> : null}
+        </View>
+        {!isWideLayout ? <LiveActivityPanel colors={colors} isCompact /> : null}
       </ScrollView>
       <MatchModal
   visible={showMatchModal}
@@ -510,13 +977,29 @@ const [matchedMatch, setMatchedMatch] =
         animationType="slide"
         onRequestClose={closeFilters}
       >
-        <View style={styles.filtersOverlay}>
+        <View style={[styles.filtersOverlay, { backgroundColor: colors.overlay }]}>
           <Pressable style={styles.filtersBackdrop} onPress={closeFilters} />
-          <View style={styles.filtersSheet}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.filtersHeader}>
+          <View
+            style={[
+              styles.filtersSheet,
+              {
+                backgroundColor: colors.screen,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={[styles.sheetHandle, { backgroundColor: colors.borderStrong }]} />
+            <View
+              style={[
+                styles.filtersHeader,
+                {
+                  backgroundColor: colors.surface,
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
               <View style={styles.headerSide} />
-              <Text style={styles.filtersTitle}>Search settings</Text>
+              <Text style={[styles.filtersTitle, { color: colors.text }]}>Search settings</Text>
               <Pressable
                 disabled={filtersSaving}
                 onPress={saveFilters}
@@ -527,9 +1010,9 @@ const [matchedMatch, setMatchedMatch] =
                 ]}
               >
                 {filtersSaving ? (
-                  <ActivityIndicator color="#57b8ff" />
+                  <ActivityIndicator color={colors.accent} />
                 ) : (
-                  <Text style={styles.doneFilterText}>Done</Text>
+                  <Text style={[styles.doneFilterText, { color: colors.accent }]}>Done</Text>
                 )}
               </Pressable>
             </View>
@@ -538,13 +1021,16 @@ const [matchedMatch, setMatchedMatch] =
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.filtersContent}
             >
-              <Text style={styles.filtersSectionTitle}>Discovery</Text>
+              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Discovery</Text>
 
-              <View style={styles.discoveryCard}>
+              <View style={[styles.discoveryCard, { backgroundColor: colors.surface }]}>
                 <Pressable
                   style={({ hovered, pressed }) => [
                     styles.locationRow,
-                    hovered && styles.locationRowHover,
+                    hovered && {
+                      backgroundColor: colors.elevated,
+                      transform: [{ translateX: 4 }],
+                    },
                     pressed && styles.buttonPressed,
                   ]}
                   onPress={useCurrentLocation}
@@ -553,38 +1039,50 @@ const [matchedMatch, setMatchedMatch] =
                   {({ hovered }) => (
                     <>
                       <View style={styles.locationCopy}>
-                        <Text style={styles.settingTitle}>Location</Text>
-                        <Text style={styles.settingHint}>
+                        <Text style={[styles.settingTitle, { color: colors.text }]}>Location</Text>
+                        <Text style={[styles.settingHint, { color: colors.muted }]}>
                           Change where matches are discovered.
                         </Text>
                       </View>
-                      <Text style={[styles.locationValue, hovered && styles.valueHover]}>
+                      <Text
+                        style={[
+                          styles.locationValue,
+                          { color: hovered ? colors.text : colors.muted },
+                        ]}
+                      >
                         {locating ? "Locating..." : "Use current location"}
                       </Text>
-                      <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
+                      <Text
+                        style={[
+                          styles.rowChevron,
+                          { color: hovered ? colors.text : colors.muted },
+                        ]}
+                      >
                         {">"}
                       </Text>
                     </>
                   )}
                 </Pressable>
                 {filterMessage ? (
-                  <Text style={styles.filterMessage}>{filterMessage}</Text>
+                  <Text style={[styles.filterMessage, { color: colors.muted }]}>{filterMessage}</Text>
                 ) : null}
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.settingHeader}>
-                  <Text style={styles.settingTitle}>Maximum distance</Text>
-                  <Text style={styles.settingValue}>{filterForm.maxDistanceKm} km</Text>
+                  <Text style={[styles.settingTitle, { color: colors.text }]}>Maximum distance</Text>
+                  <Text style={[styles.settingValue, { color: colors.muted }]}>
+                    {filterForm.maxDistanceKm} km
+                  </Text>
                 </View>
                 <Slider
                   minimumValue={2}
                   maximumValue={100}
                   step={1}
                   value={filterForm.maxDistanceKm}
-                  minimumTrackTintColor="#ff2f6d"
-                  maximumTrackTintColor="#6c6363"
-                  thumbTintColor="#ffffff"
+                  minimumTrackTintColor={colors.primaryStrong}
+                  maximumTrackTintColor={colors.borderStrong}
+                  thumbTintColor={colors.text}
                   onValueChange={(value) =>
                     setFilterForm((current) => ({
                       ...current,
@@ -593,7 +1091,7 @@ const [matchedMatch, setMatchedMatch] =
                   }
                 />
                 <View style={styles.toggleRow}>
-                  <Text style={styles.toggleText}>
+                  <Text style={[styles.toggleText, { color: colors.muted }]}>
                     Show people farther away if I run out of profiles.
                   </Text>
                   <Switch
@@ -604,16 +1102,16 @@ const [matchedMatch, setMatchedMatch] =
                         expandDistance: value,
                       }))
                     }
-                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
-                    thumbColor="#ffffff"
+                    trackColor={{ false: colors.borderStrong, true: colors.primaryStrong }}
+                    thumbColor={colors.text}
                   />
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.settingHeader}>
-                  <Text style={styles.settingTitle}>Interested in</Text>
-                  <Text style={styles.settingValue} numberOfLines={1}>
+                  <Text style={[styles.settingTitle, { color: colors.text }]}>Interested in</Text>
+                  <Text style={[styles.settingValue, { color: colors.muted }]} numberOfLines={1}>
                     {selectedGenderLabel}
                   </Text>
                 </View>
@@ -627,8 +1125,19 @@ const [matchedMatch, setMatchedMatch] =
                         onPress={() => toggleGenderPreference(option.value)}
                         style={({ hovered, pressed }) => [
                           styles.genderChip,
-                          selected && styles.genderChipSelected,
-                          hovered && styles.genderChipHover,
+                          {
+                            backgroundColor: colors.elevated,
+                            borderColor: colors.borderStrong,
+                          },
+                          selected && {
+                            backgroundColor: colors.primarySoft,
+                            borderColor: colors.primary,
+                          },
+                          hovered && {
+                            backgroundColor: colors.elevatedAlt,
+                            borderColor: colors.text,
+                            transform: [{ translateY: -2 }, { scale: 1.03 }],
+                          },
                           pressed && styles.buttonPressed,
                         ]}
                       >
@@ -636,8 +1145,8 @@ const [matchedMatch, setMatchedMatch] =
                           <Text
                             style={[
                               styles.genderChipText,
-                              selected && styles.genderChipTextSelected,
-                              hovered && styles.genderChipTextHover,
+                              { color: selected ? colors.primary : colors.muted },
+                              hovered && { color: colors.text },
                             ]}
                           >
                             {option.label}
@@ -648,38 +1157,38 @@ const [matchedMatch, setMatchedMatch] =
                   })}
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.settingHeader}>
-                  <Text style={styles.settingTitle}>Age range</Text>
-                  <Text style={styles.settingValue}>
+                  <Text style={[styles.settingTitle, { color: colors.text }]}>Age range</Text>
+                  <Text style={[styles.settingValue, { color: colors.muted }]}>
                     {filterForm.minAge}-{filterForm.maxAge}
                   </Text>
                 </View>
-                <Text style={styles.sliderLabel}>Minimum age</Text>
+                <Text style={[styles.sliderLabel, { color: colors.muted }]}>Minimum age</Text>
                 <Slider
                   minimumValue={18}
                   maximumValue={100}
                   step={1}
                   value={filterForm.minAge}
-                  minimumTrackTintColor="#ff2f6d"
-                  maximumTrackTintColor="#6c6363"
-                  thumbTintColor="#ffffff"
+                  minimumTrackTintColor={colors.primaryStrong}
+                  maximumTrackTintColor={colors.borderStrong}
+                  thumbTintColor={colors.text}
                   onValueChange={updateMinAge}
                 />
-                <Text style={styles.sliderLabel}>Maximum age</Text>
+                <Text style={[styles.sliderLabel, { color: colors.muted }]}>Maximum age</Text>
                 <Slider
                   minimumValue={18}
                   maximumValue={100}
                   step={1}
                   value={filterForm.maxAge}
-                  minimumTrackTintColor="#ff2f6d"
-                  maximumTrackTintColor="#6c6363"
-                  thumbTintColor="#ffffff"
+                  minimumTrackTintColor={colors.primaryStrong}
+                  maximumTrackTintColor={colors.borderStrong}
+                  thumbTintColor={colors.text}
                   onValueChange={updateMaxAge}
                 />
                 <View style={styles.toggleRow}>
-                  <Text style={styles.toggleText}>
+                  <Text style={[styles.toggleText, { color: colors.muted }]}>
                     Show people slightly outside my preferred age range.
                   </Text>
                   <Switch
@@ -690,15 +1199,15 @@ const [matchedMatch, setMatchedMatch] =
                         expandAge: value,
                       }))
                     }
-                    trackColor={{ false: "#61556b", true: "#ff2f6d" }}
-                    thumbColor="#ffffff"
+                    trackColor={{ false: colors.borderStrong, true: colors.primaryStrong }}
+                    thumbColor={colors.text}
                   />
                 </View>
               </View>
 
               <View style={styles.searchFilterBlock}>
-                <Text style={styles.filtersSectionTitle}>More filters</Text>
-                <View style={styles.searchFilterList}>
+                <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>More filters</Text>
+                <View style={[styles.searchFilterList, { backgroundColor: colors.surface }]}>
                   {SEARCH_FILTER_IDS.map((filterId) => {
                     const config = SEARCH_FILTER_CONFIGS[filterId];
                     const value = formatSelectionValue(filterForm.advancedFilters?.[filterId]);
@@ -708,7 +1217,13 @@ const [matchedMatch, setMatchedMatch] =
                         key={filterId}
                         style={({ hovered, pressed }) => [
                           styles.searchFilterRow,
-                          hovered && styles.searchFilterRowHover,
+                          {
+                            borderBottomColor: colors.border,
+                          },
+                          hovered && {
+                            backgroundColor: colors.elevated,
+                            transform: [{ translateX: 3 }],
+                          },
                           pressed && styles.buttonPressed,
                         ]}
                         onPress={() => setActiveSearchFilterId(filterId)}
@@ -718,16 +1233,27 @@ const [matchedMatch, setMatchedMatch] =
                             <Text style={[styles.searchFilterIcon, hovered && styles.valueHover]}>
                               {config.icon}
                             </Text>
-                            <Text style={styles.searchFilterLabel} numberOfLines={1}>
+                            <Text
+                              style={[styles.searchFilterLabel, { color: colors.text }]}
+                              numberOfLines={1}
+                            >
                               {config.label}
                             </Text>
                             <Text
-                              style={[styles.searchFilterValue, hovered && styles.valueHover]}
+                              style={[
+                                styles.searchFilterValue,
+                                { color: hovered ? colors.text : colors.muted },
+                              ]}
                               numberOfLines={1}
                             >
                               {value}
                             </Text>
-                            <Text style={[styles.rowChevron, hovered && styles.valueHover]}>
+                            <Text
+                              style={[
+                                styles.rowChevron,
+                                { color: hovered ? colors.text : colors.muted },
+                              ]}
+                            >
                               {">"}
                             </Text>
                           </>
@@ -747,13 +1273,21 @@ const [matchedMatch, setMatchedMatch] =
         animationType="slide"
         onRequestClose={() => setActiveSearchFilterId(null)}
       >
-        <View style={styles.selectorOverlay}>
+        <View style={[styles.selectorOverlay, { backgroundColor: colors.overlay }]}>
           <Pressable
             style={styles.selectorDismiss}
             onPress={() => setActiveSearchFilterId(null)}
           />
-          <View style={styles.selectorSheet}>
-            <View style={styles.selectorHeader}>
+          <View
+            style={[
+              styles.selectorSheet,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={[styles.selectorHeader, { borderBottomColor: colors.border }]}>
               <Pressable
                 style={({ hovered, pressed }) => [
                   styles.selectorHeaderButton,
@@ -765,9 +1299,11 @@ const [matchedMatch, setMatchedMatch] =
                   activeSearchFilter?.mode === "multi" ? [] : "",
                 )}
               >
-                <Text style={styles.selectorClearText}>Clear</Text>
+                <Text style={[styles.selectorClearText, { color: colors.muted }]}>Clear</Text>
               </Pressable>
-              <Text style={styles.selectorTitle}>{activeSearchFilter?.label}</Text>
+              <Text style={[styles.selectorTitle, { color: colors.text }]}>
+                {activeSearchFilter?.label}
+              </Text>
               <Pressable
                 style={({ hovered, pressed }) => [
                   styles.selectorHeaderButton,
@@ -776,7 +1312,7 @@ const [matchedMatch, setMatchedMatch] =
                 ]}
                 onPress={() => setActiveSearchFilterId(null)}
               >
-                <Text style={styles.doneFilterText}>Done</Text>
+                <Text style={[styles.doneFilterText, { color: colors.accent }]}>Done</Text>
               </Pressable>
             </View>
             <ScrollView
@@ -791,8 +1327,16 @@ const [matchedMatch, setMatchedMatch] =
                     key={option}
                     style={({ hovered, pressed }) => [
                       styles.selectorOptionRow,
-                      selected && styles.selectorOptionRowSelected,
-                      hovered && styles.selectorOptionRowHover,
+                      {
+                        borderBottomColor: colors.border,
+                      },
+                      selected && {
+                        backgroundColor: colors.primarySoft,
+                      },
+                      hovered && {
+                        backgroundColor: colors.elevatedAlt,
+                        transform: [{ translateX: 3 }],
+                      },
                       pressed && styles.buttonPressed,
                     ]}
                     onPress={() => toggleAdvancedFilterOption(option)}
@@ -800,7 +1344,7 @@ const [matchedMatch, setMatchedMatch] =
                     <Text
                       style={[
                         styles.selectorOptionText,
-                        selected && styles.selectorOptionTextSelected,
+                        { color: selected ? colors.primary : colors.text },
                       ]}
                     >
                       {option}
@@ -808,7 +1352,14 @@ const [matchedMatch, setMatchedMatch] =
                     <View
                       style={[
                         styles.selectorCheck,
-                        selected && styles.selectorCheckSelected,
+                        {
+                          borderColor: colors.borderStrong,
+                          backgroundColor: colors.elevated,
+                        },
+                        selected && {
+                          borderColor: colors.primary,
+                          backgroundColor: colors.primary,
+                        },
                       ]}
                     >
                       {selected ? <Text style={styles.selectorCheckText}>OK</Text> : null}
@@ -820,101 +1371,114 @@ const [matchedMatch, setMatchedMatch] =
           </View>
         </View>
       </Modal>
-      <View style={styles.actions}>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.nope,
-            hovered && styles.actionHover,
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "nope")}
-        >
-          <Text style={styles.nopeText}>X</Text>
-        </Pressable>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.superLike,
-            hovered && styles.actionHover,
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "superlike")}
-        >
-          <Animated.Text
-            style={[
-              styles.superLikeText,
-              {
-                transform: [
-                  {
-                    scale: pulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.08],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            ★
-          </Animated.Text>
-        </Pressable>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.like,
-            hovered && styles.actionHover,
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "like")}
-        >
-          <Animated.Text
-            style={[
-              styles.likeText,
-              {
-                transform: [
-                  {
-                    scale: pulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            ♥
-          </Animated.Text>
-        </Pressable>
-      </View>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#050506",
+    backgroundColor: "#0b1326",
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
+    opacity: 0.1,
+  },
+  backgroundTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(11,19,38,0.9)",
+  },
+  hexLayer: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.18,
+    paddingTop: 80,
+    gap: 28,
+  },
+  hexRow: {
+    flexDirection: "row",
+    gap: 28,
+    transform: [{ translateX: -24 }],
+  },
+  hexCell: {
+    width: 54,
+    height: 31,
+    borderWidth: 1,
+    borderColor: "rgba(192,193,255,0.16)",
+    transform: [{ rotate: "30deg" }],
   },
   header: {
-    paddingTop: 16,
-    paddingHorizontal: 20,
+    minHeight: 78,
+    paddingTop: 14,
+    paddingHorizontal: 24,
     paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#121016",
+    backgroundColor: "#0b1326",
+    borderBottomWidth: 1,
+    shadowColor: "#c0c1ff",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  headerDesktop: {
+    height: 64,
+    minHeight: 64,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  brand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0,
+  },
+  stitchLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   logo: {
-    color: "#ff4f7b",
-    fontSize: 30,
+    color: "#dae2fd",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 0,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flexShrink: 1,
+  },
+  playerCopy: {
+    alignItems: "flex-end",
+    paddingRight: 14,
+    borderRightWidth: 1,
+    borderRightColor: "rgba(255,255,255,0.12)",
+  },
+  playerName: {
+    maxWidth: 150,
+    fontSize: 16,
     fontWeight: "900",
   },
+  playerLevel: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
   filterButton: {
+    minHeight: 40,
     paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: "#1c1720",
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    backgroundColor: "#171f33",
+    borderRadius: 999,
+    borderWidth: 1,
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
   filterButtonHover: {
     backgroundColor: "#2a2133",
@@ -922,12 +1486,74 @@ const styles = StyleSheet.create({
   },
   filterText: {
     color: "#ffffff",
-    fontWeight: "800",
+    fontWeight: "900",
   },
   content: {
     flexGrow: 1,
-    padding: 16,
-    paddingBottom: 24,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingHorizontal: 18,
+    paddingTop: 36,
+    paddingBottom: 26,
+  },
+  exploreLayout: {
+    width: "100%",
+    maxWidth: 1180,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 22,
+  },
+  exploreLayoutWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 30,
+  },
+  swipeColumn: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    paddingTop: 26,
+    minWidth: 0,
+  },
+  swipeColumnWide: {
+    paddingTop: 18,
+  },
+  stackGhostBack: {
+    position: "absolute",
+    top: 0,
+    width: 330,
+    height: 440,
+    borderRadius: 30,
+    backgroundColor: "rgba(6,14,32,0.56)",
+    transform: [{ scale: 0.9 }, { translateY: -24 }],
+  },
+  stackGhostFront: {
+    position: "absolute",
+    top: 12,
+    width: 370,
+    height: 470,
+    borderRadius: 30,
+    backgroundColor: "rgba(23,31,51,0.5)",
+    transform: [{ scale: 0.95 }, { translateY: -12 }],
+  },
+  cardFrame: {
+    alignSelf: "center",
+    borderRadius: 32,
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+    zIndex: 2,
+  },
+  cardFrameHover: {
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.58,
+    shadowRadius: 42,
+    shadowOffset: { width: 0, height: 24 },
+    elevation: 16,
+    boxShadow: "0 22px 52px rgba(255,81,103,0.52)",
   },
   loading: {
     flex: 1,
@@ -935,16 +1561,109 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  skeletonCard: {
+    flex: 1,
+    minHeight: 520,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    overflow: "hidden",
+    justifyContent: "space-between",
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 7,
+  },
+  skeletonBlock: {
+    borderRadius: 999,
+  },
+  skeletonTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  skeletonPillSmall: {
+    width: 72,
+    height: 28,
+  },
+  skeletonMatchBadge: {
+    width: 62,
+    height: 52,
+    borderRadius: 18,
+  },
+  skeletonCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 26,
+  },
+  skeletonPhotoGlow: {
+    width: "86%",
+    height: "100%",
+    maxHeight: 300,
+    minHeight: 220,
+    borderRadius: 24,
+  },
+  skeletonBottom: {
+    gap: 11,
+  },
+  skeletonPill: {
+    width: 122,
+    height: 34,
+  },
+  skeletonName: {
+    width: "68%",
+    height: 42,
+    borderRadius: 12,
+  },
+  skeletonLine: {
+    width: "48%",
+    height: 18,
+    borderRadius: 9,
+  },
+  skeletonTagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  skeletonTag: {
+    width: 92,
+    height: 30,
+  },
+  skeletonTagShort: {
+    width: 64,
+    height: 30,
+  },
+  skeletonPrompt: {
+    minHeight: 74,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  skeletonPromptLine: {
+    flex: 1,
+    height: 20,
+    borderRadius: 10,
+  },
+  skeletonPromptAction: {
+    width: 86,
+    height: 36,
+  },
   banner: {
     position: "absolute",
     zIndex: 4,
-    top: 120,
+    top: 92,
     left: 20,
     right: 20,
     borderRadius: 18,
-    backgroundColor: "#1c1720",
+    backgroundColor: "rgba(23,31,51,0.92)",
     padding: 14,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,179,181,0.22)",
   },
   bannerText: {
     color: "#fff",
@@ -956,6 +1675,10 @@ const styles = StyleSheet.create({
     minHeight: 420,
     paddingHorizontal: 20,
     gap: 12,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(23,31,51,0.7)",
   },
   errorText: {
     color: "#ff4f7b",
@@ -966,20 +1689,23 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 20,
-    paddingBottom: 16,
-    backgroundColor: "#050506",
+    alignItems: "center",
+    gap: 24,
+    marginTop: -42,
+    paddingBottom: 4,
+    backgroundColor: "transparent",
+    borderTopWidth: 0,
+    zIndex: 4,
   },
   actionButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1c1720",
-    shadowColor: "#050506",
+    backgroundColor: "#222a3d",
     shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
@@ -992,20 +1718,25 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.94 }],
   },
   nope: {
-    borderWidth: 1,
-    borderColor: "#ffffff",
+    borderWidth: 0,
   },
   superLike: {
-    borderWidth: 1,
-    borderColor: "#20c7ff",
+    borderWidth: 0,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    transform: [{ translateY: -14 }],
   },
   like: {
-    borderWidth: 1,
-    borderColor: "#ff2f6d",
+    borderWidth: 0,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: "hidden",
   },
   retryButton: {
     marginTop: 12,
-    alignSelf: "flex-start",
+    alignSelf: "center",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1021,6 +1752,83 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: "#fff",
+    fontWeight: "800",
+  },
+  activityPanel: {
+    width: 340,
+    minHeight: 540,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 22,
+    gap: 22,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 8,
+  },
+  activityPanelCompact: {
+    width: "100%",
+    maxWidth: 420,
+    minHeight: 0,
+    padding: 16,
+  },
+  activityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activityTitle: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "900",
+  },
+  activityPing: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    shadowColor: "#c0c1ff",
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+  },
+  activityList: {
+    gap: 14,
+  },
+  activityItem: {
+    minHeight: 84,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  activityIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activityIconText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  activityCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  activityItemTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  activityItemDetail: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+  },
+  activityTime: {
+    fontSize: 11,
     fontWeight: "800",
   },
   filtersOverlay: {
@@ -1357,19 +2165,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "900",
   },
-  nopeText: {
-    color: "#ffffff",
-    fontSize: 28,
-    fontWeight: "900",
+  cancelActionIcon: {
+    width: 19,
+    height: 19,
+    tintColor: "#ffb4ab",
   },
-  superLikeText: {
-    color: "#20c7ff",
-    fontSize: 30,
-    fontWeight: "900",
+  starActionIcon: {
+    width: 24,
+    height: 23,
+    tintColor: "#b0b2ff",
   },
-  likeText: {
-    color: "#ff2f6d",
-    fontSize: 32,
-    fontWeight: "900",
+  likeGradient: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heartActionIcon: {
+    width: 34,
+    height: 31,
+    tintColor: "#680019",
   },
 });

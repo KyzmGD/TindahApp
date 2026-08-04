@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 import UserCard from "./UserCard";
+import { useTheme } from "../../theme/ThemeContext";
 
 
 export default function CardStack({
@@ -11,6 +12,8 @@ export default function CardStack({
   onNope,
   onSuperLike,
 }) {
+  const { theme } = useTheme();
+  const colors = theme.colors;
   const currentUser = users[0];
   const nextUser = users[1];
   const enterAnimation = useRef(new Animated.Value(0)).current;
@@ -37,9 +40,17 @@ export default function CardStack({
 
   if (!currentUser) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>No more profiles</Text>
-        <Text style={styles.emptyText}>
+      <View
+        style={[
+          styles.empty,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>No more profiles</Text>
+        <Text style={[styles.emptyText, { color: colors.muted }]}>
           Check back later or widen your distance filters.
         </Text>
       </View>
@@ -81,7 +92,8 @@ export default function CardStack({
 const styles = StyleSheet.create({
   stack: {
     flex: 1,
-    minHeight: 500,
+    width: "100%",
+    height: "100%",
   },
   card: {
     position: "absolute",
@@ -97,26 +109,33 @@ const styles = StyleSheet.create({
   userSelect: "none",
 },
   nextCard: {
-    transform: [{ scale: 0.96 }, { translateY: 14 }],
-    opacity: 0.9,
+    transform: [{ scale: 0.94 }, { translateY: 18 }],
+    opacity: 0.62,
   },
   empty: {
   flex: 1,
-  minHeight: 500,
-  borderRadius: 22,
-  backgroundColor: "#121016",
+  width: "100%",
+  height: "100%",
+  borderRadius: 32,
+  backgroundColor: "rgba(23,31,51,0.72)",
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.1)",
   alignItems: "center",
   justifyContent: "center",
   padding: 24,
   gap: 8,
+  shadowColor: "#ff5167",
+  shadowOpacity: 0.18,
+  shadowRadius: 22,
+  shadowOffset: { width: 0, height: 14 },
 },
   emptyTitle: {
     fontSize: 22,
-    fontWeight: "800",
-    color: "#ffffff",
+    fontWeight: "900",
+    color: "#dae2fd",
   },
   emptyText: {
     textAlign: "center",
-    color: "#cbbdd2",
+    color: "#e6bcbd",
   },
 });

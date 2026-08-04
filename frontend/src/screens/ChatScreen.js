@@ -24,6 +24,18 @@ function getMessageId(message) {
   return message._id || message.clientMessageId;
 }
 
+function getUserId(user) {
+  if (!user) {
+    return "";
+  }
+
+  if (typeof user === "string") {
+    return user;
+  }
+
+  return user.id || user._id || "";
+}
+
 function isMessageInMatch(message, matchId) {
   return message.match === matchId || message.match?._id === matchId || message.matchId === matchId;
 }
@@ -45,6 +57,10 @@ function mergeMessage(currentMessages, nextMessage) {
 }
 
 function getAvatar(user) {
+  if (user?.avatarUrl) {
+    return user.avatarUrl;
+  }
+
   if (!user?.photos?.length) {
     return "https://i.pravatar.cc/300";
   }
@@ -57,21 +73,85 @@ function getOtherUser(match, currentUserId) {
   return match?.users?.find((item) => item._id !== currentUserId && item.id !== currentUserId) || null;
 }
 
+function isMessageReadBy(message, userId) {
+  return Array.isArray(message.readBy)
+    && message.readBy.some((reader) => getUserId(reader) === userId);
+}
+
+function mergeReadState(messages, { userId, messageIds }) {
+  if (!userId || !messageIds?.length) {
+    return messages;
+  }
+
+  const readIds = new Set(messageIds);
+
+  return messages.map((message) => {
+    const messageId = getMessageId(message);
+
+    if (!readIds.has(messageId) || isMessageReadBy(message, userId)) {
+      return message;
+    }
+
+    return {
+      ...message,
+      readBy: [...(message.readBy || []), userId],
+    };
+  });
+}
+
+function formatLastActive(lastActive) {
+  if (!lastActive) {
+    return "offline";
+  }
+
+  const date = new Date(lastActive);
+
+  if (Number.isNaN(date.getTime())) {
+    return "offline";
+  }
+
+  return `last active ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function ChatScreen({ navigation, route }) {
   const { user: currentUser } = useAuth();
-  const { socket, isConnected, joinMatch, sendMessageRealtime, setTyping } = useSocket();
+  const {
+    socket,
+    isConnected,
+    joinMatch,
+    markMessagesRead,
+    sendMessageRealtime,
+    setTyping,
+  } = useSocket();
   const { match: initialMatch, user: initialRecipient, matchId: notificationMatchId } = route.params || {};
   const [resolvedMatch, setResolvedMatch] = useState(initialMatch || null);
   const [resolvedRecipient, setResolvedRecipient] = useState(initialRecipient || null);
+  const [recipientPresence, setRecipientPresence] = useState({
+    isOnline: Boolean(initialRecipient?.isOnline),
+    lastActive: initialRecipient?.lastActive || null,
+  });
   const [messages, setMessages] = useState([]);
   const [typingUserId, setTypingUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sendingCount, setSendingCount] = useState(0);
   const listRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const matchId = resolvedMatch?._id || notificationMatchId;
+  const recipientId = getUserId(resolvedRecipient);
   const title = useMemo(() => resolvedRecipient?.name || "Chat", [resolvedRecipient?.name]);
+  const statusText = useMemo(() => {
+    if (typingUserId) {
+      return "typing...";
+    }
+
+    if (recipientPresence.isOnline) {
+      return "online";
+    }
+
+    return formatLastActive(recipientPresence.lastActive);
+  }, [recipientPresence.isOnline, recipientPresence.lastActive, typingUserId]);
   const inputDisabled = !matchId || loading;
 
   useEffect(() => {
@@ -102,6 +182,10 @@ export default function ChatScreen({ navigation, route }) {
         if (isMounted) {
           setResolvedMatch(activeMatch);
           setResolvedRecipient(activeRecipient);
+          setRecipientPresence({
+            isOnline: Boolean(activeRecipient.isOnline),
+            lastActive: activeRecipient.lastActive || null,
+          });
         }
 
         const activeMatchId = activeMatch._id;
@@ -154,18 +238,96 @@ export default function ChatScreen({ navigation, route }) {
 
     const onTyping = (payload) => {
       if (payload.matchId === matchId && payload.userId !== currentUser?.id) {
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+
         setTypingUserId(payload.isTyping ? payload.userId : null);
+
+        if (payload.isTyping) {
+          typingTimeoutRef.current = setTimeout(() => {
+            setTypingUserId(null);
+          }, 2500);
+        }
       }
+    };
+
+    const onPresenceSnapshot = (payload) => {
+      if (payload.matchId !== matchId || !recipientId) {
+        return;
+      }
+
+      const presence = payload.users?.find((item) => item.userId === recipientId);
+
+      if (presence) {
+        setRecipientPresence({
+          isOnline: Boolean(presence.isOnline),
+          lastActive: presence.lastActive || null,
+        });
+      }
+    };
+
+    const onPresenceUpdate = (payload) => {
+      if (payload.userId !== recipientId) {
+        return;
+      }
+
+      setRecipientPresence({
+        isOnline: Boolean(payload.isOnline),
+        lastActive: payload.lastActive || null,
+      });
+    };
+
+    const onReadMessage = (payload) => {
+      if (payload.matchId !== matchId) {
+        return;
+      }
+
+      setMessages((current) => mergeReadState(current, payload));
     };
 
     socket.on("receive_message", onReceiveMessage);
     socket.on("typing", onTyping);
+    socket.on("presence:snapshot", onPresenceSnapshot);
+    socket.on("presence:update", onPresenceUpdate);
+    socket.on("read_message", onReadMessage);
 
     return () => {
       socket.off("receive_message", onReceiveMessage);
       socket.off("typing", onTyping);
+      socket.off("presence:snapshot", onPresenceSnapshot);
+      socket.off("presence:update", onPresenceUpdate);
+      socket.off("read_message", onReadMessage);
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
-  }, [currentUser?.id, matchId, socket]);
+  }, [currentUser?.id, matchId, recipientId, socket]);
+
+  useEffect(() => {
+    if (!matchId || !currentUser?.id || !messages.length) {
+      return;
+    }
+
+    const unreadReceivedMessageIds = messages
+      .filter((message) => {
+        const senderId = getUserId(message.sender);
+        const messageId = message._id;
+
+        return (
+          messageId
+          && senderId
+          && senderId !== currentUser.id
+          && !isMessageReadBy(message, currentUser.id)
+        );
+      })
+      .map((message) => message._id);
+
+    if (unreadReceivedMessageIds.length) {
+      markMessagesRead(matchId, unreadReceivedMessageIds);
+    }
+  }, [currentUser?.id, markMessagesRead, matchId, messages]);
 
   useEffect(() => {
     if (!messages.length) {
@@ -232,10 +394,18 @@ export default function ChatScreen({ navigation, route }) {
           )}
         </Pressable>
         <View style={styles.headerCenter}>
-          <Image source={{ uri: getAvatar(recipient) }} style={styles.avatar} />
+          <View style={styles.avatarWrap}>
+            <Image source={{ uri: getAvatar(resolvedRecipient) }} style={styles.avatar} />
+            <View
+              style={[
+                styles.onlineDot,
+                recipientPresence.isOnline ? styles.onlineDotActive : styles.onlineDotInactive,
+              ]}
+            />
+          </View>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.statusText}>
-            {typingUserId ? "typing..." : isConnected ? "online" : "reconnecting..."}
+          <Text style={[styles.statusText, recipientPresence.isOnline && styles.statusOnline]}>
+            {statusText}
           </Text>
         </View>
         <Pressable style={styles.menuButton}>
@@ -268,7 +438,8 @@ export default function ChatScreen({ navigation, route }) {
               <ChatBubble
                 message={item}
                 isMine={senderId === currentUser?.id}
-                avatarUrl={senderId === currentUser?.id ? getAvatar(currentUser) : getAvatar(recipient)}
+                avatarUrl={senderId === currentUser?.id ? getAvatar(currentUser) : getAvatar(resolvedRecipient)}
+                isRead={senderId === currentUser?.id && isMessageReadBy(item, recipientId)}
               />
             );
           }}
@@ -347,6 +518,26 @@ const styles = StyleSheet.create({
     borderColor: "#ff7aa2",
     backgroundColor: "#ff4f7b",
   },
+  avatarWrap: {
+    width: 58,
+    height: 58,
+  },
+  onlineDot: {
+    position: "absolute",
+    right: 2,
+    bottom: 2,
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: "#111112",
+  },
+  onlineDotActive: {
+    backgroundColor: "#20e49b",
+  },
+  onlineDotInactive: {
+    backgroundColor: "#5f5663",
+  },
   title: {
     color: "#c8c0c7",
     fontSize: 16,
@@ -359,6 +550,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "700",
     lineHeight: 11,
+  },
+  statusOnline: {
+    color: "#20e49b",
   },
   menuButton: {
     width: 54,

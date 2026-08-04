@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors"); // 🌟 1. Thêm thư viện cors chính thức ở đây
+const path = require("path");
 const routes = require("./routes");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
@@ -40,6 +41,13 @@ app.use(
 );
 
 app.use(express.json({ limit: "256kb" }));
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "..", "public", "uploads"), {
+    immutable: true,
+    maxAge: "7d",
+  }),
+);
 
 // --- CẤU HÌNH SWAGGER VÀO ĐÂY ---
 const swaggerOptions = {

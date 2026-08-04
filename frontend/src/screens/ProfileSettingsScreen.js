@@ -18,7 +18,7 @@ import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
 import { useAuth } from "../context/AuthContext";
-import { uploadImage } from "../services/upload.api";
+import { uploadProfileImage } from "../services/upload.api";
 
 const MAX_PHOTOS = 6;
 const MIN_DISTANCE_KM = 2;
@@ -547,18 +547,23 @@ export default function ProfileSettingsScreen({ navigation }) {
         return;
       }
 
-      const url = await uploadImage(result.assets[0].uri);
+      const uploadedImage = await uploadProfileImage(result.assets[0]);
 
       setSettings((current) => ({
         ...current,
         photos: normalizePhotos([
           ...current.photos,
           {
-            url,
-            publicId: null,
+            url: uploadedImage.url,
+            publicId: uploadedImage.publicId,
           },
         ]),
       }));
+      setMessage(
+        uploadedImage.storage === "cloudinary"
+          ? "Photo uploaded to Cloudinary. Tap Done to save."
+          : "Photo uploaded locally. Tap Done to save.",
+      );
     } catch (error) {
       setMessage(error.message || "Could not upload photo.");
     } finally {

@@ -602,6 +602,15 @@ describe("match-gated chat integration", () => {
       }),
     ]);
 
+    const bobMatchesAfterMessage = await request(app)
+      .get("/api/matches")
+      .set("Authorization", `Bearer ${bob.token}`);
+    expect(bobMatchesAfterMessage.status).toBe(200);
+    expect(bobMatchesAfterMessage.body.matches[0]).toMatchObject({
+      _id: matchId,
+      unreadCount: 1,
+    });
+
     await request(app)
       .post(`/api/chats/${matchId}/messages`)
       .set("Authorization", `Bearer ${alice.token}`)
