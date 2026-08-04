@@ -40,6 +40,13 @@ const RECRUITMENT_BACKGROUNDS = {
   PUBGMobile: require("../../assets/games/pubg2.jpg"),
   FreeFire: require("../../assets/games/freefire2.jpg"),
 };
+const RANK_PREVIEW_IMAGES = {
+  Valorant: require("../../assets/games/aboutrankvalorant.jpg"),
+  PUBGMobile: require("../../assets/games/rankpubg.png"),
+  FreeFire: require("../../assets/games/ranksfreefire.jpg"),
+  TFT: require("../../assets/games/tftranks.webp"),
+  LienQuan: require("../../assets/games/lienquanranks.jpg"),
+};
 
 const GAME_CONFIGS = [
   {
@@ -635,6 +642,7 @@ export default function GamerLobbyScreen({ navigation }) {
   );
   const activeGameBackground = GAME_BACKGROUNDS[selectedGameConfig.game];
   const activeRecruitmentBackground = RECRUITMENT_BACKGROUNDS[selectedGameConfig.game];
+  const activeRankPreview = RANK_PREVIEW_IMAGES[selectedGameConfig.game];
   const colors = useMemo(() => {
     if (selectedGameConfig.game === "Valorant") {
       return {
@@ -773,6 +781,7 @@ export default function GamerLobbyScreen({ navigation }) {
   const [recruitmentNote, setRecruitmentNote] = useState("");
   const [recruitmentError, setRecruitmentError] = useState("");
   const [recruitmentVisible, setRecruitmentVisible] = useState(false);
+  const [rankPreviewVisible, setRankPreviewVisible] = useState(false);
   const [teamFound, setTeamFound] = useState(null);
   const [joiningRecruitmentId, setJoiningRecruitmentId] = useState("");
   const [closingRecruitmentId, setClosingRecruitmentId] = useState("");
@@ -807,6 +816,12 @@ export default function GamerLobbyScreen({ navigation }) {
   useEffect(() => {
     setSelectedLobby(selectedGameConfig.lobbies[0].value);
   }, [selectedGameConfig]);
+
+  useEffect(() => {
+    if (!activeRankPreview) {
+      setRankPreviewVisible(false);
+    }
+  }, [activeRankPreview]);
 
   useEffect(() => {
     setLoading(true);
@@ -1175,15 +1190,30 @@ export default function GamerLobbyScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />
         }
       >
-        {compactHeader ? (
-          <View style={styles.gameGridCompact}>
+        <View style={[styles.gameRankRow, compactHeader && styles.gameRankRowCompact]}>
+          {!compactHeader ? <View style={styles.rankSideSpacer} /> : null}
+          <View style={[styles.gameLogoCluster, compactHeader && styles.gameGridCompact]}>
             {GAME_CONFIGS.map(renderGameChip)}
           </View>
-        ) : (
-          <View style={styles.gameStrip}>
-            {GAME_CONFIGS.map(renderGameChip)}
+          <View style={[styles.rankButtonSlot, compactHeader && styles.rankButtonSlotCompact]}>
+            {activeRankPreview ? (
+              <Pressable
+                onPress={() => setRankPreviewVisible(true)}
+                style={({ hovered }) => [
+                  styles.rankButton,
+                  {
+                    backgroundColor: hovered ? colors.primarySoft : colors.elevated,
+                    borderColor: hovered ? selectedGameConfig.color : colors.border,
+                    shadowColor: selectedGameConfig.color,
+                  },
+                  hovered && styles.rankButtonHover,
+                ]}
+              >
+                <Text style={[styles.rankButtonText, { color: selectedGameConfig.color }]}>Ranks</Text>
+              </Pressable>
+            ) : null}
           </View>
-        )}
+        </View>
 
         <View style={styles.lobbySection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Lobby rank</Text>
@@ -1368,6 +1398,54 @@ export default function GamerLobbyScreen({ navigation }) {
                   Keep finding
                 </Text>
               </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={rankPreviewVisible && Boolean(activeRankPreview)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRankPreviewVisible(false)}
+      >
+        <View style={[styles.rankModalOverlay, { backgroundColor: colors.overlay }]}>
+          <Pressable style={styles.rankModalBackdrop} onPress={() => setRankPreviewVisible(false)} />
+          <View
+            style={[
+              styles.rankModalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: selectedGameConfig.color,
+                shadowColor: selectedGameConfig.color,
+              },
+            ]}
+          >
+            <View style={styles.rankModalHeader}>
+              <View>
+                <Text style={[styles.rankModalEyebrow, { color: selectedGameConfig.color }]}>
+                  RANK SYSTEM
+                </Text>
+                <Text style={[styles.rankModalTitle, { color: colors.text }]}>
+                  {selectedGameConfig.label} ranks
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setRankPreviewVisible(false)}
+                style={({ hovered, pressed }) => [
+                  styles.rankModalClose,
+                  {
+                    backgroundColor: hovered ? colors.elevatedAlt : colors.elevated,
+                    borderColor: hovered ? selectedGameConfig.color : colors.border,
+                  },
+                  hovered && styles.rankModalCloseHover,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={[styles.rankModalCloseText, { color: selectedGameConfig.color }]}>X</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.rankImageFrame, { borderColor: `${selectedGameConfig.color}99` }]}>
+              <Image source={activeRankPreview} style={styles.rankPreviewImage} resizeMode="contain" />
             </View>
           </View>
         </View>
@@ -1750,13 +1828,30 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     gap: 18,
   },
-  gameStrip: {
+  gameRankRow: {
     width: "100%",
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    gap: 16,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  gameRankRowCompact: {
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
+  },
+  rankSideSpacer: {
+    width: 112,
+    flexShrink: 0,
+  },
+  gameLogoCluster: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
     alignItems: "center",
     justifyContent: "center",
+    flex: 1,
   },
   gameGridCompact: {
     flexDirection: "row",
@@ -1843,6 +1938,103 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
+  },
+  rankButtonSlot: {
+    width: 112,
+    alignItems: "flex-end",
+    flexShrink: 0,
+  },
+  rankButtonSlotCompact: {
+    width: "100%",
+    alignItems: "center",
+  },
+  rankButton: {
+    minWidth: 96,
+    minHeight: 46,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  rankButtonHover: {
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
+    transform: [{ translateY: -4 }, { scale: 1.06 }],
+  },
+  rankButtonText: {
+    fontSize: 14,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  rankModalOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  rankModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  rankModalCard: {
+    width: "100%",
+    maxWidth: 760,
+    maxHeight: "86%",
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 18,
+    gap: 14,
+    shadowOpacity: 0.32,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 12,
+  },
+  rankModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  rankModalEyebrow: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  rankModalTitle: {
+    marginTop: 2,
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  rankModalClose: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankModalCloseHover: {
+    transform: [{ translateY: -2 }, { scale: 1.05 }],
+  },
+  rankModalCloseText: {
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  rankImageFrame: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.34)",
+  },
+  rankPreviewImage: {
+    width: "100%",
+    height: "100%",
   },
   lobbySection: {
     gap: 10,
