@@ -4,7 +4,6 @@ import {
   Animated,
   Alert,
   Image,
-  ImageBackground,
   Modal,
   Platform,
   Pressable,
@@ -29,18 +28,6 @@ import { useTheme } from "../theme/ThemeContext";
 
 const FALLBACK_AVATAR = "https://i.pravatar.cc/300";
 const LOBBY_CODE_GAMES = ["Valorant", "FreeFire", "LienQuan"];
-const GAME_BACKGROUNDS = {
-  Valorant: require("../../assets/games/e1ba56c2480992f0e85b03258b12647e03222869-854x484.png"),
-  PUBGMobile: require("../../assets/games/pubg-playerunknowns-battlegrounds-lighthouse-z425.jpg"),
-  FreeFire: require("../../assets/games/freefire2.webp"),
-  TFT: require("../../assets/games/tft1.jpg"),
-  LienQuan: require("../../assets/games/lienquan1.jpg"),
-};
-const RECRUITMENT_BACKGROUNDS = {
-  Valorant: require("../../assets/games/valorant2.png"),
-  PUBGMobile: require("../../assets/games/pubg2.jpg"),
-  FreeFire: require("../../assets/games/freefire2.jpg"),
-};
 const RANK_PREVIEW_IMAGES = {
   Valorant: require("../../assets/games/aboutrankvalorant.jpg"),
   PUBGMobile: require("../../assets/games/rankpubg.png"),
@@ -52,6 +39,14 @@ const VALORANT_FIGMA_ASSETS = {
   refresh: require("../../assets/figma-games/valorant/refreshicon.png"),
   add: require("../../assets/figma-games/valorant/iconadd.png"),
   search: require("../../assets/figma-games/valorant/IconSearch.png"),
+  backgroundPost: require("../../assets/figma-games/valorant/backgroundpost.png"),
+  recruitmentForm: require("../../assets/figma-games/valorant/backgroundformrecruit.png"),
+  recruitmentGame: require("../../assets/figma-games/valorant/iconvalorantrecruit.png"),
+  gameLobby: require("../../assets/figma-games/valorant/icongamelobby.png"),
+  plus: require("../../assets/figma-games/valorant/iconplus.png"),
+  pen: require("../../assets/figma-games/valorant/iconpen.png"),
+  code: require("../../assets/figma-games/valorant/icondauthang.png"),
+  post: require("../../assets/figma-games/valorant/iconpost.png"),
   games: {
     Valorant: require("../../assets/figma-games/valorant/iconvalo.png"),
     PUBGMobile: require("../../assets/figma-games/valorant/iconpubg.png"),
@@ -409,6 +404,14 @@ function SwipeRecruitmentCard({
         hovered && styles.recruitmentCardHover,
       ]}
     >
+      {gameConfig.game === "Valorant" ? (
+        <Image
+          source={VALORANT_FIGMA_ASSETS.backgroundPost}
+          style={styles.postBackgroundImage}
+          resizeMode="cover"
+          pointerEvents="none"
+        />
+      ) : null}
       <View style={styles.swipeCardTop}>
         <View style={styles.posterIdentity}>
           <Image source={{ uri: getAvatar(owner) }} style={styles.posterAvatar} />
@@ -577,12 +580,20 @@ function GamerRecruitmentBoard({
           styles.valorantEmptyState,
           {
             backgroundColor: "rgba(4,12,31,0.88)",
-            borderColor: hovered ? gameConfig.color : colors.border,
-            shadowColor: gameConfig.color,
+            borderColor: hovered ? "rgba(255,179,181,0.58)" : "rgba(93,63,64,0.42)",
+            shadowColor: "#FFB3B5",
           },
           hovered && styles.floatingPanelHover,
         ]}
       >
+        {gameConfig.game === "Valorant" ? (
+          <Image
+            source={VALORANT_FIGMA_ASSETS.backgroundPost}
+            style={styles.postBackgroundImage}
+            resizeMode="cover"
+            pointerEvents="none"
+          />
+        ) : null}
         <View style={styles.emptySearchTarget}>
           <View style={styles.emptySearchSquare}>
             <Image source={VALORANT_FIGMA_ASSETS.search} style={styles.emptySearchIcon} resizeMode="contain" />
@@ -678,14 +689,12 @@ export default function GamerLobbyScreen({ navigation }) {
     () => GAME_CONFIGS.find((config) => config.game === selectedGame) || GAME_CONFIGS[0],
     [selectedGame],
   );
-  const activeGameBackground = GAME_BACKGROUNDS[selectedGameConfig.game];
-  const activeRecruitmentBackground = RECRUITMENT_BACKGROUNDS[selectedGameConfig.game];
   const activeRankPreview = RANK_PREVIEW_IMAGES[selectedGameConfig.game];
   const colors = useMemo(() => {
     if (selectedGameConfig.game === "Valorant") {
       return {
         ...baseColors,
-        screen: "#050711",
+        screen: "#0B1326",
         surface: "rgba(9,15,28,0.78)",
         elevated: "rgba(15,23,42,0.82)",
         elevatedAlt: "rgba(28,38,64,0.9)",
@@ -709,7 +718,7 @@ export default function GamerLobbyScreen({ navigation }) {
     if (selectedGameConfig.game === "PUBGMobile") {
       return {
         ...baseColors,
-        screen: "#061014",
+        screen: "#0B1326",
         surface: "rgba(8,21,24,0.8)",
         elevated: "rgba(23,30,25,0.84)",
         elevatedAlt: "rgba(45,48,32,0.9)",
@@ -733,7 +742,7 @@ export default function GamerLobbyScreen({ navigation }) {
     if (selectedGameConfig.game === "FreeFire") {
       return {
         ...baseColors,
-        screen: "#130806",
+        screen: "#0B1326",
         surface: "rgba(24,12,8,0.8)",
         elevated: "rgba(42,22,13,0.84)",
         elevatedAlt: "rgba(68,31,14,0.92)",
@@ -757,7 +766,7 @@ export default function GamerLobbyScreen({ navigation }) {
     if (selectedGameConfig.game === "TFT") {
       return {
         ...baseColors,
-        screen: "#050917",
+        screen: "#0B1326",
         surface: "rgba(8,14,32,0.8)",
         elevated: "rgba(16,24,48,0.84)",
         elevatedAlt: "rgba(28,38,72,0.92)",
@@ -781,7 +790,7 @@ export default function GamerLobbyScreen({ navigation }) {
     if (selectedGameConfig.game === "LienQuan") {
       return {
         ...baseColors,
-        screen: "#070618",
+        screen: "#0B1326",
         surface: "rgba(12,10,32,0.8)",
         elevated: "rgba(25,18,52,0.84)",
         elevatedAlt: "rgba(42,28,78,0.92)",
@@ -819,6 +828,7 @@ export default function GamerLobbyScreen({ navigation }) {
   const [recruitmentNote, setRecruitmentNote] = useState("");
   const [recruitmentError, setRecruitmentError] = useState("");
   const [recruitmentVisible, setRecruitmentVisible] = useState(false);
+  const [showOtherRecruitGames, setShowOtherRecruitGames] = useState(false);
   const [rankPreviewVisible, setRankPreviewVisible] = useState(false);
   const [teamFound, setTeamFound] = useState(null);
   const [joiningRecruitmentId, setJoiningRecruitmentId] = useState("");
@@ -1169,17 +1179,11 @@ export default function GamerLobbyScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.screen }]}>
-      {activeGameBackground ? (
-        <ImageBackground
-          source={activeGameBackground}
-          style={styles.gameBackgroundLayer}
-          imageStyle={styles.gameBackgroundImage}
-          resizeMode="cover"
-        >
-          <View style={styles.gameBackgroundTint} />
-        </ImageBackground>
-      ) : null}
+    <View style={[styles.screen, { backgroundColor: "#0B1326" }]}>
+      <View style={styles.gameBackgroundLayer} pointerEvents="none">
+        <View style={styles.pageBlurPink} />
+        <View style={styles.pageBlurIndigo} />
+      </View>
       <View
         style={[
           styles.header,
@@ -1223,7 +1227,10 @@ export default function GamerLobbyScreen({ navigation }) {
             style={styles.headerRecruitGradient}
           >
             <Pressable
-              onPress={() => setRecruitmentVisible(true)}
+              onPress={() => {
+                setShowOtherRecruitGames(false);
+                setRecruitmentVisible(true);
+              }}
               style={({ hovered, pressed }) => [
                 styles.headerRecruitButton,
                 hovered && styles.headerRecruitButtonHover,
@@ -1365,7 +1372,10 @@ export default function GamerLobbyScreen({ navigation }) {
                 onClose={handleCloseRecruitment}
                 onCopyCode={copyLobbyCode}
                 onHide={hideRecruitment}
-                onOpenRecruit={() => setRecruitmentVisible(true)}
+                onOpenRecruit={() => {
+                  setShowOtherRecruitGames(false);
+                  setRecruitmentVisible(true);
+                }}
               />
             )}
           </View>
@@ -1531,261 +1541,259 @@ export default function GamerLobbyScreen({ navigation }) {
       <Modal
         visible={recruitmentVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setRecruitmentVisible(false)}
       >
         <View style={[styles.filtersOverlay, { backgroundColor: colors.overlay }]}>
           <Pressable style={styles.filtersBackdrop} onPress={() => setRecruitmentVisible(false)} />
-          <View
-            style={[
-              styles.filtersSheet,
-              {
-                backgroundColor: activeRecruitmentBackground ? "rgba(4,8,18,0.92)" : colors.screen,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            {activeRecruitmentBackground ? (
-              <ImageBackground
-                source={activeRecruitmentBackground}
-                style={styles.recruitmentBackgroundLayer}
-                imageStyle={styles.recruitmentBackgroundImage}
-                resizeMode="cover"
-              >
-                <View style={styles.recruitmentBackgroundTint} />
-              </ImageBackground>
-            ) : null}
-            {activeRecruitmentBackground ? null : (
-              <View style={[styles.sheetHandle, { backgroundColor: colors.borderStrong }]} />
-            )}
-            <View
-              style={[
-                styles.filtersHeader,
-                {
-                  backgroundColor: activeRecruitmentBackground
-                    ? "rgba(8,13,28,0.74)"
-                    : colors.surface,
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.headerSide} />
-              <Text style={[styles.filtersTitle, { color: colors.text }]}>Recruitment</Text>
-              <Pressable
-                disabled={posting}
-                onPress={postRecruitment}
-                style={({ hovered, pressed }) => [
-                  styles.doneButton,
-                  hovered && styles.doneButtonTextHoverArea,
-                  pressed && styles.pressed,
-                ]}
-              >
-                {({ hovered }) =>
-                  posting ? (
-                    <ActivityIndicator color={colors.success} />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.doneText,
-                        { color: hovered ? colors.success : colors.accent },
-                        hovered && styles.doneTextHover,
-                      ]}
-                    >
-                      Post
-                    </Text>
-                  )
-                }
-              </Pressable>
-            </View>
+          <View style={styles.recruitmentFormSheet}>
+            <Image
+              source={VALORANT_FIGMA_ASSETS.recruitmentForm}
+              style={styles.recruitmentFormTexture}
+              resizeMode="cover"
+              pointerEvents="none"
+            />
+            <View style={styles.recruitmentFormBlurPink} pointerEvents="none" />
+            <View style={styles.recruitmentFormBlurIndigo} pointerEvents="none" />
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.filtersContent}
-            >
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Game</Text>
-              <View style={styles.sheetGameGrid}>
-                {GAME_CONFIGS.map((config) => renderGameChip(config, "sheet"))}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.recruitmentFormContent}>
+              <View style={styles.recruitmentFormHeader}>
+                <View style={styles.recruitmentFormHeaderCopy}>
+                  <Text style={styles.recruitmentFormTitle}>Assemble Your Squad</Text>
+                  <Text style={styles.recruitmentFormSubtitle}>
+                    Configure your lobby and find the perfect teammates.
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setRecruitmentVisible(false)}
+                  style={({ hovered, pressed }) => [
+                    styles.recruitmentCloseButton,
+                    hovered && styles.recruitmentCloseButtonHover,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityLabel="Close recruitment form"
+                >
+                  <Text style={styles.recruitmentCloseText}>X</Text>
+                </Pressable>
               </View>
 
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Rank lobby</Text>
-              <View style={styles.lobbyGrid}>
-                {selectedGameConfig.lobbies.map((lobby) => {
-                  const selected = selectedLobby === lobby.value;
-
-                  return (
+              <View style={styles.recruitmentSectionLabelRow}>
+                <Image source={VALORANT_FIGMA_ASSETS.gameLobby} style={styles.recruitmentSectionLabelIcon} resizeMode="contain" />
+                <Text style={styles.recruitmentSectionLabel}>Game selection</Text>
+              </View>
+              <View style={styles.recruitmentGameRow}>
+                <Pressable style={styles.recruitmentSelectedGame} accessibilityState={{ selected: true }}>
+                  <Image
+                    source={
+                      selectedGameConfig.game === "Valorant"
+                        ? VALORANT_FIGMA_ASSETS.recruitmentGame
+                        : VALORANT_FIGMA_ASSETS.games[selectedGameConfig.game]
+                    }
+                    style={styles.recruitmentSelectedGameIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.recruitmentSelectedGameText}>{selectedGameConfig.label}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowOtherRecruitGames((current) => !current)}
+                  style={({ hovered, pressed }) => [
+                    styles.recruitmentOtherGamesButton,
+                    hovered && styles.recruitmentOtherGamesButtonHover,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Image source={VALORANT_FIGMA_ASSETS.plus} style={styles.recruitmentOtherGamesIcon} resizeMode="contain" />
+                  <Text style={styles.recruitmentOtherGamesText}>Other games</Text>
+                </Pressable>
+              </View>
+              {showOtherRecruitGames ? (
+                <View style={styles.recruitmentOtherGamesGrid}>
+                  {GAME_CONFIGS.filter((config) => config.game !== selectedGameConfig.game).map((config) => (
                     <Pressable
-                      key={lobby.value}
-                      onPress={() => setSelectedLobby(lobby.value)}
-                      style={({ hovered, pressed }) => [
-                        styles.lobbyOption,
-                        {
-                          backgroundColor: selected ? colors.primarySoft : colors.elevated,
-                          borderColor: selected ? selectedGameConfig.color : colors.border,
-                        },
-                        hovered && {
-                          borderColor: selectedGameConfig.color,
-                          shadowColor: selectedGameConfig.color,
-                          shadowOpacity: 0.22,
-                          shadowRadius: 14,
-                          transform: [{ translateY: -4 }, { scale: 1.015 }],
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.lobbyOptionTitle,
-                          { color: selected ? selectedGameConfig.color : colors.text },
-                        ]}
-                      >
-                        {lobby.label}
-                      </Text>
-                      <Text style={[styles.lobbyOptionDetail, { color: colors.muted }]} numberOfLines={2}>
-                        {lobby.detail}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Team size</Text>
-              <View style={styles.recruitControls}>
-                {[2, 4].map((size) => {
-                  const selected = teamSize === size;
-
-                  return (
-                    <Pressable
-                      key={size}
-                      onPress={() => setTeamSize(size)}
-                      style={({ hovered, pressed }) => [
-                        styles.recruitChip,
-                        {
-                          backgroundColor: selected ? selectedGameConfig.color : colors.elevated,
-                          borderColor: selected ? selectedGameConfig.color : colors.border,
-                        },
-                        hovered && { borderColor: selectedGameConfig.color },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={[styles.recruitChipText, { color: selected ? "#ffffff" : colors.text }]}>
-                        Team {size}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Mode</Text>
-              <View style={styles.recruitControls}>
-                {["ranked", "casual"].map((mode) => {
-                  const selected = playMode === mode;
-
-                  return (
-                    <Pressable
-                      key={mode}
-                      onPress={() => setPlayMode(mode)}
-                      style={({ hovered, pressed }) => [
-                        styles.recruitChip,
-                        {
-                          backgroundColor: selected ? colors.primarySoft : colors.elevated,
-                          borderColor: selected ? selectedGameConfig.color : colors.border,
-                        },
-                        hovered && { borderColor: selectedGameConfig.color },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.recruitChipText,
-                          { color: selected ? selectedGameConfig.color : colors.text },
-                        ]}
-                      >
-                        {mode === "ranked" ? "Ranked" : "Casual"}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Team name</Text>
-              <TextInput
-                value={recruitmentTeamName}
-                onChangeText={setRecruitmentTeamName}
-                maxLength={60}
-                placeholder={`Example: ${selectedGameConfig.label} night squad`}
-                placeholderTextColor={colors.dim}
-                autoCapitalize="words"
-                style={[
-                  styles.teamNameInput,
-                  {
-                    backgroundColor: colors.elevated,
-                    borderColor: colors.border,
-                    color: colors.text,
-                  },
-                ]}
-              />
-              <Text style={[styles.descriptionCounter, { color: colors.muted }]}>
-                {recruitmentTeamName.length}/60
-              </Text>
-
-              {LOBBY_CODE_GAMES.includes(selectedGameConfig.game) ? (
-                <>
-                  <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Lobby code</Text>
-                  <View style={styles.codeInputGroup}>
-                    <TextInput
-                      value={recruitmentLobbyCode}
-                      onChangeText={(value) => {
-                        setRecruitmentLobbyCode(
-                          normalizeLobbyCode(value, selectedGameConfig.game),
-                        );
+                      key={config.game}
+                      onPress={() => {
+                        handleSelectGame(config.game);
+                        setShowOtherRecruitGames(false);
                       }}
-                      maxLength={selectedLobbyCodeRule.maxLength}
-                      placeholder={selectedLobbyCodeRule.placeholder}
-                      placeholderTextColor={colors.dim}
-                      keyboardType={selectedLobbyCodeRule.keyboardType}
-                      autoCapitalize={selectedLobbyCodeRule.autoCapitalize}
-                      style={[
-                        styles.codeInput,
-                        {
-                          backgroundColor: colors.elevated,
-                          borderColor: selectedGameConfig.color,
-                          color: colors.text,
-                        },
+                      style={({ hovered, pressed }) => [
+                        styles.recruitmentOtherGameChip,
+                        hovered && styles.recruitmentOtherGameChipHover,
+                        pressed && styles.pressed,
                       ]}
-                    />
-                    <Text style={[styles.codeHint, { color: colors.muted }]}>
-                      {selectedLobbyCodeRule.helper}
-                    </Text>
-                  </View>
-                </>
+                    >
+                      <Image source={VALORANT_FIGMA_ASSETS.games[config.game]} style={styles.recruitmentOtherGameIcon} resizeMode="contain" />
+                      <Text style={styles.recruitmentOtherGameText}>{config.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               ) : null}
 
-              <Text style={[styles.filtersSectionTitle, { color: colors.text }]}>Description</Text>
-              <TextInput
-                value={recruitmentNote}
-                onChangeText={setRecruitmentNote}
-                multiline
-                maxLength={300}
-                placeholder="Tell teammates your goal, role, voice chat, or play time..."
-                placeholderTextColor={colors.dim}
-                style={[
-                  styles.recruitDescriptionInput,
-                  {
-                    backgroundColor: colors.elevated,
-                    borderColor: colors.border,
-                    color: colors.text,
-                  },
-                ]}
-                textAlignVertical="top"
-              />
-              <Text style={[styles.descriptionCounter, { color: colors.muted }]}>
-                {recruitmentNote.length}/300
-              </Text>
-              {recruitmentError ? (
-                <Text style={[styles.recruitmentError, { color: colors.danger }]}>
-                  {recruitmentError}
-                </Text>
-              ) : null}
+              <View style={styles.recruitmentControlsGrid}>
+                <View style={styles.recruitmentControlColumn}>
+                  <Text style={styles.recruitmentFieldLabel}>Rank</Text>
+                  <View style={styles.recruitmentStackedChoices}>
+                    {selectedGameConfig.lobbies.map((lobby) => {
+                      const selected = selectedLobby === lobby.value;
+                      return (
+                        <Pressable
+                          key={lobby.value}
+                          onPress={() => setSelectedLobby(lobby.value)}
+                          style={({ hovered, pressed }) => [
+                            styles.recruitmentChoice,
+                            selected && styles.recruitmentChoiceSelected,
+                            hovered && !selected && styles.recruitmentChoiceHover,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={[styles.recruitmentChoiceText, selected && styles.recruitmentChoiceTextSelected]}>
+                            {lobby.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+                <View style={styles.recruitmentControlColumn}>
+                  <Text style={styles.recruitmentFieldLabel}>Size</Text>
+                  <View style={styles.recruitmentStackedChoices}>
+                    {[2, 4].map((size) => {
+                      const selected = teamSize === size;
+                      return (
+                        <Pressable
+                          key={size}
+                          onPress={() => setTeamSize(size)}
+                          style={({ hovered, pressed }) => [
+                            styles.recruitmentChoice,
+                            selected && styles.recruitmentChoiceSelected,
+                            hovered && !selected && styles.recruitmentChoiceHover,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={[styles.recruitmentChoiceText, selected && styles.recruitmentChoiceTextSelected]}>
+                            {size === 2 ? "Duo" : "4 Stack"}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+                <View style={styles.recruitmentControlColumn}>
+                  <Text style={styles.recruitmentFieldLabel}>Mode</Text>
+                  <View style={styles.recruitmentStackedChoices}>
+                    {["ranked", "casual"].map((mode) => {
+                      const selected = playMode === mode;
+                      return (
+                        <Pressable
+                          key={mode}
+                          onPress={() => setPlayMode(mode)}
+                          style={({ hovered, pressed }) => [
+                            styles.recruitmentChoice,
+                            selected && styles.recruitmentChoiceSelected,
+                            hovered && !selected && styles.recruitmentChoiceHover,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={[styles.recruitmentChoiceText, selected && styles.recruitmentChoiceTextSelected]}>
+                            {mode === "ranked" ? "Ranked" : "Casual"}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.recruitmentInputGrid}>
+                <View style={styles.recruitmentInputColumn}>
+                  <Text style={styles.recruitmentFieldLabel}>Team name</Text>
+                  <View style={styles.recruitmentInputShell}>
+                    <TextInput
+                      value={recruitmentTeamName}
+                      onChangeText={setRecruitmentTeamName}
+                      maxLength={60}
+                      placeholder="e.g. Midnight Grinders"
+                      placeholderTextColor="#9B8791"
+                      autoCapitalize="words"
+                      style={styles.recruitmentTextInput}
+                    />
+                    <Image source={VALORANT_FIGMA_ASSETS.pen} style={styles.recruitmentInputIcon} resizeMode="contain" />
+                  </View>
+                </View>
+                {LOBBY_CODE_GAMES.includes(selectedGameConfig.game) ? (
+                  <View style={styles.recruitmentInputColumn}>
+                    <Text style={styles.recruitmentFieldLabel}>Lobby code</Text>
+                    <View style={styles.recruitmentInputShell}>
+                      <TextInput
+                        value={recruitmentLobbyCode}
+                        onChangeText={(value) => {
+                          setRecruitmentLobbyCode(normalizeLobbyCode(value, selectedGameConfig.game));
+                        }}
+                        maxLength={selectedLobbyCodeRule.maxLength}
+                        placeholder={selectedLobbyCodeRule.placeholder}
+                        placeholderTextColor="#9B8791"
+                        keyboardType={selectedLobbyCodeRule.keyboardType}
+                        autoCapitalize={selectedLobbyCodeRule.autoCapitalize}
+                        style={styles.recruitmentTextInput}
+                      />
+                      <Image source={VALORANT_FIGMA_ASSETS.code} style={styles.recruitmentInputIcon} resizeMode="contain" />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.recruitmentDescriptionGroup}>
+                <Text style={styles.recruitmentFieldLabel}>Description</Text>
+                <TextInput
+                  value={recruitmentNote}
+                  onChangeText={setRecruitmentNote}
+                  multiline
+                  maxLength={300}
+                  placeholder="Tell teammates your goal..."
+                  placeholderTextColor="#9B8791"
+                  style={styles.recruitmentDescriptionInput}
+                  textAlignVertical="top"
+                />
+              </View>
+              {recruitmentError ? <Text style={styles.recruitmentError}>{recruitmentError}</Text> : null}
+
+              <View style={styles.recruitmentFormFooter}>
+                <Pressable
+                  onPress={() => setRecruitmentVisible(false)}
+                  style={({ hovered, pressed }) => [
+                    styles.recruitmentCancelButton,
+                    hovered && styles.recruitmentCancelButtonHover,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.recruitmentCancelText}>Cancel</Text>
+                </Pressable>
+                <LinearGradient
+                  colors={["#FFB3B5", "#DDB7FF"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.recruitmentPostGradient}
+                >
+                  <Pressable
+                    disabled={posting}
+                    onPress={postRecruitment}
+                    style={({ hovered, pressed }) => [
+                      styles.recruitmentPostButton,
+                      hovered && styles.recruitmentPostButtonHover,
+                      pressed && styles.pressed,
+                      posting && styles.disabled,
+                    ]}
+                  >
+                    {posting ? (
+                      <ActivityIndicator color="#680019" />
+                    ) : (
+                      <>
+                        <Text style={styles.recruitmentPostText}>Post Recruitment</Text>
+                        <Image source={VALORANT_FIGMA_ASSETS.post} style={styles.recruitmentPostIcon} resizeMode="contain" />
+                      </>
+                    )}
+                  </Pressable>
+                </LinearGradient>
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -1802,15 +1810,41 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
+    overflow: "hidden",
   },
-  gameBackgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
+  pageBlurPink: {
+    position: "absolute",
+    width: "52%",
+    aspectRatio: 1,
+    left: "-12%",
+    top: "5%",
+    borderRadius: 9999,
+    backgroundColor: "rgba(255,179,181,0.1)",
+    shadowColor: "#FFB3B5",
+    shadowOpacity: 0.1,
+    shadowRadius: 120,
+    shadowOffset: { width: 0, height: 0 },
+    ...Platform.select({
+      web: { filter: "blur(120px)" },
+      default: {},
+    }),
   },
-  gameBackgroundTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(5,8,18,0.76)",
+  pageBlurIndigo: {
+    position: "absolute",
+    width: "46%",
+    aspectRatio: 1,
+    right: "-8%",
+    bottom: "-4%",
+    borderRadius: 9999,
+    backgroundColor: "rgba(49,49,192,0.2)",
+    shadowColor: "#3131C0",
+    shadowOpacity: 0.2,
+    shadowRadius: 100,
+    shadowOffset: { width: 0, height: 0 },
+    ...Platform.select({
+      web: { filter: "blur(100px)" },
+      default: {},
+    }),
   },
   header: {
     paddingTop: 28,
@@ -2651,10 +2685,400 @@ const styles = StyleSheet.create({
   },
   filtersOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
   },
   filtersBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  recruitmentFormSheet: {
+    width: "100%",
+    maxWidth: 1180,
+    maxHeight: "94%",
+    borderRadius: 30,
+    overflow: "hidden",
+    backgroundColor: "rgba(34,42,61,0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(255,179,181,0.22)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.5,
+    shadowRadius: 34,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 14,
+  },
+  recruitmentFormTexture: {
+    ...StyleSheet.absoluteFillObject,
+    width: "112%",
+    height: "112%",
+    left: "-6%",
+    top: "-6%",
+    opacity: 0.58,
+  },
+  recruitmentFormBlurPink: {
+    position: "absolute",
+    width: 360,
+    height: 360,
+    borderRadius: 999,
+    left: -150,
+    bottom: -160,
+    backgroundColor: "rgba(255,179,181,0.1)",
+    shadowColor: "#FFB3B5",
+    shadowOpacity: 0.1,
+    shadowRadius: 120,
+    shadowOffset: { width: 0, height: 0 },
+    ...Platform.select({ web: { filter: "blur(120px)" }, default: {} }),
+  },
+  recruitmentFormBlurIndigo: {
+    position: "absolute",
+    width: 320,
+    height: 320,
+    borderRadius: 999,
+    right: -120,
+    top: -120,
+    backgroundColor: "rgba(49,49,192,0.2)",
+    shadowColor: "#3131C0",
+    shadowOpacity: 0.2,
+    shadowRadius: 100,
+    shadowOffset: { width: 0, height: 0 },
+    ...Platform.select({ web: { filter: "blur(100px)" }, default: {} }),
+  },
+  recruitmentFormContent: {
+    paddingHorizontal: 42,
+    paddingTop: 36,
+    paddingBottom: 34,
+    gap: 26,
+  },
+  recruitmentFormHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 20,
+  },
+  recruitmentFormHeaderCopy: {
     flex: 1,
+    gap: 8,
+  },
+  recruitmentFormTitle: {
+    color: "#DAE2FD",
+    fontFamily: "Inter",
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: "800",
+    textShadowColor: "rgba(255,179,181,0.4)",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
+  recruitmentFormSubtitle: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "400",
+  },
+  recruitmentCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(11,19,38,0.76)",
+    borderWidth: 1,
+    borderColor: "rgba(255,179,181,0.3)",
+  },
+  recruitmentCloseButtonHover: {
+    borderColor: "#FFB3B5",
+    backgroundColor: "rgba(255,179,181,0.16)",
+    transform: [{ scale: 1.06 }],
+  },
+  recruitmentCloseText: {
+    color: "#FFB3B5",
+    fontFamily: "Inter",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  recruitmentSectionLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  recruitmentSectionLabelIcon: {
+    width: 20,
+    height: 18,
+    tintColor: "#E6BCBD",
+  },
+  recruitmentSectionLabel: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 14,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.5,
+  },
+  recruitmentGameRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+  },
+  recruitmentSelectedGame: {
+    minHeight: 82,
+    minWidth: 250,
+    paddingHorizontal: 26,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#FFB3B5",
+    backgroundColor: "rgba(11,19,38,0.5)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 18,
+    shadowColor: "#FFB3B5",
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  recruitmentSelectedGameIcon: {
+    width: 32,
+    height: 32,
+    tintColor: "#FFB3B5",
+  },
+  recruitmentSelectedGameText: {
+    color: "#FFB3B5",
+    fontFamily: "Inter",
+    fontSize: 25,
+    fontWeight: "700",
+  },
+  recruitmentOtherGamesButton: {
+    minHeight: 82,
+    minWidth: 250,
+    paddingHorizontal: 26,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(93,63,64,0.3)",
+    backgroundColor: "rgba(11,19,38,0.5)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 18,
+  },
+  recruitmentOtherGamesButtonHover: {
+    borderColor: "rgba(255,179,181,0.6)",
+    backgroundColor: "rgba(255,179,181,0.08)",
+    transform: [{ translateY: -2 }],
+  },
+  recruitmentOtherGamesIcon: {
+    width: 24,
+    height: 24,
+    tintColor: "#E6BCBD",
+  },
+  recruitmentOtherGamesText: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 19,
+    fontWeight: "500",
+  },
+  recruitmentOtherGamesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: -12,
+  },
+  recruitmentOtherGameChip: {
+    minHeight: 44,
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(11,19,38,0.68)",
+    borderWidth: 1,
+    borderColor: "rgba(93,63,64,0.3)",
+  },
+  recruitmentOtherGameChipHover: {
+    borderColor: "#FFB3B5",
+    transform: [{ translateY: -2 }],
+  },
+  recruitmentOtherGameIcon: {
+    width: 18,
+    height: 18,
+    tintColor: "#E6BCBD",
+  },
+  recruitmentOtherGameText: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  recruitmentControlsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 22,
+  },
+  recruitmentControlColumn: {
+    flexGrow: 1,
+    flexBasis: 220,
+    gap: 10,
+  },
+  recruitmentFieldLabel: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 14,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+  },
+  recruitmentStackedChoices: {
+    gap: 10,
+  },
+  recruitmentChoice: {
+    minHeight: 58,
+    paddingHorizontal: 16,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(11,19,38,0.68)",
+    borderWidth: 1,
+    borderColor: "rgba(93,63,64,0.3)",
+  },
+  recruitmentChoiceSelected: {
+    backgroundColor: "rgba(255,179,181,0.2)",
+    borderColor: "rgba(255,179,181,0.5)",
+  },
+  recruitmentChoiceHover: {
+    borderColor: "rgba(255,179,181,0.65)",
+    backgroundColor: "rgba(255,179,181,0.1)",
+    transform: [{ translateY: -2 }],
+  },
+  recruitmentChoiceText: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  recruitmentChoiceTextSelected: {
+    color: "#E6BCBD",
+  },
+  recruitmentInputGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 22,
+  },
+  recruitmentInputColumn: {
+    flexGrow: 1,
+    flexBasis: 320,
+    gap: 10,
+  },
+  recruitmentInputShell: {
+    minHeight: 72,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "rgba(93,63,64,0.3)",
+    backgroundColor: "rgba(11,19,38,0.8)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 18,
+    paddingRight: 18,
+  },
+  recruitmentTextInput: {
+    flex: 1,
+    minWidth: 0,
+    color: "#DAE2FD",
+    fontFamily: "Inter",
+    fontSize: 18,
+    fontWeight: "400",
+    paddingVertical: 12,
+    ...Platform.select({
+      web: {
+        outlineStyle: "none",
+        outlineWidth: 0,
+      },
+      default: {},
+    }),
+  },
+  recruitmentInputIcon: {
+    width: 22,
+    height: 22,
+    tintColor: "#B77E8D",
+    marginLeft: 12,
+  },
+  recruitmentDescriptionGroup: {
+    gap: 10,
+  },
+  recruitmentDescriptionInput: {
+    minHeight: 128,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "rgba(93,63,64,0.3)",
+    backgroundColor: "rgba(11,19,38,0.8)",
+    color: "#DAE2FD",
+    fontFamily: "Inter",
+    fontSize: 18,
+    lineHeight: 25,
+    fontWeight: "400",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    ...Platform.select({
+      web: {
+        outlineStyle: "none",
+        outlineWidth: 0,
+      },
+      default: {},
+    }),
+  },
+  recruitmentFormFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+    gap: 20,
+    paddingTop: 6,
+  },
+  recruitmentCancelButton: {
+    minHeight: 54,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recruitmentCancelButtonHover: {
+    transform: [{ translateY: -2 }],
+  },
+  recruitmentCancelText: {
+    color: "#E6BCBD",
+    fontFamily: "Inter",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  recruitmentPostGradient: {
+    minWidth: 270,
+    minHeight: 58,
+    borderRadius: 18,
+    shadowColor: "#FFB3B5",
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  recruitmentPostButton: {
+    minHeight: 58,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  recruitmentPostButtonHover: {
+    transform: [{ translateY: -3 }, { scale: 1.02 }],
+  },
+  recruitmentPostText: {
+    color: "#680019",
+    fontFamily: "Inter",
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  recruitmentPostIcon: {
+    width: 18,
+    height: 18,
+    tintColor: "#680019",
   },
   filtersSheet: {
     maxHeight: "92%",
@@ -2757,6 +3181,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 7,
     gap: 20,
+  },
+  postBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "112%",
+    height: "112%",
+    left: "-6%",
+    top: "-6%",
+    opacity: 0.94,
   },
   recruitmentCardHover: {
     transform: [{ translateY: -3 }, { scale: 1.005 }],
@@ -2912,7 +3344,7 @@ const styles = StyleSheet.create({
   },
   valorantEmptyState: {
     minHeight: 560,
-    borderRadius: 4,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(255,179,181,0.18)",
     alignItems: "center",
@@ -2921,10 +3353,10 @@ const styles = StyleSheet.create({
     paddingVertical: 44,
     gap: 20,
     overflow: "hidden",
-    shadowOpacity: 0.24,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 7,
+    shadowOpacity: 0.3,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 10,
   },
   emptySearchTarget: {
     width: 108,

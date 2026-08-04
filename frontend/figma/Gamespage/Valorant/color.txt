@@ -46,3 +46,19 @@ Filter Sidebar :
 8. Màu icon ở nút plat-asc : B76DFF _ 100%
 
 9. Màu ở nút imt - rad : FFB4AB_100%
+
+Form recruit : 
+
+1. Màu chữ Assemble Your Squad : DAE2FD 100%
+
+2. Configure your lobby and find the perfect teammates. : E6BCBD 100%
+
+3. Chữ và icon : GAME SELECTION : E6BCBD 100%
+
+4.  Button Valorant ( cac game khac cung vay )  và icon tích + viền( khi nhấp chuột  ) : FFB3B5 100% ; drop shadow : 0,0,15,0 FFB3B5 20% ; màu nút : 0B1326 50%  - other game cũng vậy
+
+5. Rank Size Mode ( các nút được chọn ) : E6BCBD 100% ; màu nút : FFB3B5 20 % ; màu viền : FFB3B5 50% - các nút không được chọn thì màu viền : 5D3F40 30%
+
+6. Màu  nút Post recruitment : Linear  0% FFB3B5 100% và 100% DDB7FF 100% ; dropshadow : 0,4,15,0 với màu FFB3B5 40% ; màu chữ : 680019 100%
+
+7. màu background form : 222A3D 60% + với 2 blur giống page
