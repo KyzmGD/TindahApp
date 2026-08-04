@@ -1,0 +1,48 @@
+Header Section  Valorant page : 
+
+1. Màu chữ " Valorant Lobby " :DAE2FD _ 100% ; hiệu ứng : drop shadow : 0,0,20,0 color FFB3B5 _ 40%
+
+2. Màu chữ " team up mode " : FFB3B5 _ 100%
+
+3. Màu button refresh : 222A3D _ 50%
+
+4. Màu icon refresh : E6BCBD_ 100%
+
+5. Màu viền button " Find a team now! " : 0% FFB3B5 100% và 100% B76DFF 100%
+
+6. Màu button " Find a team now " :  0B1326 _ 100%
+
+7. Màu chữ " Find a team now! " + iconadd :  DAE2FD_100%
+
+
+Games Selection Group : 
+
+1. Màu nút các nút ( khi click chuột ): FF5167 _ 100%
+
+2. Màu chữ trong nút  ( khi click ) : 5B0015_100%
+
+3. Màu icon ( khi click ) : 5B0015_ 100%
+
+4. Màu các game ( khi không click )  : E6BCBD _ 100% 
+
+5. Màu các icon ( khi không click )  : E6BCBD _ 100%
+
+Filter Sidebar : 
+
+1. Màu chữ ' Lobby Rank Filter " : E6BCBD_ 100%
+
+2. Màu chữ " Iron - gold ", " Plat - Asc "  ; " Imm - Rad " : DAE2FD_100%
+
+3. Màu chữ " Casual & Learners " : E6BCBD_100%
+
+4. Màu chữ : " Mid-High Tier " : DDB7FF_100%
+
+5. Màu chữ " Elite Tier " : E6BCBD _ 100%
+
+6. Màu ô vuông khi được click chọn : C0C1FF_ 100%
+
+7. Màu icon ở nút Iron - Gold : C0C1FF _ 100%
+
+8. Màu icon ở nút plat-asc : B76DFF _ 100%
+
+9. Màu ở nút imt - rad : FFB4AB_100%

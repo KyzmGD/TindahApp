@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   ImageBackground,
   Modal,
   Pressable,
@@ -14,6 +15,7 @@ import {
   View,
 } from "react-native";
 import Slider from "@react-native-community/slider";
+import { LinearGradient } from "expo-linear-gradient";
 import CardStack from "../components/swipe/CardStack";
 import { discover, sendSwipe } from "../services/swipe.api";
 import MatchModal from "../components/common/MatchModal";
@@ -29,6 +31,31 @@ const GENDER_OPTIONS = [
 ];
 const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
 const EXPLORE_BACKGROUND = require("../../assets/explore-hearts-bg.png");
+const STITCH_TINDAH_LOGO = require("../../assets/tindah_logo_stitch.png");
+const HEART_ICON = require("../../assets/figma-explore/heart.png");
+const STAR_ICON = require("../../assets/figma-explore/star.png");
+const CANCEL_ICON = require("../../assets/figma-explore/cancel.png");
+const DESKTOP_SIDEBAR_WIDTH = 288;
+const LIVE_ACTIVITY_ITEMS = [
+  {
+    title: "Top gamers nearby",
+    detail: "2.4k online",
+    accent: "#ffb3b5",
+    icon: "SH",
+  },
+  {
+    title: "Active parties",
+    detail: "842 rooms",
+    accent: "#c0c1ff",
+    icon: "GP",
+  },
+  {
+    title: "Match found",
+    detail: "In your area",
+    accent: "#ddb7ff",
+    icon: "FX",
+  },
+];
 const SEARCH_FILTER_CONFIGS = {
   interests: {
     icon: "TAG",
@@ -297,13 +324,58 @@ function ExploreSkeleton({ colors }) {
   );
 }
 
-function TindahLogo({ color }) {
+function LiveActivityPanel({ colors, isCompact }) {
   return (
-    <View style={styles.brandMark} accessible={false}>
-      <View style={[styles.brandEnvelope, { borderColor: color }]}>
-        <View style={[styles.brandEnvelopeLine, styles.brandEnvelopeLineLeft, { backgroundColor: color }]} />
-        <View style={[styles.brandEnvelopeLine, styles.brandEnvelopeLineRight, { backgroundColor: color }]} />
-        <Text style={[styles.brandHeart, { color }]}>{"\u2665"}</Text>
+    <View
+      style={[
+        styles.activityPanel,
+        {
+          backgroundColor: "rgba(23,31,51,0.58)",
+          borderColor: "rgba(255,255,255,0.08)",
+          shadowColor: colors.accent,
+        },
+        isCompact && styles.activityPanelCompact,
+      ]}
+    >
+      <View style={styles.activityHeader}>
+        <Text style={[styles.activityTitle, { color: colors.text }]}>Live Activity</Text>
+        <View style={[styles.activityPing, { backgroundColor: colors.accent }]} />
+      </View>
+      <View style={styles.activityList}>
+        {LIVE_ACTIVITY_ITEMS.map((item, index) => (
+          <Pressable
+            key={item.title}
+            style={({ hovered, pressed }) => [
+              styles.activityItem,
+              {
+                backgroundColor: index === 2 ? "rgba(45,52,73,0.72)" : "rgba(11,19,38,0.56)",
+                borderColor: hovered ? item.accent : "rgba(255,255,255,0.06)",
+              },
+              hovered && {
+                transform: [{ translateX: -4 }, { scale: 1.015 }],
+                shadowColor: item.accent,
+                shadowOpacity: 0.18,
+                shadowRadius: 12,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <View style={[styles.activityIcon, { backgroundColor: `${item.accent}26` }]}>
+              <Text style={[styles.activityIconText, { color: item.accent }]}>{item.icon}</Text>
+            </View>
+            <View style={styles.activityCopy}>
+              <Text style={[styles.activityItemTitle, { color: colors.text }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={[styles.activityItemDetail, { color: item.accent }]} numberOfLines={2}>
+                {item.detail}
+              </Text>
+            </View>
+            <Text style={[styles.activityTime, { color: colors.muted }]}>
+              {index === 0 ? "Now" : index === 1 ? "5m" : "12m"}
+            </Text>
+          </Pressable>
+        ))}
       </View>
     </View>
   );
@@ -314,6 +386,12 @@ export default function ExploreScreen() {
   const { theme } = useTheme();
   const colors = theme.colors;
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isDesktopShell = viewportWidth >= 1024;
+  const mainViewportWidth = isDesktopShell
+    ? viewportWidth - DESKTOP_SIDEBAR_WIDTH
+    : viewportWidth;
+  const isWideLayout = mainViewportWidth >= 880;
+  const isMediumLayout = mainViewportWidth >= 680;
   const [users, setUsers] = useState([]);
   const [remaining, setRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -327,18 +405,44 @@ export default function ExploreScreen() {
   const [activeSearchFilterId, setActiveSearchFilterId] = useState(null);
   const [filterForm, setFilterForm] = useState(() => getFilterForm(user));
   const pulse = useRef(new Animated.Value(0)).current;
+  const cardHover = useRef(new Animated.Value(0)).current;
+  const [isCardHovered, setIsCardHovered] = useState(false);
+  const animateCardHover = useCallback((hovered) => {
+    setIsCardHovered(hovered);
+    Animated.spring(cardHover, {
+      toValue: hovered ? 1 : 0,
+      tension: 150,
+      friction: 13,
+      useNativeDriver: true,
+    }).start();
+  }, [cardHover]);
+  const cardHoverStyle = {
+    transform: [
+      {
+        translateY: cardHover.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -7],
+        }),
+      },
+      {
+        scale: cardHover.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.012],
+        }),
+      },
+    ],
+  };
   const cardFrameStyle = useMemo(() => {
-    const isWide = viewportWidth >= 768;
-    const horizontalSpace = isWide ? 96 : 34;
-    const maxWidth = isWide ? 430 : 372;
-    const minHeight = isWide ? 470 : 410;
-    const maxHeight = isWide ? 585 : 540;
+    const horizontalSpace = isWideLayout ? 0 : 34;
+    const maxWidth = isWideLayout ? 420 : 372;
+    const minHeight = isMediumLayout ? 510 : 430;
+    const maxHeight = isWideLayout ? 560 : 540;
 
     return {
-      width: Math.min(Math.max(viewportWidth - horizontalSpace, 288), maxWidth),
-      height: Math.min(Math.max(viewportHeight * 0.58, minHeight), maxHeight),
+      width: Math.min(Math.max(mainViewportWidth - horizontalSpace, 288), maxWidth),
+      height: Math.min(Math.max(viewportHeight * 0.6, minHeight), maxHeight),
     };
-  }, [viewportHeight, viewportWidth]);
+  }, [isMediumLayout, isWideLayout, mainViewportWidth, viewportHeight]);
 
   const loadProfiles = useCallback(async () => {
     setError("");
@@ -600,6 +704,124 @@ const [matchedMatch, setMatchedMatch] =
   }
 };
 
+  const renderSwipeActions = () => (
+    <View style={styles.actions}>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.nope,
+          {
+            backgroundColor: "rgba(34,42,61,0.8)",
+            shadowColor: "#ffb4ab",
+            shadowOpacity: 0.38,
+            shadowRadius: 18,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 8,
+          },
+          hovered && {
+            backgroundColor: "rgba(45,52,73,0.94)",
+            transform: [{ translateY: -4 }, { scale: 1.08 }],
+            shadowOpacity: 0.3,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "nope")}
+      >
+        <Image
+          source={CANCEL_ICON}
+          style={styles.cancelActionIcon}
+          resizeMode="contain"
+        />
+      </Pressable>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.superLike,
+          {
+            backgroundColor: "#3131c0",
+            shadowColor: "#b0b2ff",
+            shadowOpacity: 0.5,
+            shadowRadius: 22,
+            shadowOffset: { width: 0, height: 10 },
+            elevation: 10,
+          },
+          hovered && {
+            backgroundColor: "#3f3fe0",
+            transform: [{ translateY: -8 }, { scale: 1.1 }],
+            shadowOpacity: 0.42,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "superlike")}
+      >
+        <Animated.Image
+          source={STAR_ICON}
+          resizeMode="contain"
+          style={[
+            styles.starActionIcon,
+            {
+              transform: [
+                {
+                  scale: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.08],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+      </Pressable>
+      <Pressable
+        style={({ hovered, pressed }) => [
+          styles.actionButton,
+          styles.like,
+          {
+            backgroundColor: "transparent",
+            shadowColor: "#ff5167",
+            shadowOpacity: 0.52,
+            shadowRadius: 26,
+            shadowOffset: { width: 0, height: 12 },
+            elevation: 12,
+          },
+          hovered && {
+            transform: [{ translateY: -5 }, { scale: 1.11 }],
+            shadowOpacity: 0.46,
+          },
+          pressed && styles.actionPressed,
+        ]}
+        onPress={() => users[0] && handleSwipe(users[0], "like")}
+      >
+        {({ hovered }) => (
+          <LinearGradient
+            colors={hovered ? ["#ffc1c3", "#ff6376"] : ["#ffb3b5", "#ff5167"]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.likeGradient}
+          >
+            <Animated.Image
+              source={HEART_ICON}
+              resizeMode="contain"
+              style={[
+                styles.heartActionIcon,
+                {
+                  transform: [
+                    {
+                      scale: pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 1.1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          </LinearGradient>
+        )}
+      </Pressable>
+    </View>
+  );
+
   return (
     <ImageBackground
       source={EXPLORE_BACKGROUND}
@@ -608,37 +830,61 @@ const [matchedMatch, setMatchedMatch] =
       resizeMode="cover"
     >
       <View pointerEvents="none" style={styles.backgroundTint} />
+      <View pointerEvents="none" style={styles.hexLayer}>
+        {Array.from({ length: 11 }).map((_, row) => (
+          <View key={`hex-${row}`} style={styles.hexRow}>
+            {Array.from({ length: 10 }).map((__, col) => (
+              <View key={`hex-${row}-${col}`} style={styles.hexCell} />
+            ))}
+          </View>
+        ))}
+      </View>
       <View
         style={[
           styles.header,
+          isDesktopShell && styles.headerDesktop,
           {
-            backgroundColor: "rgba(14,10,17,0.82)",
+            backgroundColor: "rgba(11,19,38,0.84)",
             borderBottomColor: "rgba(255,255,255,0.08)",
           },
         ]}
       >
-        <View style={styles.brand}>
-          <TindahLogo color={colors.primary} />
-          <Text style={[styles.logo, { color: colors.primary }]}>Tindah</Text>
+        {!isDesktopShell ? (
+          <View style={styles.brand}>
+            <Image source={STITCH_TINDAH_LOGO} style={styles.stitchLogo} resizeMode="contain" />
+            <Text style={[styles.logo, { color: "#dae2fd" }]}>Tindah</Text>
+          </View>
+        ) : (
+          <View />
+        )}
+        <View style={styles.headerRight}>
+          {isMediumLayout ? (
+            <View style={styles.playerCopy}>
+              <Text style={[styles.playerName, { color: colors.text }]} numberOfLines={1}>
+                {user?.name || "Pro Player"}
+              </Text>
+              <Text style={[styles.playerLevel, { color: colors.muted }]}>Level 42</Text>
+            </View>
+          ) : null}
+          <Pressable
+            style={({ hovered, pressed }) => [
+              styles.filterButton,
+              {
+                backgroundColor: "rgba(23,31,51,0.74)",
+                borderColor: "rgba(255,255,255,0.1)",
+              },
+              hovered && {
+                backgroundColor: "rgba(255,81,103,0.2)",
+                borderColor: colors.primary,
+                transform: [{ translateY: -2 }, { scale: 1.03 }],
+              },
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={openFilters}
+          >
+            <Text style={[styles.filterText, { color: colors.text }]}>Filters</Text>
+          </Pressable>
         </View>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.filterButton,
-            {
-              backgroundColor: "rgba(32,24,38,0.78)",
-              borderColor: "rgba(255,255,255,0.1)",
-            },
-            hovered && {
-              backgroundColor: "rgba(255,79,123,0.18)",
-              borderColor: colors.accent,
-              transform: [{ translateY: -1 }],
-            },
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={openFilters}
-        >
-          <Text style={[styles.filterText, { color: colors.text }]}>Filters</Text>
-        </Pressable>
       </View>
 
       {matchBanner ? (
@@ -666,39 +912,57 @@ const [matchedMatch, setMatchedMatch] =
           />
         }
       >
-        {loading ? (
-          <View style={[styles.cardFrame, cardFrameStyle]}>
-            <ExploreSkeleton colors={colors} />
+        <View style={[styles.exploreLayout, isWideLayout && styles.exploreLayoutWide]}>
+          <View style={[styles.swipeColumn, isWideLayout && styles.swipeColumnWide]}>
+            <View style={styles.stackGhostBack} />
+            <View style={styles.stackGhostFront} />
+            {loading ? (
+              <View style={[styles.cardFrame, cardFrameStyle]}>
+                <ExploreSkeleton colors={colors} />
+              </View>
+            ) : error ? (
+              <View style={[styles.errorBox, cardFrameStyle]}>
+                <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+                <Pressable
+                  style={({ hovered, pressed }) => [
+                    styles.retryButton,
+                    { backgroundColor: colors.primary },
+                    hovered && {
+                      backgroundColor: colors.primaryStrong,
+                      transform: [{ translateY: -2 }, { scale: 1.03 }],
+                    },
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={refresh}
+                >
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Animated.View
+                onPointerEnter={() => animateCardHover(true)}
+                onPointerLeave={() => animateCardHover(false)}
+                style={[
+                  styles.cardFrame,
+                  cardFrameStyle,
+                  cardHoverStyle,
+                  isCardHovered && styles.cardFrameHover,
+                ]}
+              >
+                <CardStack
+                  users={users}
+                  remaining={remaining}
+                  onNope={(user) => handleSwipe(user, "nope")}
+                  onLike={(user) => handleSwipe(user, "like")}
+                  onSuperLike={(user) => handleSwipe(user, "superlike")}
+                />
+              </Animated.View>
+            )}
+            {renderSwipeActions()}
           </View>
-        ) : error ? (
-          <View style={[styles.errorBox, cardFrameStyle]}>
-            <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
-            <Pressable
-              style={({ hovered, pressed }) => [
-                styles.retryButton,
-                { backgroundColor: colors.primary },
-                hovered && {
-                  backgroundColor: colors.primaryStrong,
-                  transform: [{ translateY: -1 }],
-                },
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={refresh}
-            >
-              <Text style={styles.retryText}>Try again</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={[styles.cardFrame, cardFrameStyle]}>
-            <CardStack
-              users={users}
-              remaining={remaining}
-              onNope={(user) => handleSwipe(user, "nope")}
-              onLike={(user) => handleSwipe(user, "like")}
-              onSuperLike={(user) => handleSwipe(user, "superlike")}
-            />
-          </View>
-        )}
+          {isWideLayout ? <LiveActivityPanel colors={colors} /> : null}
+        </View>
+        {!isWideLayout ? <LiveActivityPanel colors={colors} isCompact /> : null}
       </ScrollView>
       <MatchModal
   visible={showMatchModal}
@@ -1107,94 +1371,6 @@ const [matchedMatch, setMatchedMatch] =
           </View>
         </View>
       </Modal>
-      <View style={styles.actions}>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.nope,
-            {
-              backgroundColor: colors.elevated,
-              shadowColor: colors.shadow,
-            },
-            hovered && {
-              backgroundColor: colors.elevatedAlt,
-              transform: [{ translateY: -2 }, { scale: 1.04 }],
-            },
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "nope")}
-        >
-          <Text style={styles.nopeText}>X</Text>
-        </Pressable>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.superLike,
-            {
-              backgroundColor: colors.elevated,
-              shadowColor: colors.shadow,
-            },
-            hovered && {
-              backgroundColor: colors.elevatedAlt,
-              transform: [{ translateY: -2 }, { scale: 1.04 }],
-            },
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "superlike")}
-        >
-          <Animated.Text
-            style={[
-              styles.superLikeText,
-              {
-                transform: [
-                  {
-                    scale: pulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.08],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            ★
-          </Animated.Text>
-        </Pressable>
-        <Pressable
-          style={({ hovered, pressed }) => [
-            styles.actionButton,
-            styles.like,
-            {
-              backgroundColor: colors.elevated,
-              shadowColor: colors.shadow,
-            },
-            hovered && {
-              backgroundColor: colors.elevatedAlt,
-              transform: [{ translateY: -2 }, { scale: 1.04 }],
-            },
-            pressed && styles.actionPressed,
-          ]}
-          onPress={() => users[0] && handleSwipe(users[0], "like")}
-        >
-          <Animated.Text
-            style={[
-              styles.likeText,
-              {
-                transform: [
-                  {
-                    scale: pulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            ♥
-          </Animated.Text>
-        </Pressable>
-      </View>
     </ImageBackground>
   );
 }
@@ -1202,82 +1378,107 @@ const [matchedMatch, setMatchedMatch] =
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#050506",
+    backgroundColor: "#0b1326",
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%",
-    opacity: 1,
+    opacity: 0.1,
   },
   backgroundTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(5,5,6,0.34)",
+    backgroundColor: "rgba(11,19,38,0.9)",
+  },
+  hexLayer: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.18,
+    paddingTop: 80,
+    gap: 28,
+  },
+  hexRow: {
+    flexDirection: "row",
+    gap: 28,
+    transform: [{ translateX: -24 }],
+  },
+  hexCell: {
+    width: 54,
+    height: 31,
+    borderWidth: 1,
+    borderColor: "rgba(192,193,255,0.16)",
+    transform: [{ rotate: "30deg" }],
   },
   header: {
-    paddingTop: 16,
-    paddingHorizontal: 20,
+    minHeight: 78,
+    paddingTop: 14,
+    paddingHorizontal: 24,
     paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#121016",
+    backgroundColor: "#0b1326",
     borderBottomWidth: 1,
+    shadowColor: "#c0c1ff",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  headerDesktop: {
+    height: 64,
+    minHeight: 64,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   brand: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
+    minWidth: 0,
   },
-  brandMark: {
-    width: 38,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandEnvelope: {
-    width: 34,
-    height: 25,
-    borderWidth: 2,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,79,123,0.08)",
-    overflow: "hidden",
-    transform: [{ rotate: "-2deg" }],
-  },
-  brandEnvelopeLine: {
-    position: "absolute",
-    width: 24,
-    height: 2,
-    top: 7,
-    opacity: 0.9,
-  },
-  brandEnvelopeLineLeft: {
-    left: -3,
-    transform: [{ rotate: "31deg" }],
-  },
-  brandEnvelopeLineRight: {
-    right: -3,
-    transform: [{ rotate: "-31deg" }],
-  },
-  brandHeart: {
-    marginTop: 3,
-    fontSize: 13,
-    fontWeight: "900",
-    lineHeight: 15,
+  stitchLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   logo: {
-    color: "#ff4f7b",
-    fontSize: 30,
+    color: "#dae2fd",
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: 0,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flexShrink: 1,
+  },
+  playerCopy: {
+    alignItems: "flex-end",
+    paddingRight: 14,
+    borderRightWidth: 1,
+    borderRightColor: "rgba(255,255,255,0.12)",
+  },
+  playerName: {
+    maxWidth: 150,
+    fontSize: 16,
     fontWeight: "900",
   },
+  playerLevel: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
   filterButton: {
+    minHeight: 40,
     paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: "#1c1720",
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    backgroundColor: "#171f33",
+    borderRadius: 999,
     borderWidth: 1,
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
   filterButtonHover: {
     backgroundColor: "#2a2133",
@@ -1285,24 +1486,74 @@ const styles = StyleSheet.create({
   },
   filterText: {
     color: "#ffffff",
-    fontWeight: "800",
+    fontWeight: "900",
   },
   content: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 18,
+    paddingTop: 36,
+    paddingBottom: 26,
+  },
+  exploreLayout: {
+    width: "100%",
+    maxWidth: 1180,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 22,
+  },
+  exploreLayoutWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 30,
+  },
+  swipeColumn: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    paddingTop: 26,
+    minWidth: 0,
+  },
+  swipeColumnWide: {
     paddingTop: 18,
-    paddingBottom: 22,
+  },
+  stackGhostBack: {
+    position: "absolute",
+    top: 0,
+    width: 330,
+    height: 440,
+    borderRadius: 30,
+    backgroundColor: "rgba(6,14,32,0.56)",
+    transform: [{ scale: 0.9 }, { translateY: -24 }],
+  },
+  stackGhostFront: {
+    position: "absolute",
+    top: 12,
+    width: 370,
+    height: 470,
+    borderRadius: 30,
+    backgroundColor: "rgba(23,31,51,0.5)",
+    transform: [{ scale: 0.95 }, { translateY: -12 }],
   },
   cardFrame: {
     alignSelf: "center",
-    borderRadius: 28,
-    shadowColor: "#ff4f7b",
-    shadowOpacity: 0.26,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 9,
+    borderRadius: 32,
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+    zIndex: 2,
+  },
+  cardFrameHover: {
+    shadowColor: "#ff5167",
+    shadowOpacity: 0.58,
+    shadowRadius: 42,
+    shadowOffset: { width: 0, height: 24 },
+    elevation: 16,
+    boxShadow: "0 22px 52px rgba(255,81,103,0.52)",
   },
   loading: {
     flex: 1,
@@ -1404,13 +1655,15 @@ const styles = StyleSheet.create({
   banner: {
     position: "absolute",
     zIndex: 4,
-    top: 120,
+    top: 92,
     left: 20,
     right: 20,
     borderRadius: 18,
-    backgroundColor: "#1c1720",
+    backgroundColor: "rgba(23,31,51,0.92)",
     padding: 14,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,179,181,0.22)",
   },
   bannerText: {
     color: "#fff",
@@ -1422,6 +1675,10 @@ const styles = StyleSheet.create({
     minHeight: 420,
     paddingHorizontal: 20,
     gap: 12,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(23,31,51,0.7)",
   },
   errorText: {
     color: "#ff4f7b",
@@ -1432,22 +1689,23 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+    alignItems: "center",
+    gap: 24,
+    marginTop: -42,
+    paddingBottom: 4,
     backgroundColor: "transparent",
     borderTopWidth: 0,
+    zIndex: 4,
   },
   actionButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1c1720",
-    shadowColor: "#050506",
+    backgroundColor: "#222a3d",
     shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
@@ -1460,20 +1718,25 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.94 }],
   },
   nope: {
-    borderWidth: 1,
-    borderColor: "#ffffff",
+    borderWidth: 0,
   },
   superLike: {
-    borderWidth: 1,
-    borderColor: "#20c7ff",
+    borderWidth: 0,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    transform: [{ translateY: -14 }],
   },
   like: {
-    borderWidth: 1,
-    borderColor: "#ff2f6d",
+    borderWidth: 0,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: "hidden",
   },
   retryButton: {
     marginTop: 12,
-    alignSelf: "flex-start",
+    alignSelf: "center",
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1489,6 +1752,83 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: "#fff",
+    fontWeight: "800",
+  },
+  activityPanel: {
+    width: 340,
+    minHeight: 540,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 22,
+    gap: 22,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 8,
+  },
+  activityPanelCompact: {
+    width: "100%",
+    maxWidth: 420,
+    minHeight: 0,
+    padding: 16,
+  },
+  activityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activityTitle: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "900",
+  },
+  activityPing: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    shadowColor: "#c0c1ff",
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+  },
+  activityList: {
+    gap: 14,
+  },
+  activityItem: {
+    minHeight: 84,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  activityIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activityIconText: {
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  activityCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  activityItemTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  activityItemDetail: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+  },
+  activityTime: {
+    fontSize: 11,
     fontWeight: "800",
   },
   filtersOverlay: {
@@ -1825,19 +2165,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "900",
   },
-  nopeText: {
-    color: "#ffffff",
-    fontSize: 28,
-    fontWeight: "900",
+  cancelActionIcon: {
+    width: 19,
+    height: 19,
+    tintColor: "#ffb4ab",
   },
-  superLikeText: {
-    color: "#20c7ff",
-    fontSize: 30,
-    fontWeight: "900",
+  starActionIcon: {
+    width: 24,
+    height: 23,
+    tintColor: "#b0b2ff",
   },
-  likeText: {
-    color: "#ff2f6d",
-    fontSize: 32,
-    fontWeight: "900",
+  likeGradient: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heartActionIcon: {
+    width: 34,
+    height: 31,
+    tintColor: "#680019",
   },
 });

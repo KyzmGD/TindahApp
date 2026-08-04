@@ -1,0 +1,10 @@
+Color của từng frame trong trang Explore : 
+
+1. Color của header : 
+- Background : 0B1326 _ 80%
+- Chữ " Tindah " ; tên user  : DAE2FD _ 100%
+- Icon chuông thông báo : E6BCBD _ 100 %
+- Font chữ " Tindah " : Montserrat _ 24 _ SemiBold
+
+
+Màu của các icon : FFB3B5_ 100%

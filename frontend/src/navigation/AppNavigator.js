@@ -2,7 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import {
@@ -26,32 +26,44 @@ import { useTheme } from "../theme/ThemeContext";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const STITCH_TINDAH_LOGO = require("../../assets/tindah_logo_stitch.png");
+const DESKTOP_SIDEBAR_WIDTH = 288;
+const FIGMA_NAV_ICONS = {
+  Explore: require("../../assets/figma-explore/explore.png"),
+  GamerLobby: require("../../assets/figma-explore/games.png"),
+  Matches: require("../../assets/figma-explore/matches.png"),
+  Profile: require("../../assets/figma-explore/profile.png"),
+};
+const FIGMA_LOBBY_ICONS = {
+  gamers: require("../../assets/figma-explore/top-gamers.png"),
+  parties: require("../../assets/figma-explore/active-parties.png"),
+};
 
 const TAB_META = {
   Explore: {
     label: "Explore",
-    icon: "T",
+    iconSource: FIGMA_NAV_ICONS.Explore,
     color: "#ff4f7b",
     soft: "rgba(255,79,123,0.18)",
     border: "rgba(255,79,123,0.5)",
   },
   GamerLobby: {
     label: "Games",
-    icon: "G",
+    iconSource: FIGMA_NAV_ICONS.GamerLobby,
     color: "#20c7ff",
     soft: "rgba(32,199,255,0.18)",
     border: "rgba(32,199,255,0.5)",
   },
   Matches: {
     label: "Matches",
-    icon: "M",
+    iconSource: FIGMA_NAV_ICONS.Matches,
     color: "#c27bff",
     soft: "rgba(194,123,255,0.18)",
     border: "rgba(194,123,255,0.48)",
   },
   Profile: {
     label: "Profile",
-    icon: "P",
+    iconSource: FIGMA_NAV_ICONS.Profile,
     color: "#34d399",
     soft: "rgba(52,211,153,0.16)",
     border: "rgba(52,211,153,0.44)",
@@ -98,6 +110,7 @@ function TindahTabBar({
   descriptors,
   navigation,
   hasUnreadMatches,
+  isSidebar,
 }) {
   const { mode, theme } = useTheme();
   const colors = theme.colors;
@@ -106,19 +119,59 @@ function TindahTabBar({
     <View
       style={[
         styles.tabBar,
+        isSidebar && styles.sideTabBar,
         {
-          backgroundColor: "rgba(18,12,24,0.9)",
-          borderTopColor: "rgba(255,255,255,0.1)",
+          backgroundColor: isSidebar ? "#131b2e" : "rgba(18,12,24,0.9)",
+          borderTopColor: isSidebar ? "transparent" : "rgba(255,255,255,0.1)",
+          borderRightColor: isSidebar ? "rgba(255,255,255,0.08)" : "transparent",
           shadowColor: mode === "dark" ? "#ff4f7b" : colors.shadow,
         },
       ]}
     >
-      {state.routes.map((route, index) => {
+      {isSidebar ? (
+        <>
+          <View style={styles.sideBrand}>
+            <Image
+              source={STITCH_TINDAH_LOGO}
+              style={styles.sideBrandLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.sideBrandName}>Tindah</Text>
+          </View>
+          <View style={styles.sideLobby}>
+            <Text style={styles.sideLobbyTitle}>Live Lobby</Text>
+            <View style={styles.sideLobbyItem}>
+              <Image
+                source={FIGMA_LOBBY_ICONS.gamers}
+                style={styles.sideLobbyIcon}
+                resizeMode="contain"
+              />
+              <View style={styles.sideLobbyCopy}>
+                <Text style={styles.sideLobbyMain} numberOfLines={1}>Top Gamers</Text>
+                <Text style={styles.sideLobbySub} numberOfLines={1}>2.4k online</Text>
+              </View>
+            </View>
+            <View style={styles.sideLobbyItem}>
+              <Image
+                source={FIGMA_LOBBY_ICONS.parties}
+                style={styles.sideLobbyIconWide}
+                resizeMode="contain"
+              />
+              <View style={styles.sideLobbyCopy}>
+                <Text style={styles.sideLobbyMain} numberOfLines={1}>Active Parties</Text>
+                <Text style={styles.sideLobbySub} numberOfLines={1}>842 Rooms</Text>
+              </View>
+            </View>
+          </View>
+        </>
+      ) : null}
+      <View style={[styles.tabList, isSidebar && styles.sideTabList]}>
+        {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
         const meta = TAB_META[route.name] || {
           label: options.tabBarLabel || options.title || route.name,
-          icon: route.name.charAt(0),
+          iconSource: FIGMA_NAV_ICONS.Explore,
           color: colors.primary,
           soft: colors.primarySoft,
           border: colors.primary,
@@ -154,87 +207,125 @@ function TindahTabBar({
             onLongPress={onLongPress}
             style={({ hovered, pressed }) => [
               styles.tabItem,
+              isSidebar && styles.sideTabItem,
               hovered && {
-                backgroundColor: "rgba(255,255,255,0.1)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.34)",
-                transform: [{ translateY: -1 }],
+                backgroundColor: isSidebar ? "#222a3d" : "rgba(255,255,255,0.1)",
+                borderWidth: isSidebar ? 0 : 1,
+                borderColor: isSidebar ? "transparent" : "rgba(255,255,255,0.34)",
+                transform: isSidebar ? [{ scale: 1 }] : [{ translateY: -1 }],
               },
               isFocused && {
-                backgroundColor: meta.soft,
-                borderWidth: 1,
-                borderColor: meta.border,
+                backgroundColor: isSidebar ? "#ff5167" : meta.soft,
+                borderWidth: isSidebar ? 0 : 1,
+                borderColor: isSidebar ? "transparent" : meta.border,
                 shadowColor: meta.color,
-                shadowOpacity: 0.34,
+                shadowOpacity: isSidebar ? 0 : 0.34,
               },
               hovered && isFocused && {
-                backgroundColor: meta.soft,
-                borderColor: "rgba(255,255,255,0.5)",
+                backgroundColor: isSidebar ? "#ff7586" : meta.soft,
+                borderColor: isSidebar ? "transparent" : "rgba(255,255,255,0.5)",
               },
               pressed && styles.tabItemPressed,
             ]}
           >
             {({ hovered }) => (
               <>
-                <Text
+                <Image
+                  source={meta.iconSource}
                   style={[
-                    styles.tabIcon,
-                    { color: isFocused ? meta.color : colors.dim },
-                    hovered && { color: "rgba(255,255,255,0.92)", transform: [{ scale: 1.08 }] },
+                    styles.tabIconImage,
+                    isSidebar && styles.sideTabIconImage,
+                    {
+                      tintColor: isFocused
+                        ? isSidebar
+                          ? "#680019"
+                          : meta.color
+                        : isSidebar
+                          ? "#e6bcbd"
+                          : colors.dim,
+                    },
+                    hovered && {
+                      tintColor: isFocused && isSidebar ? "#680019" : "#ffffff",
+                      transform: [{ scale: 1.08 }],
+                    },
                   ]}
-                >
-                  {meta.icon}
-                </Text>
+                  resizeMode="contain"
+                />
                 {route.name === "Matches" && hasUnreadMatches ? (
-                  <View style={styles.unreadBadge}>
+                  <View style={[styles.unreadBadge, isSidebar && styles.sideUnreadBadge]}>
                     <Text style={styles.unreadBadgeText}>!</Text>
                   </View>
                 ) : null}
                 <Text
                   style={[
                     styles.tabLabel,
-                    { color: isFocused ? meta.color : colors.dim },
-                    hovered && { color: "rgba(255,255,255,0.92)" },
+                    isSidebar && styles.sideTabLabel,
+                    {
+                      color: isFocused
+                        ? isSidebar
+                          ? "#680019"
+                          : meta.color
+                        : isSidebar
+                          ? "#e6bcbd"
+                          : colors.dim,
+                    },
+                    hovered && { color: isSidebar ? "#e6bcbd" : "rgba(255,255,255,0.92)" },
                   ]}
                   numberOfLines={1}
                 >
                   {meta.label}
                 </Text>
-                <View
-                  style={[
-                    styles.tabIndicator,
-                    {
-                      backgroundColor: isFocused
-                        ? meta.color
-                        : hovered
-                          ? "rgba(255,255,255,0.72)"
-                          : "transparent",
-                      shadowColor: isFocused ? meta.color : "rgba(255,255,255,0.72)",
-                    },
-                    isFocused && styles.tabIndicatorActive,
-                    hovered && !isFocused && styles.tabIndicatorHover,
-                  ]}
-                />
+                {!isSidebar ? (
+                  <View
+                    style={[
+                      styles.tabIndicator,
+                      {
+                        backgroundColor: isFocused
+                          ? meta.color
+                          : hovered
+                            ? "rgba(255,255,255,0.72)"
+                            : "transparent",
+                        shadowColor: isFocused ? meta.color : "rgba(255,255,255,0.72)",
+                      },
+                      isFocused && styles.tabIndicatorActive,
+                      hovered && !isFocused && styles.tabIndicatorHover,
+                    ]}
+                  />
+                ) : null}
               </>
             )}
           </Pressable>
         );
       })}
+      </View>
     </View>
   );
 }
 
 function MainTabs({ hasUnreadMatches, onUnreadMatchesChange }) {
+  const { width } = useWindowDimensions();
+  const isSidebar = width >= 1024;
+
   return (
     <Tab.Navigator
       tabBar={(props) => (
         <TindahTabBar
           {...props}
           hasUnreadMatches={hasUnreadMatches}
+          isSidebar={isSidebar}
         />
       )}
       screenOptions={{
         headerShown: false,
+        tabBarPosition: isSidebar ? "left" : "bottom",
+        tabBarStyle: isSidebar
+          ? {
+              width: DESKTOP_SIDEBAR_WIDTH,
+              minWidth: DESKTOP_SIDEBAR_WIDTH,
+              maxWidth: DESKTOP_SIDEBAR_WIDTH,
+            }
+          : undefined,
+        sceneStyle: isSidebar ? styles.sidebarScene : undefined,
       }}
     >
       <Tab.Screen name="Explore" component={ExploreScreen} />
@@ -543,6 +634,128 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -8 },
     elevation: 10,
   },
+  sideTabBar: {
+    width: DESKTOP_SIDEBAR_WIDTH,
+    minWidth: DESKTOP_SIDEBAR_WIDTH,
+    maxWidth: DESKTOP_SIDEBAR_WIDTH,
+    height: "100%",
+    minHeight: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: DESKTOP_SIDEBAR_WIDTH,
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 24,
+    borderTopWidth: 0,
+    borderRightWidth: 1,
+    backgroundColor: "rgba(19,27,46,0.94)",
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 8, height: 0 },
+  },
+  sidebarScene: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: "#0b1326",
+  },
+  sideBrand: {
+    height: 64,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    paddingHorizontal: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(11,19,38,0.72)",
+  },
+  sideBrandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 5,
+  },
+  sideBrandName: {
+    color: "#dae2fd",
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "900",
+  },
+  sideLobby: {
+    flexShrink: 0,
+    height: 212,
+    paddingHorizontal: 32,
+    paddingVertical: 32,
+    marginBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+    gap: 8,
+  },
+  sideLobbyTitle: {
+    paddingHorizontal: 0,
+    marginBottom: 10,
+    color: "#e6bcbd",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  sideLobbyItem: {
+    minHeight: 48,
+    paddingHorizontal: 0,
+    paddingVertical: 6,
+    backgroundColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  sideLobbyIcon: {
+    width: 16,
+    height: 20,
+  },
+  sideLobbyIconWide: {
+    width: 24,
+    height: 16,
+    marginLeft: -4,
+  },
+  sideLobbyCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sideLobbyMain: {
+    color: "#dae2fd",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  sideLobbySub: {
+    color: "#ffb3b5",
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  tabList: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    gap: 0,
+  },
+  sideTabList: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: "auto",
+    minHeight: 250,
+    width: "100%",
+    alignSelf: "stretch",
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 32,
+    gap: 4,
+  },
   tabItem: {
     flex: 1,
     height: 52,
@@ -555,6 +768,24 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
+  },
+  sideTabItem: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 48,
+    width: "100%",
+    height: 48,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingHorizontal: 16,
+    gap: 12,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   tabItemActive: {
     backgroundColor: "rgba(255,79,123,0.14)",
@@ -577,6 +808,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 15,
   },
+  sideTabLabel: {
+    flex: 1,
+    fontFamily: "Inter",
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: "500",
+  },
   tabLabelActive: {
     color: "#ff4f7b",
   },
@@ -588,6 +826,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
   },
+  tabIconImage: {
+    width: 18,
+    height: 18,
+  },
+  sideTabIconImage: {
+    width: 20,
+    height: 20,
+  },
+  sideTabIcon: {
+    width: 22,
+    fontSize: 16,
+    textAlign: "center",
+  },
   tabIndicator: {
     position: "absolute",
     bottom: 2,
@@ -595,10 +846,21 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 999,
   },
+  sideTabIndicator: {
+    left: 5,
+    top: 8,
+    bottom: undefined,
+    width: 3,
+    height: 22,
+  },
   tabIndicatorActive: {
     width: 26,
     shadowOpacity: 0.5,
     shadowRadius: 8,
+  },
+  sideTabIndicatorActive: {
+    width: 3,
+    height: 28,
   },
   tabIndicatorHover: {
     width: 20,
@@ -615,6 +877,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#ffffff",
+  },
+  sideUnreadBadge: {
+    top: 14,
+    right: 12,
   },
   unreadBadgeText: {
     color: "#ffffff",

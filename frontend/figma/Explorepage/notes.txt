@@ -1,0 +1,5 @@
+Font chữ của Header : 
+
+1.  Font chữ " Tindah " : Montserrat _ 24 _ SemiBold
+
+Font của các frame còn lại là : Inter 
