@@ -1,27 +1,30 @@
 # Release v0.1.0
 
-First public release of Tindah.
+Released 2026-06-19, v0.1.0 was the first public Tindah snapshot.
 
-## Highlights
+## Highlights at release
 
-- Authentication system
-- Swipe mechanism
-- Match system
-- Real-time chat
-- Mobile-first UI
+- JWT registration and login
+- Profile-based player discovery
+- Like/pass swiping and reciprocal matches
+- Realtime Socket.IO chat
+- A mobile-first React Native and Expo client
+- An Express and MongoDB backend
 
-## Tech Stack
+## Technology
 
-Frontend:
-- React Native
-- Expo
+| Layer | Primary technology |
+| --- | --- |
+| Client | React Native and Expo |
+| API | Node.js and Express |
+| Data | MongoDB and Mongoose |
+| Realtime | Socket.IO |
 
-Backend:
-- Express
-- MongoDB
-- Socket.IO
+## Limitations at release
 
-## Limitations
+- APIs and schemas were expected to change before 1.0.
+- Push notifications and the later gamer-lobby workflow were not included.
+- Media handling and automated coverage were limited.
 
-- APIs may change.
-- No push notification support yet.
+These notes describe v0.1.0, not the current default branch. See `CHANGELOG.md` for
+subsequent unreleased functionality and `docs/ROADMAP.md` for future direction.

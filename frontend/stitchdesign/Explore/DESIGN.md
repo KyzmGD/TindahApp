@@ -108,6 +108,11 @@ spacing:
   stack-lg: 32px
 ---
 
+> Status: Visual design reference for the Explore experience. The runnable React
+> Native code in `frontend/src` is the behavioral source of truth. Keep changes to
+> these tokens and components synchronized with the implemented theme, and verify
+> them on mobile and desktop web.
+
 ## Brand & Style
 
 The design system is built on the intersection of romantic connection and high-octane gaming culture. The brand personality is **vibrant, energetic, and tech-forward**, moving away from static layouts toward a dynamic, immersive experience. 

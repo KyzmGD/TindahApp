@@ -40,11 +40,13 @@ Close and reopen PowerShell if `k6` is not found after installation.
    k6 run load-tests/swipes-load-test.js
    ```
 
-   The default target is `http://localhost:5000`, with 100 virtual users for one minute.
+The default target is `http://localhost:5000`, with 100 virtual users for one minute.
    To target another environment, set `BASE_URL` before the command:
 
    ```powershell
    $env:BASE_URL = "http://localhost:5000"
+   $env:VUS = "100"       # must be an even integer >= 2
+   $env:DURATION = "1m"
    k6 run load-tests/swipes-load-test.js
    ```
 
@@ -79,7 +81,10 @@ script ran: the final values must satisfy the thresholds above.
 
 | Run date | Target | VUs | Duration | Swipe requests | HTTP 500 rate | Average swipe response | Result |
 | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
-| ____ | ____ | 100 | 1 minute | ____ | ____ | ____ ms | PASS / FAIL |
+| 2026-08-05 | Not run | 100 | 1 minute | — | — | — | PENDING |
+
+No benchmark result is committed yet. Do not interpret the configured thresholds
+as measured performance.
 
 ## Cleanup test data
 
