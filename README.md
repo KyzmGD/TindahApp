@@ -1,11 +1,19 @@
-# Tindah - Tinder Clone App
+# Tindah — Social Gaming and Matchmaking
 
-Tindah is a Tinder-style mobile dating application built with React Native Expo,
-Node.js, Express, MongoDB, Redis, and Socket.IO.
+Tindah is a responsive social gaming and matchmaking application for finding
+matches, discovering compatible players, recruiting a squad, and chatting in
+real time. It runs on web, Android, and iOS through React Native and Expo, with a
+Node.js, Express, MongoDB, Redis, and Socket.IO backend.
 
-The app currently supports account registration, profile management, discovery,
-swiping, automatic matching, chat history, real-time chat, offline message retry,
-Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
+The product combines two connected experiences:
+
+- **Explore:** discover profiles, apply matchmaking preferences, swipe, and open
+  private chats after a mutual match.
+- **Games:** browse players by game and rank, publish recruitment posts, join a
+  team, and automatically receive a shared team chat.
+
+The desktop interface uses a persistent left navigation rail. Narrow screens use
+native-style bottom navigation and stacked layouts.
 
 ---
 
@@ -13,20 +21,24 @@ Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
 
 | Module | Status | Notes |
 | --- | --- | --- |
-| Authentication | Done | Register, login, JWT auth, current user profile |
-| User profile | Done | Update name, bio, birth date, interests, job, school |
+| Authentication | Done | Professional responsive login/sign-up flow, validation, JWT sessions |
+| User profile | Done | Profile photos, avatar, bio, identity, interests, work, school, and gaming profiles |
 | Search filters | Done | Gender preference and min/max age are saved and applied to Explore |
-| Explore | Done | Filters by distance, gender preference, age range, mutual interest, and excluded swipe history |
+| Explore | Done | Responsive player cards, filters, live activity, swipe history exclusion, and match modal |
 | Swipe API | Done | `like`, `pass`, idempotent upsert, reciprocal like creates match |
 | Race condition handling | Done | Unique indexes and idempotent logic prevent duplicate matches |
 | Redis cache | Done | Stores excluded swipe IDs with 24h TTL, MongoDB fallback when Redis is down |
 | Load testing | Done | k6 script for 100 concurrent VUs during 1 minute |
-| Match list | Done | Get active matches, unmatch |
+| Gamer lobby | Done | Game/rank discovery plus create, browse, join, leave, and close recruitment posts |
+| Team chat | Done | Recruitment creates a named chat; joining/leaving synchronizes the member roster |
+| Match list | Done | Wider conversation selector, active matches, team chats, unread counts, unmatch |
 | Message history | Done | Paginated message API sorted by `createdAt: -1` |
-| Real-time chat | Done | Socket.IO room per `matchId`, `send_message`, `receive_message`, typing event |
+| Real-time chat | Done | Direct/team rooms, typing, presence, notifications, and idempotent delivery |
+| Read receipts | Done | Per-message double ticks; receipts change only when the recipient opens the chat |
+| Live lobby | Done | Real online-user and open-recruitment totals over REST and Socket.IO |
 | Network resilience | Done | Frontend queues pending messages and flushes after reconnect |
-| Image upload | Partially done | Cloudinary upload and save profile photo endpoint exist; Cloudinary env is required |
-| Push notification FCM #40 | Deferred | Firebase Console setup, native build, token storage, and FCM backend are planned for later |
+| Image upload | Done | Cloudinary in production with local-upload fallback during development |
+| Push notifications | Done | Expo push tokens, offline match/message notifications, and notification navigation |
 
 ---
 
@@ -42,8 +54,9 @@ Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
 | Mongoose | ODM |
 | JWT | Authentication |
 | Redis | Swipe exclusion cache |
-| Socket.IO | Realtime chat |
+| Socket.IO | Realtime chat, presence, read receipts, teams, and live lobby stats |
 | Cloudinary | Image upload |
+| Expo Push Service | Offline match and message notifications |
 | Jest + Supertest | Integration testing |
 | k6 | Load testing |
 
@@ -51,10 +64,10 @@ Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
 
 | Tool | Purpose |
 | --- | --- |
-| React Native | Mobile UI |
-| Expo | Mobile development workflow |
+| React Native | Shared mobile and responsive web UI |
+| Expo | Web, Android, and iOS development workflow |
 | Axios | REST API client |
-| Socket.IO Client | Realtime chat client |
+| Socket.IO Client | Realtime chat, presence, lobby, and membership updates |
 | React Navigation | Screen navigation |
 | AsyncStorage | Local session storage |
 
@@ -63,7 +76,7 @@ Redis-backed swipe exclusion cache, and load testing for concurrent swipes.
 ## Project Structure
 
 ```text
-TinderApp/
+Tindah/
   backend/
     src/
       app.js
@@ -83,7 +96,7 @@ TinderApp/
       context/
       hooks/
       navigation/
-      screens/
+      screens/       # Explore, Games, Matches, Chat, Profile, and Authentication
       services/
   docs/
   load-tests/
@@ -145,6 +158,14 @@ npm install
 npm start
 ```
 
+Platform-specific commands:
+
+```bash
+npm run web
+npm run android
+npm run ios
+```
+
 If testing on a real phone, set the API URL to your computer LAN IP:
 
 ```env
@@ -152,6 +173,9 @@ EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api
 ```
 
 The frontend derives Socket.IO URL from the API URL by removing `/api`.
+
+On web, Expo defaults to `http://localhost:8081`. Ensure `CLIENT_ORIGIN` matches
+the frontend origin when the backend is not using the development wildcard.
 
 ---
 
@@ -162,6 +186,17 @@ Backend tests:
 ```bash
 cd backend
 npm test
+```
+
+The current suite contains 86 tests across 17 suites, covering authentication,
+discovery, swipes, matches, chat, sockets, recruitment teams, uploads, push
+tokens, notification services, and cache behavior.
+
+Frontend production export check:
+
+```bash
+cd frontend
+npx expo export --platform web
 ```
 
 Load test:
@@ -898,6 +933,60 @@ Notes:
 
 ---
 
+## Gamer Lobby And Recruitment APIs
+
+All gamer-lobby endpoints require `Authorization: Bearer <token>` and use the
+prefix `/api/v1/gamer-lobby`.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/stats` | Current online-user and open-recruitment counts |
+| `GET` | `/explore?game=Valorant&lobbyGroup=group1&limit=20` | Find players for a game/rank group |
+| `GET` | `/recruitments?game=Valorant&lobbyGroup=group1&limit=20` | Browse open posts the current user has not joined |
+| `POST` | `/recruitments` | Create a recruitment post and its team chat |
+| `POST` | `/recruitments/:recruitmentId/join` | Join the team and shared chat |
+| `POST` | `/recruitments/:recruitmentId/leave` | Leave the team and shared chat |
+| `PATCH` | `/recruitments/:recruitmentId/close` | Close or dissolve a team owned by the current user |
+
+Create-recruitment example:
+
+```json
+{
+  "gameName": "Valorant",
+  "currentRank": "Gold 2",
+  "teamSize": 4,
+  "playMode": "ranked",
+  "lobbyCode": "ABC123",
+  "teamName": "Night Queue",
+  "description": "Looking for calm teammates with voice chat."
+}
+```
+
+Supported team sizes are `2` and `4`; play modes are `ranked` and `casual`.
+The backend derives the lobby group from the selected game's rank. Open-post
+queries exclude teams the current user has already joined.
+
+Creating a post creates or restores a match-backed team conversation named after
+the team. Joining adds the player to that conversation; leaving removes them.
+Closing the recruitment dissolves access for the team when appropriate.
+
+Live stats response:
+
+```json
+{
+  "stats": {
+    "onlineGamers": 12,
+    "activeParties": 4,
+    "updatedAt": "2026-08-05T10:00:00.000Z"
+  }
+}
+```
+
+`onlineGamers` counts users with live presence. `activeParties` counts open
+recruitment posts, not chat rooms or historical teams.
+
+---
+
 ## Socket.IO Events
 
 Socket.IO is not a normal REST API, so it is not tested like JSON requests in
@@ -922,17 +1011,34 @@ Events:
 
 | Event | Direction | Payload |
 | --- | --- | --- |
-| `match:join` | client -> server | `matchId` |
-| `send_message` | client -> server | `{ matchId, text, imageUrl, clientMessageId }` |
-| `receive_message` | server -> client | saved message |
+| `match:join` | client → server | `matchId` |
+| `match:leave` | client → server | `matchId` |
+| `send_message` | client → server | `{ matchId, text, imageUrl, clientMessageId }` |
+| `receive_message` | server → client | Saved message |
+| `message:notification` | server → client | Message sent to the recipient's user room |
 | `typing` | both | `{ matchId, isTyping, userId }` |
-| `match:new` | server -> client | match |
+| `read_message` | both | `{ matchId, messageIds, userId, readAt }` |
+| `presence:subscribe` | client → server | `{ matchIds }` |
+| `presence:snapshot` | server → client | Presence state for subscribed match users |
+| `presence:update` | server → client | `{ userId, isOnline, lastActive }` |
+| `match:new` | server → client | New reciprocal match |
+| `matches:updated` | server → client | Match/team list invalidation signal |
+| `team:membership` | server → client | Updated team match and member roster |
+| `gamer_lobby:team_found` | server → client | Recruitment match result |
+| `gamer_lobby:team_dissolved` | server → client | Closed-team notification |
+| `gamer_lobby:recruitment_updated` | server → client | Updated recruitment post |
+| `live_lobby:stats` | server → client | `{ onlineGamers, activeParties, updatedAt }` |
 
 Realtime DoD:
 
 - Only users in the same `matchId` room receive `receive_message`.
 - Message is saved to MongoDB before realtime emit.
 - Offline frontend messages are queued and sent after reconnect.
+- New messages start with the sender in `readBy`. A recipient is added only when
+  that recipient explicitly opens the conversation and emits `read_message`.
+- Direct-message ticks turn pink when the other user reads the message. Team-chat
+  ticks turn pink after every intended teammate has read it.
+- Presence subscriptions are authorized against active match membership.
 
 ---
 
@@ -1435,6 +1541,9 @@ POST /api/v1/swipes
 PUT  /api/v1/users/profile
 GET  /api/v1/users/explore
 GET  /api/v1/messages/:matchId
+GET  /api/v1/gamer-lobby/stats
+GET  /api/v1/gamer-lobby/recruitments
+POST /api/v1/gamer-lobby/recruitments
 GET  /api/matches
 POST /api/chats/:matchId/messages
 ```
