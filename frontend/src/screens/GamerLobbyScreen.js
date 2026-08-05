@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import TeamFoundModal from "../components/common/TeamFoundModal";
 import {
   closeGamerRecruitment,
   createGamerRecruitment,
@@ -26,7 +27,6 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { useTheme } from "../theme/ThemeContext";
 
-const FALLBACK_AVATAR = "https://i.pravatar.cc/300";
 const LOBBY_CODE_GAMES = ["Valorant", "FreeFire", "LienQuan"];
 const RANK_PREVIEW_IMAGES = {
   Valorant: require("../../assets/games/aboutrankvalorant.jpg"),
@@ -124,7 +124,13 @@ const GAME_CONFIGS = [
 ];
 
 function getAvatar(user) {
-  return user?.avatarUrl || user?.photos?.[0]?.url || FALLBACK_AVATAR;
+  return user?.avatarUrl || user?.photos?.find((photo) => photo.isPrimary)?.url || user?.photos?.[0]?.url || null;
+}
+
+function ProfileAvatar({ user, style }) {
+  const avatarUrl = getAvatar(user);
+  if (avatarUrl) return <Image source={{ uri: avatarUrl }} style={style} />;
+  return <View style={[style, styles.profileAvatarFallback]}><Text style={styles.profileAvatarInitial}>{user?.name?.[0]?.toUpperCase() || "G"}</Text></View>;
 }
 
 function getUserId(user) {
@@ -196,183 +202,6 @@ function normalizeLobbyCode(value, gameName) {
   return rawValue.replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 
-function maskInGameId(inGameID = "") {
-  if (!inGameID) {
-    return "Hidden until match";
-  }
-
-  if (inGameID.length <= 4) {
-    return `${inGameID[0] || "*"}***`;
-  }
-
-  return `${inGameID.slice(0, 3)}***${inGameID.slice(-2)}`;
-}
-
-function GamerCard({ user, gameConfig, colors, index }) {
-  const profile = user.gamingProfile || {};
-  const entrance = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(entrance, {
-      toValue: 1,
-      duration: 320,
-      delay: index * 45,
-      useNativeDriver: true,
-    }).start();
-  }, [entrance, index]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          shadowColor: gameConfig.color,
-          opacity: entrance,
-          transform: [
-            {
-              translateY: entrance.interpolate({
-                inputRange: [0, 1],
-                outputRange: [18, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.avatarWrap}>
-          <Image source={{ uri: getAvatar(user) }} style={styles.avatar} />
-          <View
-            style={[
-              styles.onlineDot,
-              { backgroundColor: user.isOnline ? colors.success : colors.dim },
-            ]}
-          />
-        </View>
-
-        <View style={styles.identity}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-            {user.name}
-            {user.age ? <Text style={styles.age}> {user.age}</Text> : null}
-          </Text>
-          <Text style={[styles.distance, { color: colors.muted }]}>
-            {user.distanceKm ? `${user.distanceKm} km away` : user.isOnline ? "Online now" : "Recently active"}
-          </Text>
-        </View>
-
-        <View style={[styles.gameBadge, { borderColor: gameConfig.color }]}>
-          <Text style={[styles.gameBadgeText, { color: gameConfig.color }]}>
-            {gameConfig.label}
-          </Text>
-        </View>
-      </View>
-
-      <View style={[styles.rankPanel, { borderColor: gameConfig.color }]}>
-        <View>
-          <Text style={[styles.panelLabel, { color: colors.dim }]}>Current rank</Text>
-          <Text style={[styles.rankText, { color: colors.text }]}>{profile.currentRank}</Text>
-        </View>
-        <View style={[styles.lobbyBadge, { backgroundColor: gameConfig.color }]}>
-          <Text style={styles.lobbyBadgeText}>{profile.lobbyGroup?.toUpperCase()}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoRow}>
-        <View style={[styles.infoPill, { backgroundColor: colors.elevated }]}>
-          <Text style={[styles.infoLabel, { color: colors.dim }]}>In-game ID</Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>{maskInGameId(profile.inGameID)}</Text>
-        </View>
-        <View style={[styles.infoPill, { backgroundColor: colors.elevated }]}>
-          <Text style={[styles.infoLabel, { color: colors.dim }]}>Lobby skill</Text>
-          <Text style={[styles.infoValue, { color: colors.text }]}>{profile.lobbyGroup || "Unknown"}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-
-function RecruitmentCard({ post, gameConfig, colors, index }) {
-  const entrance = useRef(new Animated.Value(0)).current;
-  const owner = post.owner || {};
-  const memberCount = post.memberCount || 1;
-  const teamName = String(post.teamName || "").trim() || `${gameConfig.label} squad`;
-
-  useEffect(() => {
-    Animated.timing(entrance, {
-      toValue: 1,
-      duration: 280,
-      delay: index * 35,
-      useNativeDriver: true,
-    }).start();
-  }, [entrance, index]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.recruitmentCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: gameConfig.color,
-          opacity: entrance,
-          transform: [
-            {
-              translateY: entrance.interpolate({
-                inputRange: [0, 1],
-                outputRange: [16, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <View style={styles.recruitmentTop}>
-        <View style={styles.avatarWrapSmall}>
-          <Image source={{ uri: getAvatar(owner) }} style={styles.avatarSmall} />
-          <View
-            style={[
-              styles.onlineDotSmall,
-              { backgroundColor: owner.isOnline ? colors.success : colors.dim },
-            ]}
-          />
-        </View>
-        <View style={styles.identity}>
-          <Text style={[styles.recruitmentTitle, { color: colors.text }]} numberOfLines={1}>
-            {teamName}
-          </Text>
-          <Text style={[styles.distance, { color: colors.muted }]}>
-            Posted by {owner.name || "Gamer"} - {owner.isOnline ? "Online now" : "Recently active"}
-          </Text>
-        </View>
-        <View style={[styles.recruitmentMode, { backgroundColor: gameConfig.color }]}>
-          <Text style={styles.recruitmentModeText}>
-            {post.playMode === "ranked" ? "Ranked" : "Casual"}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.recruitmentBody}>
-        <View>
-          <Text style={[styles.panelLabel, { color: colors.dim }]}>Lobby</Text>
-          <Text style={[styles.rankText, { color: colors.text }]}>{post.currentRank}</Text>
-        </View>
-        <View style={[styles.teamBadge, { borderColor: gameConfig.color }]}>
-          <Text style={[styles.teamBadgeText, { color: gameConfig.color }]}>
-            {memberCount}/{post.teamSize}
-          </Text>
-        </View>
-      </View>
-
-      {post.description || post.note ? (
-        <Text style={[styles.recruitmentNote, { color: colors.muted }]}>
-          {post.description || post.note}
-        </Text>
-      ) : null}
-    </Animated.View>
-  );
-}
-
 function SwipeRecruitmentCard({
   post,
   gameConfig,
@@ -414,7 +243,7 @@ function SwipeRecruitmentCard({
       ) : null}
       <View style={styles.swipeCardTop}>
         <View style={styles.posterIdentity}>
-          <Image source={{ uri: getAvatar(owner) }} style={styles.posterAvatar} />
+          <ProfileAvatar user={owner} style={styles.posterAvatar} />
           <View style={styles.posterCopy}>
             <Text style={[styles.posterName, { color: colors.text }]} numberOfLines={1}>
               {owner.name || "Gamer"}
@@ -849,10 +678,11 @@ export default function GamerLobbyScreen({ navigation }) {
     });
     setRecruitments(
       (recruitmentData.recruitments || []).filter(
-        (post) => !hiddenRecruitmentIdsRef.current.has(getRecruitmentId(post)),
+        (post) => !hiddenRecruitmentIdsRef.current.has(getRecruitmentId(post))
+          && !(post.members || []).some((memberId) => getUserId(memberId) === getUserId(currentUser)),
       ),
     );
-  }, [selectedGameConfig.game, selectedLobby]);
+  }, [currentUser, selectedGameConfig.game, selectedLobby]);
 
   const handleSelectGame = (game) => {
     const nextConfig = GAME_CONFIGS.find((config) => config.game === game) || GAME_CONFIGS[0];
@@ -897,6 +727,12 @@ export default function GamerLobbyScreen({ navigation }) {
         return;
       }
 
+      if ((updatedPost.members || []).some((memberId) => getUserId(memberId) === getUserId(currentUser))) {
+        hiddenRecruitmentIdsRef.current.add(postId);
+        setRecruitments((current) => current.filter((item) => getRecruitmentId(item) !== postId));
+        return;
+      }
+
       if (updatedPost.status === "closed") {
         hiddenRecruitmentIdsRef.current.add(postId);
         setRecruitments((current) => current.filter((item) => getRecruitmentId(item) !== postId));
@@ -919,7 +755,7 @@ export default function GamerLobbyScreen({ navigation }) {
     return () => {
       socket.off("gamer_lobby:recruitment_updated", onRecruitmentUpdated);
     };
-  }, [selectedGameConfig.game, selectedLobby, socket]);
+  }, [currentUser, selectedGameConfig.game, selectedLobby, socket]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -1027,16 +863,14 @@ export default function GamerLobbyScreen({ navigation }) {
     const chatMatch = teamFound?.chatMatch;
     if (!chatMatch?._id) {
       setTeamFound(null);
-      navigation.navigate("Main", { screen: "Matches" });
+      navigation.navigate("Matches");
       return;
     }
 
-    const otherUser = chatMatch.users?.find((item) => getUserId(item) !== getUserId(currentUser));
     setTeamFound(null);
-    const targetNavigation = navigation.getParent?.() || navigation;
-    targetNavigation.navigate("Chat", {
-      match: chatMatch,
-      user: otherUser,
+    navigation.navigate("Matches", {
+      matchId: chatMatch._id,
+      openRequestId: `team-${chatMatch._id}-${Date.now()}`,
     });
   };
 
@@ -1083,10 +917,8 @@ export default function GamerLobbyScreen({ navigation }) {
         throw new Error("Server did not return the created recruitment post.");
       }
 
-      setRecruitments((current) => [
-        createdRecruitment,
-        ...current.filter((post) => getRecruitmentId(post) !== createdRecruitmentId),
-      ]);
+      hiddenRecruitmentIdsRef.current.add(createdRecruitmentId);
+      setRecruitments((current) => current.filter((post) => getRecruitmentId(post) !== createdRecruitmentId));
       setRecruitmentTeamName("");
       setRecruitmentNote("");
       setRecruitmentLobbyCode("");
@@ -1381,115 +1213,13 @@ export default function GamerLobbyScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
-      <Modal
+      <TeamFoundModal
         visible={Boolean(teamFound)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTeamFound(null)}
-      >
-        <View style={[styles.teamFoundOverlay, { backgroundColor: colors.overlay }]}>
-          <View
-            style={[
-              styles.teamFoundCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: getGameConfig(teamFound?.recruitment?.gameName).color,
-                shadowColor: getGameConfig(teamFound?.recruitment?.gameName).color,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.teamFoundIcon,
-                { backgroundColor: getGameConfig(teamFound?.recruitment?.gameName).color },
-              ]}
-            >
-              <Text style={styles.teamFoundIconText}>
-                {getGameConfig(teamFound?.recruitment?.gameName).icon}
-              </Text>
-            </View>
-            <Text style={[styles.teamFoundTitle, { color: colors.text }]}>Teammate found</Text>
-            {teamFound?.teamMatch?.teamName ? (
-              <Text
-                style={[
-                  styles.teamFoundTeamName,
-                  { color: getGameConfig(teamFound?.recruitment?.gameName).color },
-                ]}
-                numberOfLines={2}
-              >
-                {teamFound.teamMatch.teamName}
-              </Text>
-            ) : null}
-            <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
-              {getGameConfig(teamFound?.recruitment?.gameName).label} - Team{" "}
-              {teamFound?.teamMatch?.teamSize} -{" "}
-              {teamFound?.teamMatch?.playMode === "ranked" ? "Ranked" : "Casual"}
-            </Text>
-
-            <View style={styles.teamFoundUsers}>
-              <View style={styles.teamFoundUser}>
-                <Image
-                  source={{ uri: getAvatar(teamFound?.teamMatch?.owner) }}
-                  style={styles.teamFoundAvatar}
-                />
-                <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
-                  {teamFound?.teamMatch?.owner?.name || "Captain"}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.teamFoundConnector,
-                  { backgroundColor: getGameConfig(teamFound?.recruitment?.gameName).color },
-                ]}
-              />
-              <View style={styles.teamFoundUser}>
-                <Image
-                  source={{ uri: getAvatar(teamFound?.teamMatch?.joiner) }}
-                  style={styles.teamFoundAvatar}
-                />
-                <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
-                  {teamFound?.teamMatch?.joiner?.name || "Teammate"}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.teamFoundActions}>
-              <Pressable
-                onPress={openTeamChat}
-                style={({ hovered, pressed }) => [
-                  styles.teamFoundButton,
-                  { backgroundColor: getGameConfig(teamFound?.recruitment?.gameName).color },
-                  hovered && styles.recruitButtonHover,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.teamFoundButtonText}>Go to chat</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setTeamFound(null)}
-                style={({ hovered, pressed }) => [
-                  styles.teamFoundSecondaryButton,
-                  {
-                    backgroundColor: colors.elevated,
-                    borderColor: getGameConfig(teamFound?.recruitment?.gameName).color,
-                  },
-                  hovered && styles.actionHover,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.teamFoundSecondaryText,
-                    { color: getGameConfig(teamFound?.recruitment?.gameName).color },
-                  ]}
-                >
-                  Keep finding
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        result={teamFound}
+        game={getGameConfig(teamFound?.recruitment?.gameName)}
+        onClose={() => setTeamFound(null)}
+        onOpenChat={openTeamChat}
+      />
       <Modal
         visible={rankPreviewVisible && Boolean(activeRankPreview)}
         transparent
@@ -1803,6 +1533,8 @@ export default function GamerLobbyScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  profileAvatarFallback: { backgroundColor: "#26334d", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  profileAvatarInitial: { color: "#dae2fd", fontSize: 18, fontWeight: "900" },
   screen: {
     flex: 1,
   },
@@ -1899,14 +1631,6 @@ const styles = StyleSheet.create({
   titleCompact: {
     fontSize: 34,
     lineHeight: 40,
-  },
-  livePill: {
-    minHeight: 34,
-    borderRadius: 17,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
   },
   liveDot: {
     width: 8,
@@ -2268,59 +1992,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  gameRankRow: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "nowrap",
-    gap: 16,
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  gameRankRowCompact: {
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
-  },
-  rankSideSpacer: {
-    width: 112,
-    flexShrink: 0,
-  },
-  gameLogoCluster: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  gameGridCompact: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "center",
-  },
-  gameChip: {
-    width: 74,
-    aspectRatio: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  gameChipCompact: {
-    width: 72,
-    minWidth: 72,
-    maxWidth: 72,
-    minHeight: 72,
-    flexGrow: 0,
-    flexBasis: 72,
-  },
   gameChipHover: {
     transform: [{ translateY: -6 }, { scale: 1.09 }, { rotate: "-1deg" }],
     shadowOpacity: 0.42,
@@ -2355,12 +2026,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "center",
   },
-  sheetGameGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    justifyContent: "center",
-  },
   sheetGameChip: {
     width: 76,
     minWidth: 76,
@@ -2378,38 +2043,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 2,
-  },
-  rankButtonSlot: {
-    width: 112,
-    alignItems: "flex-end",
-    flexShrink: 0,
-  },
-  rankButtonSlotCompact: {
-    width: "100%",
-    alignItems: "center",
-  },
-  rankButton: {
-    minWidth: 96,
-    minHeight: 46,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  rankButtonHover: {
-    shadowOpacity: 0.38,
-    shadowRadius: 18,
-    transform: [{ translateY: -4 }, { scale: 1.06 }],
-  },
-  rankButtonText: {
-    fontSize: 14,
-    fontWeight: "900",
-    textTransform: "uppercase",
   },
   rankModalOverlay: {
     flex: 1,
@@ -2476,212 +2109,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  lobbySection: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  lobbyGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  lobbyOption: {
-    flexGrow: 1,
-    flexBasis: "30%",
-    minWidth: 128,
-    minHeight: 76,
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12,
-    justifyContent: "center",
-    gap: 4,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  lobbyOptionTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  lobbyOptionDetail: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-  },
-  recruitBox: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 14,
-    gap: 14,
-  },
-  recruitHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  recruitHint: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "700",
-  },
-  recruitControls: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  recruitChip: {
-    minHeight: 42,
-    minWidth: 92,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  recruitChipText: {
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  recruitDescriptionInput: {
-    minHeight: 112,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-  codeInputGroup: {
-    gap: 8,
-  },
-  teamNameInput: {
-    minHeight: 54,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  codeInput: {
-    minHeight: 54,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-  codeHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: "800",
-  },
-  descriptionCounter: {
-    marginTop: -12,
-    alignSelf: "flex-end",
-    fontSize: 12,
-    fontWeight: "800",
-  },
   recruitmentError: {
     marginTop: -8,
     fontSize: 13,
     fontWeight: "800",
     lineHeight: 18,
-  },
-  recruitButton: {
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  recruitButtonHover: {
-    transform: [{ translateY: -2 }, { scale: 1.01 }],
-  },
-  recruitButtonText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  recruitmentFeed: {
-    gap: 12,
-  },
-  recruitmentCard: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 14,
-    gap: 13,
-  },
-  recruitmentTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  avatarWrapSmall: {
-    width: 46,
-    height: 46,
-  },
-  avatarSmall: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  onlineDotSmall: {
-    position: "absolute",
-    right: 1,
-    bottom: 1,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: "#050506",
-  },
-  recruitmentTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  recruitmentMode: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  recruitmentModeText: {
-    color: "#ffffff",
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  recruitmentBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  teamBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  teamBadgeText: {
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  recruitmentNote: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
   },
   filtersOverlay: {
     flex: 1,
@@ -3080,82 +2512,6 @@ const styles = StyleSheet.create({
     height: 18,
     tintColor: "#680019",
   },
-  filtersSheet: {
-    maxHeight: "92%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  recruitmentBackgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
-  },
-  recruitmentBackgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%",
-  },
-  recruitmentBackgroundTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(4,8,18,0.48)",
-  },
-  sheetHandle: {
-    alignSelf: "center",
-    width: 58,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 10,
-    marginBottom: 2,
-    zIndex: 2,
-  },
-  filtersHeader: {
-    minHeight: 72,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    zIndex: 2,
-  },
-  headerSide: {
-    width: 72,
-  },
-  filtersTitle: {
-    flex: 1,
-    fontSize: 26,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  doneButton: {
-    width: 72,
-    minHeight: 44,
-    borderRadius: 999,
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingRight: 8,
-  },
-  doneButtonTextHoverArea: {
-    transform: [{ translateY: -1 }],
-  },
-  doneText: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  doneTextHover: {
-    transform: [{ scale: 1.08 }],
-  },
-  filtersContent: {
-    paddingHorizontal: 18,
-    paddingTop: 22,
-    paddingBottom: 34,
-    gap: 18,
-    zIndex: 2,
-  },
-  filtersSectionTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-  },
   loading: {
     minHeight: 300,
     alignItems: "center",
@@ -3164,9 +2520,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontWeight: "800",
-  },
-  cardList: {
-    gap: 14,
   },
   recruitmentBoard: {
     gap: 18,
@@ -3333,15 +2686,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "700",
   },
-  swipeEmpty: {
-    minHeight: 260,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 8,
-  },
   valorantEmptyState: {
     minHeight: 560,
     borderRadius: 14,
@@ -3488,215 +2832,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
   },
-  teamFoundOverlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 22,
-  },
-  teamFoundCard: {
-    width: "100%",
-    maxWidth: 390,
-    borderRadius: 22,
-    borderWidth: 1,
-    padding: 22,
-    alignItems: "center",
-    gap: 16,
-    shadowOpacity: 0.28,
-    shadowRadius: 26,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 10,
-  },
-  teamFoundIcon: {
-    width: 74,
-    height: 74,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  teamFoundIconText: {
-    color: "#ffffff",
-    fontSize: 34,
-    fontWeight: "900",
-  },
-  teamFoundTitle: {
-    fontSize: 27,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  teamFoundSubtitle: {
-    marginTop: -8,
-    fontSize: 14,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  teamFoundTeamName: {
-    marginTop: -8,
-    fontSize: 18,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  teamFoundUsers: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-  },
-  teamFoundUser: {
-    flex: 1,
-    alignItems: "center",
-    gap: 8,
-  },
-  teamFoundAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-  },
-  teamFoundUserName: {
-    maxWidth: "100%",
-    fontSize: 14,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  teamFoundConnector: {
-    width: 38,
-    height: 5,
-    borderRadius: 999,
-  },
-  teamFoundActions: {
-    width: "100%",
-    gap: 10,
-  },
-  teamFoundButton: {
-    width: "100%",
-    minHeight: 48,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  teamFoundButtonText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  teamFoundSecondaryButton: {
-    width: "100%",
-    minHeight: 48,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  teamFoundSecondaryText: {
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  card: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 14,
-    gap: 14,
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  avatarWrap: {
-    width: 58,
-    height: 58,
-  },
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-  },
-  onlineDot: {
-    position: "absolute",
-    right: 2,
-    bottom: 2,
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: "#050506",
-  },
-  identity: {
-    flex: 1,
-    gap: 3,
-  },
-  name: {
-    fontSize: 19,
-    fontWeight: "900",
-  },
   age: {
     fontWeight: "500",
-  },
-  distance: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  gameBadge: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  gameBadgeText: {
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  rankPanel: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
   },
   panelLabel: {
     fontSize: 11,
     fontWeight: "900",
     textTransform: "uppercase",
-  },
-  rankText: {
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  lobbyBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  lobbyBadgeText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  infoRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  infoPill: {
-    flex: 1,
-    borderRadius: 8,
-    padding: 12,
-    gap: 4,
-  },
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "900",
   },
   empty: {
     minHeight: 260,

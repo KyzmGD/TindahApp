@@ -91,6 +91,23 @@ describe("Gamer recruitment posts", () => {
     expect(savedPost.owner.toString()).toBe(owner._id.toString());
     expect(savedPost.teamName).toBe("Late Night TFT Squad");
     expect(savedPost.description).toBe("Looking for a consistent squad.");
+    const createdChat = await Match.findOne({ "gamerContext.recruitment": savedPost._id });
+    expect(createdChat).toMatchObject({
+      source: "gamer_lobby",
+      status: "active",
+      participantsKey: `team:${savedPost._id}`,
+    });
+    expect(createdChat.users.map((userId) => userId.toString())).toEqual([owner._id.toString()]);
+
+    const statsResponse = await request(app)
+      .get("/api/v1/gamer-lobby/stats")
+      .set("Authorization", `Bearer ${signUserToken(owner)}`);
+    expect(statsResponse.status).toBe(200);
+    expect(statsResponse.body.stats).toMatchObject({
+      onlineGamers: 1,
+      activeParties: 1,
+    });
+    expect(statsResponse.body.stats.updatedAt).toEqual(expect.any(String));
   });
 
   it("rejects unsupported game, rank, team size, and play mode", async () => {
@@ -304,6 +321,17 @@ describe("Gamer recruitment posts", () => {
       id: group1Owner._id.toString(),
       name: "TFT Gold Owner",
     });
+
+    await GamerRecruitment.updateOne(
+      { _id: matchingPost._id },
+      { $addToSet: { members: requester._id }, $inc: { memberCount: 1 } },
+    );
+    const joinedTeamResponse = await request(app)
+      .get("/api/v1/gamer-lobby/recruitments")
+      .set("Authorization", `Bearer ${signUserToken(requester)}`)
+      .query({ game: "TFT", lobbyGroup: "Group1" });
+    expect(joinedTeamResponse.status).toBe(200);
+    expect(joinedTeamResponse.body.recruitments).toHaveLength(0);
   });
 
   it("creates an idempotent gamer team match when another user joins a recruitment post", async () => {
@@ -436,7 +464,14 @@ describe("Gamer recruitment posts", () => {
       status: "closed",
     });
     await expect(GamerTeamMatch.countDocuments()).resolves.toBe(3);
-    await expect(Match.countDocuments()).resolves.toBe(3);
+    await expect(Match.countDocuments()).resolves.toBe(1);
+    const fullTeamChat = await Match.findOne({ "gamerContext.recruitment": recruitment._id });
+    expect(fullTeamChat.users.map((userId) => userId.toString()).sort()).toEqual([
+      owner._id.toString(),
+      joiner._id.toString(),
+      secondJoiner._id.toString(),
+      thirdJoiner._id.toString(),
+    ].sort());
     await expect(
       GamerRecruitment.findById(recruitment._id).then((post) => ({
         status: post.status,
@@ -446,6 +481,10 @@ describe("Gamer recruitment posts", () => {
       status: "closed",
       memberCount: 4,
     });
+    const fullTeamStatsResponse = await request(app)
+      .get("/api/v1/gamer-lobby/stats")
+      .set("Authorization", `Bearer ${signUserToken(owner)}`);
+    expect(fullTeamStatsResponse.body.stats.activeParties).toBe(0);
   });
 
   it("prevents the owner from joining their own recruitment post", async () => {
@@ -469,6 +508,62 @@ describe("Gamer recruitment posts", () => {
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("You cannot join your own recruitment post.");
     await expect(GamerTeamMatch.countDocuments()).resolves.toBe(0);
+  });
+
+  it("removes a member from the shared team chat and makes the team browsable again", async () => {
+    const owner = await createUser({
+      name: "Squad Owner",
+      email: "leave-team-owner@example.com",
+    });
+    const joiner = await createUser({
+      name: "Former Member",
+      email: "leave-team-member@example.com",
+    });
+    const recruitment = await GamerRecruitment.create({
+      owner: owner._id,
+      members: [owner._id],
+      memberCount: 1,
+      gameName: "TFT",
+      currentRank: "Gold",
+      lobbyGroup: "group1",
+      teamSize: 4,
+      playMode: "casual",
+      teamName: "Comeback Squad",
+    });
+
+    await request(app)
+      .post(`/api/v1/gamer-lobby/recruitments/${recruitment._id}/join`)
+      .set("Authorization", `Bearer ${signUserToken(joiner)}`)
+      .send()
+      .expect(201);
+
+    const leaveResponse = await request(app)
+      .post(`/api/v1/gamer-lobby/recruitments/${recruitment._id}/leave`)
+      .set("Authorization", `Bearer ${signUserToken(joiner)}`)
+      .send();
+
+    expect(leaveResponse.status).toBe(200);
+    expect(leaveResponse.body).toMatchObject({
+      message: "You left the team.",
+      dissolved: false,
+      leftUserId: joiner._id.toString(),
+      recruitment: expect.objectContaining({ memberCount: 1, status: "open" }),
+    });
+    expect(leaveResponse.body.chatMatch.users.map((member) => member.id)).toEqual([
+      owner._id.toString(),
+    ]);
+
+    const browseResponse = await request(app)
+      .get("/api/v1/gamer-lobby/recruitments")
+      .set("Authorization", `Bearer ${signUserToken(joiner)}`)
+      .query({ game: "TFT", lobbyGroup: "group1" });
+    expect(browseResponse.body.recruitments.map((post) => post.id)).toContain(recruitment._id.toString());
+
+    const matchesResponse = await request(app)
+      .get("/api/matches")
+      .set("Authorization", `Bearer ${signUserToken(joiner)}`);
+    expect(matchesResponse.status).toBe(200);
+    expect(matchesResponse.body.matches).toHaveLength(0);
   });
 
   it("allows the owner to close an open recruitment post", async () => {

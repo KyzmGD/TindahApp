@@ -255,10 +255,6 @@ function mapChatMatch(match) {
   };
 }
 
-function buildParticipantsKey(userA, userB) {
-  return [userA.toString(), userB.toString()].sort().join(":");
-}
-
 function buildGamerMatchContext(recruitment, teamMatchId) {
   return {
     recruitment: recruitment._id,
@@ -274,59 +270,58 @@ function buildGamerMatchContext(recruitment, teamMatchId) {
   };
 }
 
-function nextSourceForGamerMatch(currentSource) {
-  if (currentSource === "dating") {
-    return "mixed";
-  }
-
-  return currentSource === "mixed" ? "mixed" : "gamer_lobby";
-}
-
-async function upsertChatMatch(userA, userB, gamerContext = {}) {
-  const participantsKey = buildParticipantsKey(userA, userB);
-  const existingMatch = await Match.findOne({
-    participantsKey,
+async function upsertTeamChat(recruitment, memberIds = [], teamMatchId) {
+  const participantsKey = `team:${recruitment._id.toString()}`;
+  const users = [...new Set(
+    [recruitment.owner?._id || recruitment.owner, ...(recruitment.members || []), ...memberIds]
+      .filter(Boolean)
+      .map((member) => member._id?.toString?.() || member.toString()),
+  )];
+  const gamerContext = buildGamerMatchContext(recruitment, teamMatchId);
+  let teamChat = await Match.findOne({
+    $or: [
+      { participantsKey },
+      { "gamerContext.recruitment": recruitment._id, source: "gamer_lobby" },
+    ],
     status: "active",
-  }).populate("users", GAMER_USER_SELECT);
+  });
 
-  if (existingMatch) {
-    existingMatch.source = nextSourceForGamerMatch(existingMatch.source || "dating");
-    existingMatch.gamerContext = {
-      ...(existingMatch.gamerContext?.toObject?.() || existingMatch.gamerContext || {}),
+  if (teamChat) {
+    teamChat.users = [...new Set([
+      ...teamChat.users.map((userId) => userId.toString()),
+      ...users,
+    ])];
+    teamChat.participantsKey = participantsKey;
+    teamChat.source = "gamer_lobby";
+    teamChat.gamerContext = {
+      ...(teamChat.gamerContext?.toObject?.() || teamChat.gamerContext || {}),
       ...gamerContext,
     };
-    await existingMatch.save();
-    return existingMatch;
+    await teamChat.save();
+    return teamChat.populate("users", GAMER_USER_SELECT);
   }
 
   try {
-    const createdMatch = await Match.create({
-      users: [userA, userB],
+    teamChat = await Match.create({
+      users,
       participantsKey,
       source: "gamer_lobby",
       gamerContext,
       matchedAt: new Date(),
     });
-
-    return createdMatch.populate("users", GAMER_USER_SELECT);
   } catch (error) {
-    if (!isDuplicateKeyError(error)) {
-      throw error;
-    }
-
-    return Match.findOneAndUpdate(
+    if (!isDuplicateKeyError(error)) throw error;
+    teamChat = await Match.findOneAndUpdate(
       { participantsKey },
       {
-        $set: {
-          status: "active",
-          unmatchedBy: null,
-          source: "gamer_lobby",
-          gamerContext,
-        },
+        $set: { status: "active", unmatchedBy: null, source: "gamer_lobby", gamerContext },
+        $addToSet: { users: { $each: users } },
       },
       { returnDocument: "after" },
-    ).populate("users", GAMER_USER_SELECT);
+    );
   }
+
+  return teamChat.populate("users", GAMER_USER_SELECT);
 }
 
 function mapGamerLobbyOwner(owner = {}) {
@@ -375,6 +370,8 @@ async function createRecruitment({ ownerId, payload }) {
     ...values,
   });
 
+  await upsertTeamChat(post, [ownerId]);
+
   const populatedPost = await post.populate(
     "owner",
     GAMER_USER_SELECT,
@@ -383,13 +380,14 @@ async function createRecruitment({ ownerId, payload }) {
   return mapRecruitmentPost(populatedPost);
 }
 
-async function listRecruitments({ game, lobbyGroup, limit }) {
+async function listRecruitments({ requesterId, game, lobbyGroup, limit }) {
   const normalizedLimit = normalizeLimit(limit);
 
   const posts = await GamerRecruitment.find({
     gameName: game,
     lobbyGroup,
     status: "open",
+    members: { $ne: requesterId },
   })
     .populate("owner", GAMER_USER_SELECT)
     .sort({ createdAt: -1 })
@@ -463,11 +461,80 @@ async function closeRecruitment({ ownerId, recruitmentId }) {
       },
     },
   );
+  await Match.updateMany(
+    { "gamerContext.recruitment": recruitment._id, source: "gamer_lobby", status: "active" },
+    { $set: { status: "unmatched", unmatchedBy: ownerId } },
+  );
 
   return {
     recruitment: mapRecruitmentPost(recruitment),
     dissolvedUserIds,
     wasClosed: true,
+  };
+}
+
+async function leaveRecruitment({ userId, recruitmentId }) {
+  if (!recruitmentId || !/^[a-f\d]{24}$/i.test(String(recruitmentId))) {
+    throw httpError(400, "Invalid recruitment id.");
+  }
+
+  const recruitment = await GamerRecruitment.findById(recruitmentId);
+  if (!recruitment) throw httpError(404, "Team not found.");
+
+  if (recruitment.owner.toString() === userId.toString()) {
+    const closed = await closeRecruitment({ ownerId: userId, recruitmentId });
+    const dissolvedUserIds = (recruitment.members || [])
+      .map((memberId) => memberId.toString())
+      .filter((memberId) => memberId !== userId.toString());
+    await GamerTeamMatch.updateMany(
+      { recruitment: recruitmentId, status: "active" },
+      { $set: { status: "closed" } },
+    );
+    await Match.updateMany(
+      { "gamerContext.recruitment": recruitmentId, source: "gamer_lobby", status: "active" },
+      { $set: { status: "unmatched", unmatchedBy: userId } },
+    );
+    return {
+      ...closed,
+      dissolvedUserIds: [...new Set([...(closed.dissolvedUserIds || []), ...dissolvedUserIds])],
+      leftUserId: userId.toString(),
+      dissolved: true,
+      chatMatch: null,
+    };
+  }
+
+  const isMember = (recruitment.members || []).some(
+    (memberId) => memberId.toString() === userId.toString(),
+  );
+  if (!isMember) throw httpError(404, "You are no longer a member of this team.");
+
+  const updatedRecruitment = await GamerRecruitment.findOneAndUpdate(
+    { _id: recruitmentId, members: userId },
+    {
+      $pull: { members: userId },
+      $inc: { memberCount: -1 },
+      $set: { status: "open" },
+    },
+    { returnDocument: "after" },
+  ).populate("owner", GAMER_USER_SELECT);
+
+  await GamerTeamMatch.updateMany(
+    { recruitment: recruitmentId, joiner: userId, status: "active" },
+    { $set: { status: "closed" } },
+  );
+  const teamChat = await Match.findOneAndUpdate(
+    { "gamerContext.recruitment": recruitmentId, source: "gamer_lobby", status: "active" },
+    { $pull: { users: userId, unreadCounts: { user: userId } } },
+    { returnDocument: "after" },
+  ).populate("users", GAMER_USER_SELECT);
+
+  return {
+    recruitment: mapRecruitmentPost(updatedRecruitment),
+    dissolvedUserIds: [],
+    wasClosed: false,
+    dissolved: false,
+    leftUserId: userId.toString(),
+    chatMatch: mapChatMatch(teamChat),
   };
 }
 
@@ -507,11 +574,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
     .populate("joiner", GAMER_USER_SELECT);
 
   if (existingMatch) {
-    const chatMatch = await upsertChatMatch(
-      recruitment.owner._id,
-      joinerId,
-      buildGamerMatchContext(recruitment, existingMatch._id),
-    );
+    const chatMatch = await upsertTeamChat(recruitment, [joinerId], existingMatch._id);
 
     return {
       isTeamFound: true,
@@ -575,11 +638,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
     });
 
     const populatedMatch = await getPopulatedTeamMatch(createdMatch._id);
-    const chatMatch = await upsertChatMatch(
-      reservedRecruitment.owner._id,
-      joinerId,
-      buildGamerMatchContext(reservedRecruitment, createdMatch._id),
-    );
+    const chatMatch = await upsertTeamChat(reservedRecruitment, [joinerId], createdMatch._id);
 
     if (reservedRecruitment.memberCount >= reservedRecruitment.teamSize) {
       await GamerRecruitment.updateOne(
@@ -608,11 +667,7 @@ async function joinRecruitment({ joinerId, recruitmentId }) {
     })
       .populate("owner", GAMER_USER_SELECT)
       .populate("joiner", GAMER_USER_SELECT);
-    const chatMatch = await upsertChatMatch(
-      recruitment.owner._id,
-      joinerId,
-      buildGamerMatchContext(recruitment, match?._id),
-    );
+    const chatMatch = await upsertTeamChat(recruitment, [joinerId], match?._id);
 
     return {
       isTeamFound: true,
@@ -629,6 +684,7 @@ module.exports = {
   createRecruitment,
   exploreGamerLobby,
   joinRecruitment,
+  leaveRecruitment,
   listRecruitments,
   mapGamerTeamMatch,
   normalizeLimit,

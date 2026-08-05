@@ -33,11 +33,16 @@ const createMessage = asyncHandler(async (req, res) => {
 
   req.app.get("io")?.to(req.params.matchId).emit("message:new", message);
   req.app.get("io")?.to(req.params.matchId).emit("receive_message", message);
-  if (message.receiver) {
-    req.app.get("io")?.to(`user:${message.receiver.toString()}`).emit("message:notification", message);
-  }
+  const receiverIds = message.receivers?.length ? message.receivers : [message.receiver].filter(Boolean);
+  receiverIds.forEach((receiverId) => {
+    req.app.get("io")?.to(`user:${receiverId.toString()}`).emit("message:notification", message);
+  });
   if (message.$locals?.wasCreated) {
-    await sendOfflineMessagePush({ io: req.app.get("io"), message });
+    await Promise.all(receiverIds.map((receiverId) => sendOfflineMessagePush({
+      io: req.app.get("io"),
+      message,
+      receiverId,
+    })));
   }
   res.status(201).json({ message });
 });

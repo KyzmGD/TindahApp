@@ -1,5 +1,10 @@
 import api from "./api";
 
+export async function getLiveLobbyStats() {
+  const response = await api.get("/v1/gamer-lobby/stats");
+  return response.data.stats;
+}
+
 export async function exploreGamerLobby({ game, lobbyGroup, limit = 20 }) {
   const response = await api.get("/v1/gamer-lobby/explore", {
     params: {
@@ -39,5 +44,10 @@ export async function joinGamerRecruitment(recruitmentId) {
 export async function closeGamerRecruitment(recruitmentId) {
   const response = await api.patch(`/v1/gamer-lobby/recruitments/${recruitmentId}/close`);
 
+  return response.data;
+}
+
+export async function leaveGamerRecruitment(recruitmentId) {
+  const response = await api.post(`/v1/gamer-lobby/recruitments/${recruitmentId}/leave`);
   return response.data;
 }

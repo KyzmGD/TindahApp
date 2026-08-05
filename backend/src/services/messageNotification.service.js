@@ -72,9 +72,9 @@ function getMessagePreview(message) {
   return "Sent you a message.";
 }
 
-async function sendOfflineMessagePush({ io, message }) {
+async function sendOfflineMessagePush({ io, message, receiverId: requestedReceiverId }) {
   try {
-    const receiverId = getIdString(message?.receiver);
+    const receiverId = getIdString(requestedReceiverId || message?.receiver);
     const matchId = getIdString(message?.match);
 
     if (!receiverId || !matchId || !message?._id) {

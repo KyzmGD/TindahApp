@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 function formatMessageTime(value) {
   if (!value) {
@@ -16,7 +16,7 @@ function formatMessageTime(value) {
   });
 }
 
-export default function ChatBubble({ message, isMine, avatarUrl, isRead = false }) {
+export default function ChatBubble({ message, isMine, avatarUrl, avatarName, isRead = false, onRetry }) {
   const time = formatMessageTime(message.createdAt);
   const hasImage = Boolean(message.imageUrl);
 
@@ -27,7 +27,7 @@ export default function ChatBubble({ message, isMine, avatarUrl, isRead = false 
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={styles.senderAvatarImage} />
           ) : (
-            <Text style={styles.senderAvatarText}>T</Text>
+            <Text style={styles.senderAvatarText}>{avatarName?.trim()?.charAt(0)?.toUpperCase() || "?"}</Text>
           )}
         </View>
       ) : null}
@@ -42,18 +42,27 @@ export default function ChatBubble({ message, isMine, avatarUrl, isRead = false 
             </Text>
           ) : null}
           {time ? (
-            <Text style={[styles.timeText, isMine ? styles.mineMetaText : styles.theirMetaText]}>
-              {time}
-            </Text>
+            <View style={[styles.metaRow, isMine ? styles.mineMetaRow : styles.theirMetaRow]}>
+              <Text style={[styles.timeText, isMine ? styles.mineMetaText : styles.theirMetaText]}>
+                {time}
+              </Text>
+              {isMine && !message.status ? (
+                <View
+                  accessible
+                  accessibilityLabel={isRead ? "Read" : "Unread"}
+                  style={styles.receipt}
+                >
+                  <Text style={[styles.receiptTick, isRead ? styles.receiptRead : styles.receiptUnread]}>✓</Text>
+                  <Text style={[styles.receiptTick, styles.receiptTickSecond, isRead ? styles.receiptRead : styles.receiptUnread]}>✓</Text>
+                </View>
+              ) : null}
+            </View>
           ) : null}
           {isMine && message.status === "pending" ? (
             <Text style={styles.pendingText}>Sending...</Text>
           ) : null}
           {isMine && message.status === "failed" ? (
-            <Text style={styles.failedText}>Not sent</Text>
-          ) : null}
-          {isMine && isRead && !message.status ? (
-            <Text style={styles.readText}>Read</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Retry sending message" onPress={() => onRetry?.(message)}><Text style={styles.failedText}>Not sent · Tap to retry</Text></Pressable>
           ) : null}
         </View>
       </View>
@@ -128,15 +137,15 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   mine: {
-    backgroundColor: "#0b0b0d",
+    backgroundColor: "#ff526b",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "#ff7187",
     borderBottomRightRadius: 10,
   },
   their: {
-    backgroundColor: "#020203",
+    backgroundColor: "#18233a",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.045)",
     borderBottomLeftRadius: 10,
   },
   text: {
@@ -159,11 +168,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
   },
-  readText: {
-    color: "#7cf4c8",
-    fontSize: 11,
-    fontWeight: "800",
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     marginTop: 2,
+  },
+  mineMetaRow: {
+    alignSelf: "flex-end",
+  },
+  theirMetaRow: {
+    alignSelf: "flex-end",
+  },
+  receipt: {
+    width: 17,
+    height: 12,
+    position: "relative",
+  },
+  receiptTick: {
+    position: "absolute",
+    left: 0,
+    top: -3,
+    fontSize: 13,
+    lineHeight: 15,
+    fontWeight: "900",
+  },
+  receiptTickSecond: {
+    left: 6,
+  },
+  receiptUnread: {
+    color: "#ffffff",
+  },
+  receiptRead: {
+    color: "#ff9dca",
   },
   image: {
     width: 210,
@@ -172,10 +209,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
   },
   timeText: {
-    alignSelf: "flex-end",
     fontSize: 10,
     fontWeight: "700",
-    marginTop: 2,
   },
   mineMetaText: {
     color: "rgba(255,255,255,0.78)",

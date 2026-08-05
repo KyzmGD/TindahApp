@@ -2,14 +2,12 @@ import { useEffect, useRef } from "react";
 import { Animated, Dimensions, PanResponder } from "react-native";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.75;
 const QUICK_SWIPE_VELOCITY = 0.6;
 
 export default function useSwipeGesture({
   currentUser,
   onSwipeLeft,
   onSwipeRight,
-  onSwipeUp,
 } = {}) {
   const position = useRef(new Animated.ValueXY()).current;
 
@@ -62,20 +60,6 @@ useEffect(() => {
     });
   };
 
-  const forceSwipeUp = (dx = 0) => {
-    Animated.timing(position, {
-      toValue: {
-        x: dx,
-        y: -SCREEN_WIDTH * 1.5,
-      },
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => {
-      position.setValue({ x: 0, y: 0 });
-      onSwipeUp?.(currentUserRef.current);
-    });
-  };
-
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -105,15 +89,6 @@ useEffect(() => {
         const absX = Math.abs(gesture.dx);
 
         const horizontalPercent = absX / SCREEN_WIDTH;
-
-        // SUPER LIKE
-        if (
-          gesture.dy < -120 &&
-          Math.abs(gesture.vy) > QUICK_SWIPE_VELOCITY
-        ) {
-          forceSwipeUp(gesture.dx);
-          return;
-        }
 
         // AUTO COMPLETE AT 75%
         if (horizontalPercent >= 0.75) {

@@ -30,9 +30,12 @@ const matchSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }],
       validate: {
         validator(users) {
-          return users.length === 2;
+          const isTeamChat = this.source === "gamer_lobby" && this.gamerContext?.recruitment;
+          return isTeamChat
+            ? users.length >= 1 && users.length <= (this.gamerContext?.teamSize || 4)
+            : users.length === 2;
         },
-        message: "A match must contain exactly two users",
+        message: "A direct match needs two users and a team chat needs one to four users",
       },
     },
     participantsKey: { type: String, required: true },
@@ -63,7 +66,9 @@ const matchSchema = new mongoose.Schema(
 );
 
 matchSchema.pre("validate", function setParticipantsKey() {
-  if (this.users?.length === 2) {
+  if (this.source === "gamer_lobby" && this.gamerContext?.recruitment) {
+    this.participantsKey = `team:${this.gamerContext.recruitment.toString()}`;
+  } else if (this.users?.length === 2) {
     this.participantsKey = this.users.map((userId) => userId.toString()).sort().join(":");
   }
 });

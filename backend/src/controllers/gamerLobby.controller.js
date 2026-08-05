@@ -5,10 +5,16 @@ const {
   createRecruitment,
   exploreGamerLobby,
   joinRecruitment,
+  leaveRecruitment,
   listRecruitments,
   validateRecruitmentPayload,
   validateGamerLobbyQuery,
 } = require("../services/gamerLobby.service");
+const { emitLiveLobbyStats, getLiveLobbyStats } = require("../services/liveLobbyStats.service");
+
+const getStats = asyncHandler(async (req, res) => {
+  res.json({ stats: await getLiveLobbyStats() });
+});
 
 const explore = asyncHandler(async (req, res) => {
   const { errors, filters } = validateGamerLobbyQuery(req.query);
@@ -38,6 +44,7 @@ const getRecruitments = asyncHandler(async (req, res) => {
   }
 
   const recruitments = await listRecruitments({
+    requesterId: req.user._id,
     game: filters.game,
     lobbyGroup: filters.lobbyGroup,
     limit: req.query.limit,
@@ -60,6 +67,8 @@ const postRecruitment = asyncHandler(async (req, res) => {
     ownerId: req.user._id,
     payload: req.body,
   });
+  req.app.get("io")?.to(`user:${req.user._id}`).emit("matches:updated");
+  await emitLiveLobbyStats(req.app.get("io"));
 
   res.status(201).json({
     message: "Recruitment post created.",
@@ -83,6 +92,11 @@ const closeRecruitmentPost = asyncHandler(async (req, res) => {
     });
   }
 
+  [req.user._id.toString(), ...(result.dissolvedUserIds || [])].forEach((userId) => {
+    io?.to(`user:${userId}`).emit("matches:updated");
+  });
+  await emitLiveLobbyStats(io);
+
   res.json({
     message: "Recruitment post closed.",
     recruitment: result.recruitment,
@@ -96,19 +110,52 @@ const joinRecruitmentPost = asyncHandler(async (req, res) => {
   });
 
   const ownerId = result.teamMatch?.owner?.id;
+  const io = req.app.get("io");
   if (ownerId) {
-    const io = req.app.get("io");
     io?.to(`user:${ownerId}`).emit("gamer_lobby:team_found", result);
     io?.to(`user:${ownerId}`).emit("gamer_lobby:recruitment_updated", result.recruitment);
   }
+  (result.recruitment?.members || []).forEach((memberId) => {
+    io?.to(`user:${memberId}`).emit("matches:updated", result.chatMatch);
+  });
+  if (result.chatMatch?._id) {
+    io?.to(result.chatMatch._id).emit("team:membership", {
+      matchId: result.chatMatch._id,
+      match: result.chatMatch,
+    });
+  }
+  await emitLiveLobbyStats(io);
 
   res.status(201).json(result);
+});
+
+const leaveRecruitmentPost = asyncHandler(async (req, res) => {
+  const result = await leaveRecruitment({
+    userId: req.user._id,
+    recruitmentId: req.params.recruitmentId,
+  });
+  const io = req.app.get("io");
+  (result.recruitment?.members || []).forEach((memberId) => {
+    io?.to(`user:${memberId}`).emit("matches:updated", result.chatMatch);
+  });
+  if (result.chatMatch?._id) {
+    io?.to(result.chatMatch._id).emit("team:membership", {
+      matchId: result.chatMatch._id,
+      match: result.chatMatch,
+    });
+  }
+  io?.to(`user:${req.user._id}`).emit("matches:updated", null);
+  await emitLiveLobbyStats(io);
+
+  res.json({ message: result.dissolved ? "Team closed." : "You left the team.", ...result });
 });
 
 module.exports = {
   explore,
   closeRecruitmentPost,
   getRecruitments,
+  getStats,
   joinRecruitmentPost,
+  leaveRecruitmentPost,
   postRecruitment,
 };

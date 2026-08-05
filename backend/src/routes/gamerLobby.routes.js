@@ -4,6 +4,7 @@ const gamerLobbyController = require("../controllers/gamerLobby.controller");
 
 const router = express.Router();
 
+router.get("/stats", authMiddleware, gamerLobbyController.getStats);
 router.get("/explore", authMiddleware, gamerLobbyController.explore);
 router.get("/recruitments", authMiddleware, gamerLobbyController.getRecruitments);
 router.post("/recruitments", authMiddleware, gamerLobbyController.postRecruitment);
@@ -16,6 +17,11 @@ router.post(
   "/recruitments/:recruitmentId/join",
   authMiddleware,
   gamerLobbyController.joinRecruitmentPost,
+);
+router.post(
+  "/recruitments/:recruitmentId/leave",
+  authMiddleware,
+  gamerLobbyController.leaveRecruitmentPost,
 );
 
 module.exports = router;
