@@ -1,164 +1,284 @@
-# Tindah — Social Gaming and Matchmaking
+# Tindah
 
-Tindah is a responsive social gaming and matchmaking application for finding
-matches, discovering compatible players, recruiting a squad, and chatting in
-real time. It runs on web, Android, and iOS through React Native and Expo, with a
-Node.js, Express, MongoDB, Redis, and Socket.IO backend.
+<p align="center">
+  <img src="frontend/assets/tindah_logo_stitch.png" alt="Tindah logo" width="96" />
+</p>
 
-The product combines two connected experiences:
+<p align="center">
+  A cross-platform social gaming app for discovering compatible players,<br />
+  forming teams, matching, and chatting in real time.
+</p>
 
-- **Explore:** discover profiles, apply matchmaking preferences, swipe, and open
-  private chats after a mutual match.
-- **Games:** browse players by game and rank, publish recruitment posts, join a
-  team, and automatically receive a shared team chat.
+Tindah combines profile-based discovery with game-specific recruitment. Users can
+swipe on nearby players, match after a mutual like, create or join a gaming party,
+and continue the conversation in a direct or team chat. The client runs on web,
+Android, and iOS through React Native and Expo.
 
-The desktop interface uses a persistent left navigation rail. Narrow screens use
-native-style bottom navigation and stacked layouts.
+## Table of contents
 
----
+- [Features](#features)
+- [Product flows](#product-flows)
+- [Architecture](#architecture)
+- [Technology](#technology)
+- [Project structure](#project-structure)
+- [Getting started](#getting-started)
+- [Configuration](#configuration)
+- [Testing](#testing)
+- [API overview](#api-overview)
+- [Realtime events](#realtime-events)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
-## Current Progress
+## Features
 
-| Module | Status | Notes |
-| --- | --- | --- |
-| Authentication | Done | Professional responsive login/sign-up flow, validation, JWT sessions |
-| User profile | Done | Profile photos, avatar, bio, identity, interests, work, school, and gaming profiles |
-| Search filters | Done | Gender preference and min/max age are saved and applied to Explore |
-| Explore | Done | Responsive player cards, filters, live activity, swipe history exclusion, and match modal |
-| Swipe API | Done | `like`, `pass`, idempotent upsert, reciprocal like creates match |
-| Race condition handling | Done | Unique indexes and idempotent logic prevent duplicate matches |
-| Redis cache | Done | Stores excluded swipe IDs with 24h TTL, MongoDB fallback when Redis is down |
-| Load testing | Done | k6 script for 100 concurrent VUs during 1 minute |
-| Gamer lobby | Done | Game/rank discovery plus create, browse, join, leave, and close recruitment posts |
-| Team chat | Done | Recruitment creates a named chat; joining/leaving synchronizes the member roster |
-| Match list | Done | Wider conversation selector, active matches, team chats, unread counts, unmatch |
-| Message history | Done | Paginated message API sorted by `createdAt: -1` |
-| Real-time chat | Done | Direct/team rooms, typing, presence, notifications, and idempotent delivery |
-| Read receipts | Done | Per-message double ticks; receipts change only when the recipient opens the chat |
-| Live lobby | Done | Real online-user and open-recruitment totals over REST and Socket.IO |
-| Network resilience | Done | Frontend queues pending messages and flushes after reconnect |
-| Image upload | Done | Cloudinary in production with local-upload fallback during development |
-| Push notifications | Done | Expo push tokens, offline match/message notifications, and notification navigation |
+- JWT-based registration, login, session restoration, and profile management
+- Location-, age-, gender-, and preference-aware player discovery
+- Idempotent likes and passes with duplicate-match protection
+- Game and rank filtering for Valorant, PUBG Mobile, Free Fire, TFT, and Liên Quân
+- Recruitment posts with create, join, leave, and close workflows
+- Direct and team conversations backed by active matches
+- Realtime messages, typing indicators, presence, unread state, and read receipts
+- Offline Expo push notifications for matches and messages
+- Resilient message retries after a client reconnects
+- Cloudinary image storage in production and local storage in development
+- Redis-accelerated swipe exclusions with a MongoDB fallback
+- Responsive layouts for mobile and desktop web
 
----
+## Product flows
 
-## Tech Stack
+### Discovery and matching
 
-### Backend
-
-| Tool | Purpose |
-| --- | --- |
-| Node.js | Runtime |
-| Express | REST API |
-| MongoDB Atlas or local MongoDB | Main database |
-| Mongoose | ODM |
-| JWT | Authentication |
-| Redis | Swipe exclusion cache |
-| Socket.IO | Realtime chat, presence, read receipts, teams, and live lobby stats |
-| Cloudinary | Image upload |
-| Expo Push Service | Offline match and message notifications |
-| Jest + Supertest | Integration testing |
-| k6 | Load testing |
-
-### Frontend
-
-| Tool | Purpose |
-| --- | --- |
-| React Native | Shared mobile and responsive web UI |
-| Expo | Web, Android, and iOS development workflow |
-| Axios | REST API client |
-| Socket.IO Client | Realtime chat, presence, lobby, and membership updates |
-| React Navigation | Screen navigation |
-| AsyncStorage | Local session storage |
-
----
-
-## Project Structure
-
-```text
-Tindah/
-  backend/
-    src/
-      app.js
-      server.js
-      config/
-      controllers/
-      middlewares/
-      models/
-      routes/
-      services/
-      sockets/
-      utils/
-    tests/
-  frontend/
-    src/
-      components/
-      context/
-      hooks/
-      navigation/
-      screens/       # Explore, Games, Matches, Chat, Profile, and Authentication
-      services/
-  docs/
-  load-tests/
-  README.md
+```mermaid
+flowchart LR
+    A[Create account] --> B[Complete profile]
+    B --> C[Set discovery preferences]
+    C --> D[Browse nearby players]
+    D --> E{Swipe}
+    E -->|Pass| D
+    E -->|Like| F{Reciprocal like?}
+    F -->|No| D
+    F -->|Yes| G[Create one active match]
+    G --> H[Open direct chat]
+    H --> I[Messages, typing, presence, receipts]
 ```
 
----
+Every swipe is persisted. Redis caches excluded profile IDs for fast discovery;
+if Redis is unavailable, the backend derives exclusions from MongoDB. A reciprocal
+like creates one match through idempotent service logic and unique indexes.
 
-## Local Setup
+### Gaming party recruitment
 
-### Requirements
+```mermaid
+flowchart LR
+    A[Choose game and rank] --> B[Browse players and open parties]
+    B --> C{Action}
+    C -->|Create| D[Publish recruitment post]
+    C -->|Join| E[Join an open party]
+    D --> F[Create team conversation]
+    E --> F
+    F --> G[Sync team membership]
+    G --> H[Team chat]
+    H --> I{Recruitment state}
+    I -->|Member leaves| G
+    I -->|Owner closes| J[Dissolve recruitment access]
+```
 
-- Node.js 20+
-- MongoDB local or MongoDB Atlas
-- Redis 7.x, optional but recommended
-- Expo CLI / Expo Go for app testing
-- k6, only needed for load testing
+Recruitment ranks are normalized into lobby groups. Creating a post provisions a
+named team conversation; join, leave, and close actions keep its membership in sync.
 
-### Backend
+### Realtime message delivery
+
+```mermaid
+sequenceDiagram
+    participant S as Sender
+    participant API as Socket.IO / API
+    participant DB as MongoDB
+    participant R as Receiver
+    participant Push as Expo Push
+
+    S->>API: send_message + clientMessageId
+    API->>DB: validate membership and persist
+    DB-->>API: saved message
+    API-->>S: acknowledgement
+    API-->>R: receive_message
+    alt receiver is offline
+        API->>Push: send notification
+        Push-->>R: match/message notification
+    end
+    R->>API: read_message
+    API-->>S: read receipt
+```
+
+`clientMessageId` makes retries idempotent. The frontend retains unacknowledged
+messages and sends them again after reconnecting.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client[React Native + Expo client]
+        UI[Screens and navigation]
+        State[Auth and Socket contexts]
+        HTTP[Axios services]
+        WS[Socket.IO client]
+    end
+
+    subgraph Server[Node.js backend]
+        REST[Express REST API]
+        Auth[JWT middleware]
+        Socket[Socket.IO gateway]
+        Services[Matching, chat, lobby, notification services]
+    end
+
+    Mongo[(MongoDB)]
+    Redis[(Redis cache)]
+    Cloudinary[Cloudinary]
+    Expo[Expo Push Service]
+
+    UI --> State
+    State --> HTTP
+    State --> WS
+    HTTP --> REST
+    WS --> Socket
+    REST --> Auth --> Services
+    Socket --> Auth
+    Socket --> Services
+    Services --> Mongo
+    Services --> Redis
+    Services --> Cloudinary
+    Services --> Expo
+```
+
+The Express application exposes REST endpoints under `/api`, while the HTTP server
+hosts Socket.IO on the same port. MongoDB is the source of truth. Redis, Cloudinary,
+and Expo Push are supporting integrations and can be omitted for most local work.
+
+## Technology
+
+| Layer | Main technologies |
+| --- | --- |
+| Client | React 19, React Native, Expo, React Navigation, Axios, AsyncStorage |
+| Realtime | Socket.IO and Socket.IO Client |
+| API | Node.js, Express, JWT, Multer |
+| Data | MongoDB, Mongoose, Redis |
+| Media and notifications | Cloudinary, Expo Push Service |
+| Quality | Jest, Supertest, MongoDB Memory Server, k6 |
+
+## Project structure
+
+```text
+.
+├── backend/
+│   ├── src/
+│   │   ├── config/          # MongoDB, Redis, and external integrations
+│   │   ├── controllers/     # HTTP request handling
+│   │   ├── middlewares/     # Authentication, validation, and content filtering
+│   │   ├── models/          # Mongoose schemas
+│   │   ├── routes/          # REST route definitions
+│   │   ├── services/        # Domain and integration logic
+│   │   ├── sockets/         # Realtime event handlers
+│   │   ├── app.js           # Express application
+│   │   └── server.js        # Database, Redis, Socket.IO, and HTTP bootstrap
+│   └── tests/               # Unit, integration, route, and socket tests
+├── frontend/
+│   ├── assets/              # App and game artwork
+│   ├── src/
+│   │   ├── components/      # Shared UI components
+│   │   ├── context/         # Authentication and realtime state
+│   │   ├── navigation/      # Tabs, stacks, and notification routing
+│   │   ├── screens/         # Product screens
+│   │   └── services/        # REST, Socket.IO, upload, and push clients
+│   └── App.js
+├── docs/                    # Detailed architecture, API, Redis, and load-test notes
+└── load-tests/              # k6 scenarios
+```
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20 or newer and npm
+- MongoDB (local instance or Atlas cluster)
+- Redis 7.x (optional for local development)
+- Expo Go, an emulator, or a browser for the client
+- k6 (only for load testing)
+
+### 1. Clone and install
+
+Install the backend and frontend independently; the root `package.json` is not the
+application workspace.
 
 ```bash
+git clone <repository-url>
+cd Tindah
+
 cd backend
 npm install
-copy .env.example .env
-npm run dev
+
+cd ../frontend
+npm install
 ```
 
-Backend default URL:
+### 2. Configure the backend
 
-```text
-http://localhost:5000
+From the repository root:
+
+```bash
+# macOS / Linux
+cp backend/.env.example backend/.env
+
+# Windows PowerShell
+Copy-Item backend/.env.example backend/.env
 ```
 
-Example `backend/.env`:
+At minimum, set `MONGO_URI` and a strong `JWT_SECRET` in `backend/.env`.
 
 ```env
 NODE_ENV=development
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/tinderapp
-JWT_SECRET=your_secret_key
+MONGO_URI=mongodb://127.0.0.1:27017/tinderapp
+JWT_SECRET=replace-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
 CLIENT_ORIGIN=http://localhost:8081
-REDIS_URL=redis://localhost:6379
 PUBLIC_BASE_URL=http://localhost:5000
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=your-api-key
-CLOUDINARY_API_SECRET=your-api-secret
 ```
 
-If Redis is not running, Explore still works by falling back to MongoDB.
-If Cloudinary is not configured in local development, profile images are stored
-under `/uploads` on the backend server.
+Start the API:
 
-### Frontend
+```bash
+cd backend
+npm run dev
+```
+
+Confirm that it is ready:
+
+```bash
+curl http://localhost:5000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "service": "tinder-clone-api",
+  "timestamp": "<ISO-8601 timestamp>"
+}
+```
+
+Interactive Swagger documentation is available at
+[`http://localhost:5000/api-docs`](http://localhost:5000/api-docs).
+
+### 3. Start the client
+
+In a second terminal:
 
 ```bash
 cd frontend
-npm install
 npm start
 ```
 
-Platform-specific commands:
+Expo will offer web, Android, and iOS targets. They can also be started directly:
 
 ```bash
 npm run web
@@ -166,1429 +286,243 @@ npm run android
 npm run ios
 ```
 
-If testing on a real phone, set the API URL to your computer LAN IP:
+The default client API is `http://localhost:5000/api`. When using a physical phone,
+create `frontend/.env` and replace the address with the development machine's LAN IP:
 
 ```env
-EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api
+EXPO_PUBLIC_API_URL=http://192.168.1.10:5000/api
 ```
 
-The frontend derives Socket.IO URL from the API URL by removing `/api`.
+The phone and development machine must be on the same network, and the backend port
+must be allowed through the local firewall. Restart Expo after changing environment
+variables.
 
-On web, Expo defaults to `http://localhost:8081`. Ensure `CLIENT_ORIGIN` matches
-the frontend origin when the backend is not using the development wildcard.
+## Configuration
 
----
+### Backend environment variables
 
-## Run Tests
+| Variable | Required | Default | Description |
+| --- | :---: | --- | --- |
+| `MONGO_URI` | Yes | — | MongoDB connection string |
+| `JWT_SECRET` | Yes | Development fallback | Secret used to sign access tokens |
+| `PORT` | No | `5000` | HTTP and Socket.IO port |
+| `NODE_ENV` | No | — | Set to `production` for production behavior |
+| `JWT_EXPIRES_IN` | No | `7d` | JWT lifetime |
+| `CLIENT_ORIGIN` | No | `*` for Socket.IO | Allowed frontend origin |
+| `REDIS_URL` | No | — | Redis connection URL for swipe exclusions |
+| `PUBLIC_BASE_URL` | No | Request origin | Public URL used for local image links |
+| `CLOUDINARY_CLOUD_NAME` | Production media | — | Cloudinary account name |
+| `CLOUDINARY_API_KEY` | Production media | — | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Production media | — | Cloudinary API secret |
+| `EXPO_ACCESS_TOKEN` | No | — | Access token for secured Expo push projects |
 
-Backend tests:
+Do not commit `.env` files or real credentials. Redis is optional: discovery falls
+back to MongoDB. In development, missing Cloudinary credentials cause image uploads
+to be stored under `backend/public/uploads`.
+
+### Frontend environment variables
+
+| Variable | Required | Default | Description |
+| --- | :---: | --- | --- |
+| `EXPO_PUBLIC_API_URL` | No | `http://localhost:5000/api` | Base URL used by Axios; Socket.IO derives its origin from this value |
+
+Push notifications also require a valid Expo/EAS `projectId` in
+`frontend/app.json` and a supported physical device.
+
+## Testing
+
+### Automated tests
+
+Run the backend Jest suite:
 
 ```bash
 cd backend
 npm test
 ```
 
-The current suite contains 86 tests across 17 suites, covering authentication,
-discovery, swipes, matches, chat, sockets, recruitment teams, uploads, push
-tokens, notification services, and cache behavior.
+The tests start an isolated MongoDB Memory Server and clear collections between test
+cases. They do not require the development MongoDB database. The first run may need
+to download a MongoDB binary.
 
-Frontend production export check:
+Export the frontend web bundle as a production build check:
 
 ```bash
 cd frontend
 npx expo export --platform web
 ```
 
-Load test:
+### Test coverage matrix
+
+| Area | Representative test case | Expected result |
+| --- | --- | --- |
+| Authentication | Register, log in, and restore a user | JWT and sanitized user are returned; invalid input is rejected |
+| Discovery | Query with age, gender, mutual-interest, and distance filters | Only eligible, nearby, unswiped profiles are returned |
+| Matching | Two users like each other concurrently | Exactly one active match is created |
+| Swipe cache | Redis is unavailable | Excluded users still come from MongoDB |
+| Chat authorization | A non-member requests match messages | Request is denied |
+| Messaging | Retry the same `clientMessageId` | One stored message is returned without duplication |
+| Realtime | Send to a joined match room | Members receive the message; unrelated rooms do not |
+| Read receipts | Receiver opens a conversation | Read state is emitted to participants |
+| Recruitment | Create, join, leave, and close a party | Post and team-chat membership remain synchronized |
+| Uploads | Upload an invalid type or a file over 5 MB | Request is rejected with `400` |
+| Push tokens | Save and revoke a device token repeatedly | Operations remain idempotent and preserve audit metadata |
+
+### Manual end-to-end smoke test
+
+Use two test accounts on separate browsers or devices:
+
+1. Register both accounts and complete their profiles with compatible preferences.
+2. Give both users nearby coordinates and confirm they appear in Explore.
+3. Like the second user from the first account; confirm that no match exists yet.
+4. Like the first user from the second account; confirm that one match appears for both.
+5. Send a message and verify realtime delivery, typing state, and unread count.
+6. Open the conversation as the receiver and verify the read receipt.
+7. Create a recruitment post, join it with the other account, and verify the shared chat.
+8. Leave or close the recruitment and verify that membership updates on both clients.
+9. Background one physical device, send a message, and verify the push notification.
+
+### Load testing
+
+The k6 scenario creates 100 temporary accounts and sends reciprocal likes with 100
+virtual users for one minute. Run it only against an isolated development or staging
+database:
 
 ```bash
+# Terminal 1
+cd backend
+npm run dev
+
+# Terminal 2, from the repository root
 k6 run load-tests/swipes-load-test.js
 ```
 
-Detailed load testing guide:
+The thresholds require no HTTP 500 responses, no swipe request errors, all response
+checks to pass, and an average swipe response time of at most 200 ms. See
+[`docs/LOAD_TESTING.md`](docs/LOAD_TESTING.md) for configuration, reporting, and safe
+cleanup guidance.
 
-```text
-docs/LOAD_TESTING.md
-```
+## API overview
 
----
-
-## Postman Setup
-
-Create a Postman environment with these variables:
-
-| Variable | Initial value |
-| --- | --- |
-| `baseUrl` | `http://localhost:5000` |
-| `token` | empty |
-| `aliceToken` | empty |
-| `bobToken` | empty |
-| `caseyToken` | empty |
-| `aliceId` | empty |
-| `bobId` | empty |
-| `caseyId` | empty |
-| `matchId` | empty |
-
-Default headers for JSON APIs:
+All JSON endpoints are rooted at `http://localhost:5000/api`. Protected routes use:
 
 ```http
-Content-Type: application/json
-Authorization: Bearer {{token}}
-```
-
-For login/register, do not send `Authorization`.
-
-Recommended Postman Tests script after login/register:
-
-```js
-const body = pm.response.json();
-
-if (body.token) {
-  pm.environment.set("token", body.token);
-}
-
-if (body.user?.id) {
-  pm.environment.set("currentUserId", body.user.id);
-}
-```
-
----
-
-## REST API Reference
-
-Prefer `/api/v1/...` for newer endpoints when available. Some legacy endpoints
-without `/v1` are still mounted for compatibility.
-
-### Health
-
-#### GET `/health`
-
-Checks whether the API server is alive.
-
-Response:
-
-```json
-{
-  "status": "ok",
-  "service": "tinder-clone-api",
-  "timestamp": "2026-07-22T00:00:00.000Z"
-}
-```
-
----
-
-## Authentication APIs
-
-Available prefixes:
-
-```text
-/api/auth
-/api/v1/auth
-```
-
-### Register
-
-#### POST `/api/auth/register`
-
-Body:
-
-```json
-{
-  "name": "Alice",
-  "email": "alice@example.com",
-  "password": "password123",
-  "birthDate": "1998-01-01",
-  "gender": "woman"
-}
-```
-
-Allowed gender values:
-
-```text
-woman, man, nonbinary, other
-```
-
-Expected response: `201`
-
-```json
-{
-  "token": "JWT_TOKEN",
-  "user": {
-    "id": "USER_ID",
-    "name": "Alice",
-    "email": "alice@example.com"
-  }
-}
-```
-
-Common errors:
-
-| Status | Meaning |
-| --- | --- |
-| 400 | Invalid name, email, password, birthday, or gender |
-| 409 | Email is already registered |
-| 503 | Database unavailable |
-
-### Login
-
-#### POST `/api/auth/login`
-
-Body:
-
-```json
-{
-  "email": "alice@example.com",
-  "password": "password123"
-}
-```
-
-Expected response: `200`
-
-Save `token` to Postman environment.
-
-### Get Current User
-
-#### GET `/api/auth/me`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-Expected response:
-
-```json
-{
-  "user": {
-    "id": "USER_ID",
-    "name": "Alice",
-    "email": "alice@example.com"
-  }
-}
-```
-
-### Update Current User - Legacy Flexible API
-
-#### PATCH `/api/auth/me`
-
-This endpoint updates broader raw user fields. It is useful in Postman for
-setting location test data.
-
-Body example:
-
-```json
-{
-  "location": {
-    "type": "Point",
-    "coordinates": [106.660172, 10.762622]
-  },
-  "preferences": {
-    "maxDistanceKm": 50,
-    "ageRange": {
-      "min": 18,
-      "max": 45
-    }
-  },
-  "interestedIn": ["woman", "man"]
-}
-```
-
-Important: Geo coordinates use MongoDB order:
-
-```text
-[longitude, latitude]
-```
-
----
-
-## User APIs
-
-Available prefixes:
-
-```text
-/api/users
-/api/v1/users
-```
-
-### Update Profile And Search Filters
-
-#### PUT `/api/v1/users/profile`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
+Authorization: Bearer <JWT>
 Content-Type: application/json
 ```
 
-Body:
-
-```json
-{
-  "name": "Alice Updated",
-  "bio": "Coffee, travel, music",
-  "birthDate": "1998-01-01",
-  "interests": ["coffee", "travel", "music"],
-  "jobTitle": "Software Engineer",
-  "school": "HCM University",
-  "genderPreference": ["man"],
-  "minAge": 24,
-  "maxAge": 35
-}
-```
-
-Aliases supported:
-
-```json
-{
-  "interests": "coffee, travel, music",
-  "interestedIn": ["man"],
-  "preferences": {
-    "ageRange": {
-      "min": 24,
-      "max": 35
-    }
-  }
-}
-```
-
-Expected response:
-
-```json
-{
-  "message": "Profile updated successfully",
-  "user": {
-    "id": "USER_ID",
-    "name": "Alice Updated",
-    "genderPreference": ["man"],
-    "minAge": 24,
-    "maxAge": 35,
-    "searchFilters": {
-      "genderPreference": ["man"],
-      "minAge": 24,
-      "maxAge": 35,
-      "maxDistanceKm": 50
-    }
-  }
-}
-```
-
-Validation rules:
-
-| Field | Rule |
-| --- | --- |
-| `name` | 2-80 characters |
-| `bio` | max 500 characters |
-| `interests` | max 20 items, each max 40 characters |
-| `genderPreference` | one or more of `woman`, `man`, `nonbinary`, `other` |
-| `minAge`, `maxAge` | integer from 18 to 100, `minAge <= maxAge` |
-
-### Explore Users
-
-#### GET `/api/v1/users/explore?lat=10.762622&lng=106.660172&radiusKm=50`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-Query params:
-
-| Param | Required | Example | Meaning |
+| Domain | Method | Endpoint | Purpose |
 | --- | --- | --- | --- |
-| `lat` | yes | `10.762622` | Current latitude |
-| `lng` | yes | `106.660172` | Current longitude |
-| `radiusKm` | no | `50` | Search radius |
-
-Expected response:
-
-```json
-{
-  "users": [
-    {
-      "_id": "USER_ID",
-      "id": "USER_ID",
-      "name": "Bob",
-      "gender": "man",
-      "age": 28,
-      "bio": "Hello",
-      "photos": [],
-      "distanceMeters": 1200,
-      "distanceKm": 1.2
-    }
-  ]
-}
-```
-
-Explore applies:
-
-- Current user's `genderPreference`
-- Current user's `preferences.ageRange`
-- Candidate's mutual `interestedIn`
-- Distance radius
-- Already-swiped excluded IDs from Redis or MongoDB fallback
-
-Common error:
-
-```json
-{
-  "message": "lat and lng query parameters are required and must be numbers"
-}
-```
-
----
-
-## Swipe And Discovery APIs
-
-Available prefixes:
-
-```text
-/api/swipes
-/api/v1/swipes
-```
-
-### Discover Candidates
-
-#### GET `/api/v1/swipes/discover?limit=20`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-This is an older discovery endpoint used by swipe cards. It uses stored user
-location and preferences.
-
-Expected response:
-
-```json
-{
-  "users": []
-}
-```
-
-### Swipe
-
-#### POST `/api/v1/swipes`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-Content-Type: application/json
-```
-
-Body for like:
-
-```json
-{
-  "targetId": "{{bobId}}",
-  "type": "like"
-}
-```
-
-Body for pass:
-
-```json
-{
-  "targetId": "{{caseyId}}",
-  "type": "pass"
-}
-```
-
-Legacy body is also supported:
-
-```json
-{
-  "targetUserId": "{{bobId}}",
-  "direction": "like"
-}
-```
-
-Allowed directions:
-
-```text
-like, pass, nope, superlike
-```
-
-Note: `pass` is normalized internally to `nope`.
-
-Response when no match:
-
-```json
-{
-  "swipe": {
-    "swiper": "ALICE_ID",
-    "target": "BOB_ID",
-    "direction": "like"
-  },
-  "match": null,
-  "isMatch": false,
-  "matchedUser": null
-}
-```
-
-Response when reciprocal like creates match:
-
-```json
-{
-  "swipe": {
-    "swiper": "BOB_ID",
-    "target": "ALICE_ID",
-    "direction": "like"
-  },
-  "match": {
-    "_id": "MATCH_ID",
-    "users": []
-  },
-  "isMatch": true,
-  "matchedUser": {}
-}
-```
-
-DoD notes:
-
-- A reciprocal double like creates exactly one active match.
-- Match contains exactly 2 users.
-- Duplicate swipes do not create duplicate matches.
-- Redis key is written as `swipe:excluded:{userId}` with TTL 24h when Redis is online.
-
----
-
-## Match APIs
-
-Available prefix:
-
-```text
-/api/matches
-```
-
-### Get Matches
-
-#### GET `/api/matches`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-Response:
-
-```json
-{
-  "matches": [
-    {
-      "_id": "MATCH_ID",
-      "users": [],
-      "status": "active",
-      "lastMessage": {
-        "text": "Hello",
-        "sender": "USER_ID",
-        "sentAt": "2026-07-22T00:00:00.000Z"
-      }
-    }
-  ]
-}
-```
-
-### Unmatch
-
-#### PATCH `/api/matches/:matchId/unmatch`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-Response:
-
-```json
-{
-  "match": {
-    "_id": "MATCH_ID",
-    "status": "unmatched",
-    "unmatchedBy": "USER_ID"
-  }
-}
-```
-
----
-
-## Message And Chat APIs
-
-### Paginated Message History
-
-Available prefix:
-
-```text
-/api/v1/messages
-```
-
-#### GET `/api/v1/messages/:matchId?page=1&limit=20`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-```
-
-Response is sorted by newest first:
-
-```json
-{
-  "messages": [
-    {
-      "_id": "MESSAGE_ID",
-      "match": "MATCH_ID",
-      "sender": {
-        "_id": "USER_ID",
-        "name": "Alice",
-        "photos": []
-      },
-      "receiver": "USER_ID",
-      "text": "Hello",
-      "clientMessageId": "client-123",
-      "createdAt": "2026-07-22T00:00:00.000Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 1,
-    "totalPages": 1,
-    "hasNextPage": false,
-    "hasPrevPage": false
-  }
-}
-```
-
-### Legacy Chat Message List
-
-Available prefix:
-
-```text
-/api/chats
-```
-
-#### GET `/api/chats/:matchId/messages?limit=50`
-
-Returns recent messages in chronological order for the chat UI.
-
-### Create Message By REST
-
-#### POST `/api/chats/:matchId/messages`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "text": "Hello from Postman",
-  "clientMessageId": "postman-message-001"
-}
-```
-
-Image message body:
-
-```json
-{
-  "imageUrl": "https://example.com/photo.jpg",
-  "clientMessageId": "postman-image-001"
-}
-```
-
-Response:
-
-```json
-{
-  "message": {
-    "_id": "MESSAGE_ID",
-    "match": "MATCH_ID",
-    "sender": {
-      "_id": "USER_ID",
-      "name": "Alice",
-      "photos": []
-    },
-    "receiver": "USER_ID",
-    "text": "Hello from Postman",
-    "clientMessageId": "postman-message-001"
-  }
-}
-```
-
-Notes:
-
-- User must belong to the active match.
-- `text` or `imageUrl` is required.
-- `clientMessageId` makes retries idempotent.
-- The REST endpoint also emits `receive_message` through Socket.IO.
-
----
-
-## Upload APIs
-
-Available prefixes:
-
-```text
-/api/upload
-/api/v1/upload
-```
-
-Cloudinary environment variables are required.
-
-### Upload Image To Cloudinary
-
-#### POST `/api/v1/upload/image`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-Content-Type: multipart/form-data
-```
-
-Postman Body:
-
-- Select `form-data`
-- Key: `image`
-- Type: `File`
-- Value: choose an image file
-
-Rules:
-
-- Supported formats: JPG, PNG, WEBP.
-- Maximum file size: 5MB.
-
-Expected response:
-
-```json
-{
-  "message": "Image uploaded successfully",
-  "url": "https://res.cloudinary.com/...",
-  "publicId": "tinder-app/profile-image"
-}
-```
-
-If Cloudinary environment variables are not configured in local development,
-the API falls back to server storage and returns a static URL such as:
-
-```json
-{
-  "message": "Image uploaded successfully",
-  "url": "http://localhost:5000/uploads/profile-123.jpg",
-  "publicId": "local/uploads/profile-123.jpg"
-}
-```
-
-### Save Profile Photo
-
-#### POST `/api/v1/upload/save-profile-photo`
-
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
-  "publicId": "tinder-app/profile-image"
-}
-```
-
-Expected response:
-
-```json
-{
-  "message": "Profile photo saved successfully",
-  "photos": [
-    {
-      "url": "https://res.cloudinary.com/your-cloud/image/upload/abc.jpg",
-      "publicId": "tinder-app/profile-image",
-      "isPrimary": true
-    }
-  ]
-}
-```
-
-Notes:
-
-- A profile can contain at most 6 photos.
-- The first photo is automatically marked as primary.
-
----
-
-## Gamer Lobby And Recruitment APIs
-
-All gamer-lobby endpoints require `Authorization: Bearer <token>` and use the
-prefix `/api/v1/gamer-lobby`.
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/stats` | Current online-user and open-recruitment counts |
-| `GET` | `/explore?game=Valorant&lobbyGroup=group1&limit=20` | Find players for a game/rank group |
-| `GET` | `/recruitments?game=Valorant&lobbyGroup=group1&limit=20` | Browse open posts the current user has not joined |
-| `POST` | `/recruitments` | Create a recruitment post and its team chat |
-| `POST` | `/recruitments/:recruitmentId/join` | Join the team and shared chat |
-| `POST` | `/recruitments/:recruitmentId/leave` | Leave the team and shared chat |
-| `PATCH` | `/recruitments/:recruitmentId/close` | Close or dissolve a team owned by the current user |
-
-Create-recruitment example:
-
-```json
-{
-  "gameName": "Valorant",
-  "currentRank": "Gold 2",
-  "teamSize": 4,
-  "playMode": "ranked",
-  "lobbyCode": "ABC123",
-  "teamName": "Night Queue",
-  "description": "Looking for calm teammates with voice chat."
-}
-```
-
-Supported team sizes are `2` and `4`; play modes are `ranked` and `casual`.
-The backend derives the lobby group from the selected game's rank. Open-post
-queries exclude teams the current user has already joined.
-
-Creating a post creates or restores a match-backed team conversation named after
-the team. Joining adds the player to that conversation; leaving removes them.
-Closing the recruitment dissolves access for the team when appropriate.
-
-Live stats response:
-
-```json
-{
-  "stats": {
-    "onlineGamers": 12,
-    "activeParties": 4,
-    "updatedAt": "2026-08-05T10:00:00.000Z"
-  }
-}
-```
-
-`onlineGamers` counts users with live presence. `activeParties` counts open
-recruitment posts, not chat rooms or historical teams.
-
----
-
-## Socket.IO Events
-
-Socket.IO is not a normal REST API, so it is not tested like JSON requests in
-Postman. Use the mobile app or a Socket.IO client.
-
-Server URL:
-
-```text
-http://localhost:5000
-```
-
-Client auth:
+| Health | `GET` | `/health` | Service health check (outside `/api`) |
+| Auth | `POST` | `/api/v1/auth/register` | Create an account |
+| Auth | `POST` | `/api/v1/auth/login` | Start a session |
+| Auth | `GET` | `/api/v1/auth/me` | Restore the current user |
+| Profile | `PUT` | `/api/v1/users/profile` | Update profile and search preferences |
+| Discovery | `GET` | `/api/v1/users/explore` | Find nearby compatible users |
+| Discovery | `GET` | `/api/v1/swipes/discover` | Get swipe candidates |
+| Swipe | `POST` | `/api/v1/swipes` | Like or pass a user |
+| Match | `GET` | `/api/matches` | List direct and team matches |
+| Match | `PATCH` | `/api/matches/:matchId/unmatch` | End a match |
+| Chat | `GET` | `/api/v1/messages/:matchId` | Get paginated message history |
+| Chat | `POST` | `/api/chats/:matchId/messages` | Send a message over REST |
+| Upload | `POST` | `/api/v1/upload/image` | Upload JPG, PNG, or WEBP up to 5 MB |
+| Push | `POST` / `DELETE` | `/api/v1/users/push-token` | Register or revoke an Expo token |
+| Lobby | `GET` | `/api/v1/gamer-lobby/stats` | Get live gamer and party totals |
+| Lobby | `GET` | `/api/v1/gamer-lobby/recruitments` | Browse open recruitment posts |
+| Lobby | `POST` | `/api/v1/gamer-lobby/recruitments` | Create a party and team chat |
+| Lobby | `POST` | `/api/v1/gamer-lobby/recruitments/:id/join` | Join a party |
+| Lobby | `POST` | `/api/v1/gamer-lobby/recruitments/:id/leave` | Leave a party |
+| Lobby | `PATCH` | `/api/v1/gamer-lobby/recruitments/:id/close` | Close a party |
+
+Legacy unversioned auth, user, swipe, and upload paths remain mounted for
+compatibility. Prefer the `/api/v1` paths for new integrations. For request and
+response examples, see [`docs/API.md`](docs/API.md) or the local Swagger UI.
+
+## Realtime events
+
+Connect Socket.IO to the backend origin (without `/api`) and authenticate during the
+handshake:
 
 ```js
-io("http://localhost:5000", {
+import { io } from "socket.io-client";
+
+const socket = io("http://localhost:5000", {
   transports: ["websocket"],
-  auth: { token: "JWT_TOKEN" }
+  auth: { token: "<JWT>" },
 });
 ```
 
-Events:
-
-| Event | Direction | Payload |
+| Event | Direction | Purpose |
 | --- | --- | --- |
-| `match:join` | client → server | `matchId` |
-| `match:leave` | client → server | `matchId` |
-| `send_message` | client → server | `{ matchId, text, imageUrl, clientMessageId }` |
-| `receive_message` | server → client | Saved message |
-| `message:notification` | server → client | Message sent to the recipient's user room |
-| `typing` | both | `{ matchId, isTyping, userId }` |
-| `read_message` | both | `{ matchId, messageIds, userId, readAt }` |
-| `presence:subscribe` | client → server | `{ matchIds }` |
-| `presence:snapshot` | server → client | Presence state for subscribed match users |
-| `presence:update` | server → client | `{ userId, isOnline, lastActive }` |
-| `match:new` | server → client | New reciprocal match |
-| `matches:updated` | server → client | Match/team list invalidation signal |
-| `team:membership` | server → client | Updated team match and member roster |
-| `gamer_lobby:team_found` | server → client | Recruitment match result |
-| `gamer_lobby:team_dissolved` | server → client | Closed-team notification |
-| `gamer_lobby:recruitment_updated` | server → client | Updated recruitment post |
-| `live_lobby:stats` | server → client | `{ onlineGamers, activeParties, updatedAt }` |
+| `presence:subscribe` | Client → server | Subscribe to presence for authorized matches |
+| `presence:snapshot` | Server → client | Return current participant presence |
+| `match:join` | Client → server | Validate membership and join a chat room |
+| `send_message` | Client → server | Persist and broadcast a message |
+| `receive_message` | Server → client | Deliver a saved message |
+| `message:notification` | Server → client | Update conversation and unread state |
+| `typing` | Bidirectional | Broadcast typing state inside a match |
+| `read_message` | Bidirectional | Mark messages read and emit the receipt |
+| `live_lobby:stats` | Server → client | Publish live online-user and open-party totals |
 
-Realtime DoD:
+## Troubleshooting
 
-- Only users in the same `matchId` room receive `receive_message`.
-- Message is saved to MongoDB before realtime emit.
-- Offline frontend messages are queued and sent after reconnect.
-- New messages start with the sender in `readBy`. A recipient is added only when
-  that recipient explicitly opens the conversation and emits `read_message`.
-- Direct-message ticks turn pink when the other user reads the message. Team-chat
-  ticks turn pink after every intended teammate has read it.
-- Presence subscriptions are authorized against active match membership.
+### The API starts but database requests fail
 
----
+Verify `MONGO_URI`, Atlas credentials, database-user permissions, and the Atlas IP
+access list. The health endpoint only confirms that the HTTP process is running.
 
-## Postman Test Scenarios
+### Explore returns no users
 
-### Scenario 1 - Register Three Users
+Check both accounts' coordinates, age range, gender preference, mutual `interestedIn`
+values, distance radius, and swipe history. Coordinates use MongoDB order:
+`[longitude, latitude]`.
 
-Register Alice:
+### A physical device cannot reach the API
 
-```http
-POST {{baseUrl}}/api/auth/register
-```
-
-```json
-{
-  "name": "Alice",
-  "email": "alice@example.com",
-  "password": "password123",
-  "birthDate": "1998-01-01",
-  "gender": "woman"
-}
-```
-
-Register Bob:
-
-```json
-{
-  "name": "Bob",
-  "email": "bob@example.com",
-  "password": "password123",
-  "birthDate": "1996-01-01",
-  "gender": "man"
-}
-```
-
-Register Casey:
-
-```json
-{
-  "name": "Casey",
-  "email": "casey@example.com",
-  "password": "password123",
-  "birthDate": "1997-01-01",
-  "gender": "other"
-}
-```
-
-Save each user's `token` and `user.id`.
-
-### Scenario 2 - Prepare Location And Preferences
-
-Login Alice, set `token = aliceToken`, then:
-
-```http
-PATCH {{baseUrl}}/api/auth/me
-```
-
-```json
-{
-  "location": {
-    "type": "Point",
-    "coordinates": [106.660172, 10.762622]
-  },
-  "interestedIn": ["man"],
-  "preferences": {
-    "maxDistanceKm": 50,
-    "ageRange": {
-      "min": 24,
-      "max": 35
-    }
-  }
-}
-```
-
-Login Bob, set `token = bobToken`, then:
-
-```json
-{
-  "location": {
-    "type": "Point",
-    "coordinates": [106.661, 10.763]
-  },
-  "interestedIn": ["woman"],
-  "preferences": {
-    "maxDistanceKm": 50,
-    "ageRange": {
-      "min": 18,
-      "max": 40
-    }
-  }
-}
-```
-
-### Scenario 3 - Test Explore
-
-Use Alice token:
-
-```http
-GET {{baseUrl}}/api/v1/users/explore?lat=10.762622&lng=106.660172&radiusKm=50
-```
-
-Expected:
-
-- Bob appears if he matches Alice's filters.
-- Users Alice already swiped are excluded.
-- Redis online or offline should not break the API.
-
-### Scenario 4 - Test Pass
-
-Use Alice token:
-
-```http
-POST {{baseUrl}}/api/v1/swipes
-```
-
-```json
-{
-  "targetId": "{{caseyId}}",
-  "type": "pass"
-}
-```
-
-Expected:
-
-```json
-{
-  "isMatch": false,
-  "match": null
-}
-```
-
-### Scenario 5 - Test Match
-
-Alice likes Bob:
-
-```http
-POST {{baseUrl}}/api/v1/swipes
-Authorization: Bearer {{aliceToken}}
-```
-
-```json
-{
-  "targetId": "{{bobId}}",
-  "type": "like"
-}
-```
-
-Expected:
-
-```json
-{
-  "isMatch": false
-}
-```
-
-Bob likes Alice:
-
-```http
-POST {{baseUrl}}/api/v1/swipes
-Authorization: Bearer {{bobToken}}
-```
-
-```json
-{
-  "targetId": "{{aliceId}}",
-  "type": "like"
-}
-```
-
-Expected:
-
-```json
-{
-  "isMatch": true,
-  "match": {
-    "_id": "MATCH_ID"
-  }
-}
-```
-
-Save `match._id` into `matchId`.
-
-### Scenario 6 - Test Duplicate Like Idempotency
-
-Send Bob likes Alice again with the same or repeated body.
-
-Expected:
-
-- HTTP `201`
-- Still only one match in MongoDB for the two users
-- `isMatch: true`
-- No duplicate active match
-
-### Scenario 7 - Test Match List
-
-```http
-GET {{baseUrl}}/api/matches
-Authorization: Bearer {{aliceToken}}
-```
-
-Expected:
-
-```json
-{
-  "matches": [
-    {
-      "_id": "{{matchId}}",
-      "status": "active"
-    }
-  ]
-}
-```
-
-### Scenario 8 - Send Message By REST
-
-```http
-POST {{baseUrl}}/api/chats/{{matchId}}/messages
-Authorization: Bearer {{aliceToken}}
-```
-
-```json
-{
-  "text": "Hello Bob from Postman",
-  "clientMessageId": "postman-alice-001"
-}
-```
-
-Expected:
-
-```json
-{
-  "message": {
-    "text": "Hello Bob from Postman",
-    "clientMessageId": "postman-alice-001"
-  }
-}
-```
-
-### Scenario 9 - Get Paginated Message History
-
-```http
-GET {{baseUrl}}/api/v1/messages/{{matchId}}?page=1&limit=20
-Authorization: Bearer {{aliceToken}}
-```
-
-Expected:
-
-- Messages belong to `matchId`
-- Newest messages first
-- `pagination` object exists
-
-### Scenario 10 - Unmatch
-
-```http
-PATCH {{baseUrl}}/api/matches/{{matchId}}/unmatch
-Authorization: Bearer {{aliceToken}}
-```
-
-Expected:
-
-```json
-{
-  "match": {
-    "status": "unmatched"
-  }
-}
-```
-
-After unmatch, chat APIs for that match should return `404 Match not found`.
-
----
-
-## Redis Verification
-
-After a swipe, check Redis if Redis is online:
-
-```bash
-redis-cli
-SMEMBERS swipe:excluded:<userId>
-TTL swipe:excluded:<userId>
-```
-
-Expected TTL:
-
-```text
-close to 86400 seconds
-```
-
-If Redis is offline:
-
-- Swipe API still works.
-- Explore API falls back to MongoDB.
-- API must not return 500 only because Redis is unavailable.
-
----
-
-## Load Testing Summary
-
-Script:
-
-```text
-load-tests/swipes-load-test.js
-```
-
-Command:
-
-```bash
-k6 run load-tests/swipes-load-test.js
-```
-
-Acceptance criteria:
-
-| Metric | Target |
-| --- | --- |
-| HTTP 500 rate | `0%` |
-| HTTP error rate | `0%` |
-| Average swipe response time | `<= 200 ms` |
-
-Latest recorded manual result:
-
-```text
-Average swipe response: 75.71 ms
-HTTP error rate: 0.00%
-HTTP 500 rate: 0.00%
-HTTP 503 rate: 0.00%
-VUs: 100
-Duration: 1 minute
-Result: PASS
-```
-
----
-
-## Expo Push Notifications
-
-Issue #44 replaces Firebase Cloud Messaging with Expo Push Service for this
-Expo/React Native project.
-
-Implemented flow:
-
-- Frontend asks for notification permission after login, signup, or restored session.
-- Frontend gets an Expo push token through `expo-notifications`.
-- Frontend saves the token through `POST /api/v1/users/push-token`.
-- Backend stores tokens in `users.pushTokens`.
-- Backend sends a push notification when a new match is created and the target user is not connected by Socket.IO.
-- Backend sends a push notification when a new message is saved and the receiver is not inside the chat room.
-- When the user taps a match/message notification, the app navigates back into the matching chat flow.
-
-### Expo Project ID
-
-The real Expo/EAS project id is stored in:
-
-```text
-frontend/app.json
-```
-
-Expected shape:
-
-```json
-{
-  "expo": {
-    "extra": {
-      "eas": {
-        "projectId": "YOUR-REAL-UUID"
-      }
-    }
-  }
-}
-```
-
-Verify it with:
+Use the computer's LAN IP in `EXPO_PUBLIC_API_URL`, keep both devices on the same
+network, allow port `5000` through the firewall, and restart Expo with a cleared cache:
 
 ```bash
 cd frontend
-npx expo config --type public
-```
-
-The output must show a real UUID, not `REPLACE_WITH_EAS_PROJECT_ID`.
-
-Restart Expo after changing notification config:
-
-```bash
 npx expo start -c
 ```
 
-### Save Push Token API
+### Redis is unavailable
 
-#### POST `/api/v1/users/push-token`
+Local development can continue without Redis. Leave `REDIS_URL` unset or start a
+compatible Redis server; discovery uses MongoDB when the cache is offline.
 
-Headers:
+### Image uploads do not use Cloudinary
 
-```http
-Authorization: Bearer {{token}}
-Content-Type: application/json
-```
+Provide all three Cloudinary variables. Development deliberately falls back to local
+storage when configuration is absent or Cloudinary fails; production does not.
 
-Body:
+### Push notifications do not appear
 
-```json
-{
-  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-  "provider": "expo",
-  "platform": "android",
-  "deviceId": "device-001"
-}
-```
+Use a valid Expo/EAS project ID and a supported physical device, allow notification
+permissions, and confirm that the backend stored an active `ExponentPushToken[...]`.
+Push delivery is skipped when the recipient is already online in the conversation.
 
-Expected response:
+## Documentation
 
-```json
-{
-  "message": "Push token saved successfully",
-  "pushToken": {
-    "provider": "expo",
-    "platform": "android",
-    "deviceId": "device-001",
-    "lastSeenAt": "2026-07-29T00:00:00.000Z"
-  }
-}
-```
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system organization
+- [`docs/API.md`](docs/API.md) — additional API notes
+- [`docs/REDIS.md`](docs/REDIS.md) — cache behavior and setup
+- [`docs/LOAD_TESTING.md`](docs/LOAD_TESTING.md) — k6 scenario and pass criteria
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — planned work
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution workflow
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting
 
-The raw push token is intentionally not returned.
+## Contributing
 
-#### DELETE `/api/v1/users/push-token`
+1. Create a focused branch from the current default branch.
+2. Make the smallest coherent change and add or update tests.
+3. Run `npm test` in `backend` and export the frontend when UI code changes.
+4. Use a clear commit message (Conventional Commits are preferred).
+5. Open a pull request describing the behavior, verification, and any limitations.
 
-Headers:
-
-```http
-Authorization: Bearer {{token}}
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-  "provider": "expo",
-  "deviceId": "device-001"
-}
-```
-
-Expected response:
-
-```json
-{
-  "message": "Push token revoked successfully",
-  "revoked": true
-}
-```
-
-The revoke API is idempotent. Calling it again should still return `200`.
-
-### Manual Push Test
-
-Recommended device:
-
-- Android physical device with Expo Go or a development build.
-- iOS physical device with a development build for reliable push testing.
-
-Steps:
-
-1. Start backend.
-2. Start frontend with `npx expo start -c`.
-3. Login on the mobile app and allow notifications.
-4. Open MongoDB Atlas, collection `users`.
-5. Check that the logged-in user has `pushTokens[0].token` with `ExponentPushToken[...]`.
-6. Login with another matched account.
-7. Put the target user's app in background, or close it.
-8. Create a match or send a chat message.
-9. The target device should receive a notification.
-10. Tap the notification. The app should navigate to the related chat flow.
-
-Local demo note:
-
-- Push notification code can be demonstrated through tests and MongoDB token storage.
-- Real status-bar notifications require a valid Expo project id and a supported physical device.
-
----
-
-## Known Limitations And Notes
-
-- Firebase Cloud Messaging is no longer required for the current Expo push notification approach.
-- Real push notification delivery still requires Expo/EAS project setup and a supported physical device.
-- Redis is optional in local development because fallback to MongoDB exists.
-- Cloudinary upload requires valid Cloudinary environment variables.
-- Socket.IO events are best tested with the mobile app or a Socket.IO client, not normal Postman REST requests.
-- The root `package.json` is not the main app package. Use `backend/package.json` and `frontend/package.json`.
-- MongoDB Atlas works. Make sure your IP address is allowed in Atlas Network Access.
-
----
-
-## Common Problems
-
-### `Route not found`
-
-Check the exact mounted path. Important current paths:
-
-```text
-POST /api/v1/swipes
-PUT  /api/v1/users/profile
-GET  /api/v1/users/explore
-GET  /api/v1/messages/:matchId
-GET  /api/v1/gamer-lobby/stats
-GET  /api/v1/gamer-lobby/recruitments
-POST /api/v1/gamer-lobby/recruitments
-GET  /api/matches
-POST /api/chats/:matchId/messages
-```
-
-### `Authentication token is required`
-
-Add:
-
-```http
-Authorization: Bearer <token>
-```
-
-### Explore returns empty list
-
-Check:
-
-- Candidate location is near the query `lat/lng`
-- Current user's `genderPreference`
-- Candidate's `interestedIn` includes current user's gender
-- Candidate age is inside current user's min/max age
-- User was not already swiped
-
-### MongoDB Atlas cannot connect
-
-Check:
-
-- `MONGO_URI` in `backend/.env`
-- Atlas username/password
-- Database user permissions
-- Atlas Network Access IP whitelist
-
-### Redis command not found or Docker unavailable
-
-Redis is optional for local dev. The app should still work through MongoDB fallback.
-
----
-
-## Contributors
-
-- Vu Tuan Dat
-- Vu Duc
-- Project Team Members
-
----
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) and
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) before contributing.
 
 ## License
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+Tindah is available under the [MIT License](LICENSE).
