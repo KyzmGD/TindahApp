@@ -63,40 +63,12 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
   },
-  primary: {
-    backgroundColor: "#ff4f7b",
-    borderWidth: 1,
-    borderColor: "#ff7aa2",
-  },
-  secondary: {
-    backgroundColor: "#1c1720",
-    borderWidth: 1,
-    borderColor: "#403449",
-  },
-  ghost: {
-    backgroundColor: "transparent",
-  },
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.98 }],
   },
-  hovered: {
-    borderColor: "#20c7ff",
-    shadowColor: "#20c7ff",
-    shadowOpacity: 0.22,
-    transform: [{ translateY: -2 }],
-  },
   text: {
     fontSize: 16,
     fontWeight: "700",
-  },
-  primaryText: {
-    color: "#fff",
-  },
-  secondaryText: {
-    color: "#ffffff",
-  },
-  ghostText: {
-    color: "#ff4f7b",
   },
 });

@@ -126,9 +126,10 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     }
   }
 
-  const receiverId = match.users.find(
+  const receiverIds = match.users.filter(
     (userId) => userId.toString() !== senderId.toString(),
   );
+  const receiverId = receiverIds[0];
   let message;
 
   try {
@@ -136,6 +137,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
       match: matchId,
       sender: senderId,
       receiver: receiverId,
+      receivers: receiverIds,
       clientMessageId: normalizedClientMessageId || undefined,
       text: trimmedText,
       imageUrl: trimmedImageUrl,
@@ -164,9 +166,7 @@ async function sendMessage({ matchId, senderId, text, imageUrl, clientMessageId 
     sender: senderId,
     sentAt: message.createdAt,
   };
-  if (receiverId) {
-    incrementUnreadCount(match, receiverId);
-  }
+  receiverIds.forEach((recipientId) => incrementUnreadCount(match, recipientId));
   await match.save();
 
   message.$locals.wasCreated = true;
@@ -178,7 +178,7 @@ async function markMessagesRead({ matchId, userId, messageIds = [] }) {
 
   const filter = {
     match: matchId,
-    receiver: userId,
+    sender: { $ne: userId },
     readBy: { $ne: userId },
   };
 
@@ -193,6 +193,7 @@ async function markMessagesRead({ matchId, userId, messageIds = [] }) {
   const messages = await Message.find(filter).select("_id").lean();
 
   if (!messages.length) {
+    await resetUnreadCount(matchId, userId);
     return [];
   }
 

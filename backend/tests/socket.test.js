@@ -260,4 +260,51 @@ describe("chat socket realtime", () => {
     });
     await expect(Message.countDocuments({ clientMessageId })).resolves.toBe(1);
   });
+
+  it("subscribes to presence without treating the conversation as actively open", async () => {
+    const alice = await registerUser({ name: "Alice Presence" });
+    const bob = await registerUser({ name: "Bob Presence" });
+    const match = await createMatch(alice, bob);
+
+    server = http.createServer(app);
+    io = registerChatSocket(server, app);
+    const port = await listen(server);
+    const aliceSocket = await connectSocket(port, alice.token);
+    const bobSocket = await connectSocket(port, bob.token);
+    sockets.push(aliceSocket, bobSocket);
+
+    const snapshotPromise = waitForEvent(bobSocket, "presence:snapshot");
+    const subscribeAck = await emitWithAck(bobSocket, "presence:subscribe", {
+      matchIds: [match._id],
+    });
+    const snapshot = await snapshotPromise;
+
+    expect(subscribeAck).toMatchObject({ ok: true, matchIds: [match._id] });
+    expect(snapshot).toMatchObject({
+      matchId: match._id,
+      users: expect.arrayContaining([
+        expect.objectContaining({ userId: alice.user.id, isOnline: true }),
+      ]),
+    });
+    expect(io.sockets.adapter.rooms.get(`presence:${match._id}`)).toContain(bobSocket.id);
+    expect(io.sockets.adapter.rooms.get(match._id)?.has(bobSocket.id) || false).toBe(false);
+
+    await expect(emitWithAck(aliceSocket, "match:join", match._id))
+      .resolves.toMatchObject({ ok: true });
+    let receivedAsOpenChat = false;
+    bobSocket.on("receive_message", () => {
+      receivedAsOpenChat = true;
+    });
+    const notificationPromise = waitForEvent(bobSocket, "message:notification");
+    await expect(emitWithAck(aliceSocket, "send_message", {
+      matchId: match._id,
+      text: "Presence-only subscribers still get notifications",
+      clientMessageId: "presence-notification-test",
+    })).resolves.toMatchObject({ ok: true });
+    await expect(notificationPromise).resolves.toMatchObject({
+      text: "Presence-only subscribers still get notifications",
+    });
+    await sleep(100);
+    expect(receivedAsOpenChat).toBe(false);
+  });
 });

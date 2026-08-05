@@ -10,7 +10,6 @@ export default function CardStack({
   remaining,
   onLike,
   onNope,
-  onSuperLike,
 }) {
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -21,7 +20,6 @@ export default function CardStack({
   currentUser,
   onSwipeLeft: onNope,
   onSwipeRight: onLike,
-  onSwipeUp: onSuperLike,
 });
 
   useEffect(() => {

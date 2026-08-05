@@ -12,6 +12,7 @@ import {
 } from "./notificationNavigation";
 import ChatListScreen from "../screens/ChatListScreen";
 import ChatScreen from "../screens/ChatScreen";
+import TeamFoundModal from "../components/common/TeamFoundModal";
 import ExploreScreen from "../screens/ExploreScreen";
 import GamerLobbyScreen from "../screens/GamerLobbyScreen";
 import LoginScreen from "../screens/LoginScreen";
@@ -21,6 +22,7 @@ import {
   addPushNotificationResponseListener,
   getLastPushNotificationResponseData,
 } from "../services/pushNotifications";
+import { getLiveLobbyStats } from "../services/gamerLobby.api";
 import { getMatches } from "../services/swipe.api";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -86,12 +88,13 @@ function getUserId(user) {
   return user?.id || user?._id || "";
 }
 
-function getAvatar(user) {
-  return user?.avatarUrl || user?.photos?.[0]?.url || "https://i.pravatar.cc/300";
-}
-
 function getGameTheme(gameName) {
   return GAME_THEME[gameName] || GAME_THEME.Valorant;
+}
+
+function formatLiveCount(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return Number.isFinite(Number(value)) ? Number(value).toLocaleString() : "—";
 }
 
 function LoadingScreen() {
@@ -111,6 +114,7 @@ function TindahTabBar({
   navigation,
   hasUnreadMatches,
   isSidebar,
+  liveLobbyStats,
 }) {
   const { mode, theme } = useTheme();
   const colors = theme.colors;
@@ -148,7 +152,9 @@ function TindahTabBar({
               />
               <View style={styles.sideLobbyCopy}>
                 <Text style={styles.sideLobbyMain} numberOfLines={1}>Top Gamers</Text>
-                <Text style={styles.sideLobbySub} numberOfLines={1}>2.4k online</Text>
+                <Text style={styles.sideLobbySub} numberOfLines={1}>
+                  {formatLiveCount(liveLobbyStats?.onlineGamers)} online
+                </Text>
               </View>
             </View>
             <View style={styles.sideLobbyItem}>
@@ -159,7 +165,9 @@ function TindahTabBar({
               />
               <View style={styles.sideLobbyCopy}>
                 <Text style={styles.sideLobbyMain} numberOfLines={1}>Active Parties</Text>
-                <Text style={styles.sideLobbySub} numberOfLines={1}>842 Rooms</Text>
+                <Text style={styles.sideLobbySub} numberOfLines={1}>
+                  {formatLiveCount(liveLobbyStats?.activeParties)} {Number(liveLobbyStats?.activeParties) === 1 ? "Post" : "Posts"}
+                </Text>
               </View>
             </View>
           </View>
@@ -302,9 +310,15 @@ function TindahTabBar({
   );
 }
 
-function MainTabs({ hasUnreadMatches, onUnreadMatchesChange }) {
+function MainTabs({
+  activeMatchCount,
+  hasUnreadMatches,
+  liveLobbyStats,
+  onMatchCreated,
+  onUnreadMatchesChange,
+}) {
   const { width } = useWindowDimensions();
-  const isSidebar = width >= 1024;
+  const isSidebar = width >= 900;
 
   return (
     <Tab.Navigator
@@ -313,6 +327,7 @@ function MainTabs({ hasUnreadMatches, onUnreadMatchesChange }) {
           {...props}
           hasUnreadMatches={hasUnreadMatches}
           isSidebar={isSidebar}
+          liveLobbyStats={liveLobbyStats}
         />
       )}
       screenOptions={{
@@ -328,7 +343,16 @@ function MainTabs({ hasUnreadMatches, onUnreadMatchesChange }) {
         sceneStyle: isSidebar ? styles.sidebarScene : undefined,
       }}
     >
-      <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="Explore">
+        {(props) => (
+          <ExploreScreen
+            {...props}
+            activeMatchCount={activeMatchCount}
+            liveLobbyStats={liveLobbyStats}
+            onMatchCreated={onMatchCreated}
+          />
+        )}
+      </Tab.Screen>
       <Tab.Screen name="GamerLobby" component={GamerLobbyScreen} />
       <Tab.Screen name="Matches">
         {(props) => (
@@ -351,17 +375,34 @@ export default function AppNavigator() {
   const [teamFound, setTeamFound] = useState(null);
   const [teamDissolved, setTeamDissolved] = useState(null);
   const [hasUnreadMatches, setHasUnreadMatches] = useState(false);
+  const [liveLobbyStats, setLiveLobbyStats] = useState(null);
+  const [activeMatchCount, setActiveMatchCount] = useState(null);
   const refreshUnreadMatches = useCallback(async () => {
     if (!isAuthenticated) {
       setHasUnreadMatches(false);
+      setActiveMatchCount(null);
       return;
     }
 
     try {
       const matches = await getMatches();
       setHasUnreadMatches(matches.some((match) => Number(match.unreadCount) > 0));
+      setActiveMatchCount(matches.length);
     } catch {
       setHasUnreadMatches(false);
+      setActiveMatchCount(null);
+    }
+  }, [isAuthenticated]);
+  const refreshLiveLobbyStats = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLiveLobbyStats(null);
+      return;
+    }
+
+    try {
+      setLiveLobbyStats(await getLiveLobbyStats());
+    } catch {
+      // Keep the most recent real-time value during temporary network failures.
     }
   }, [isAuthenticated]);
 
@@ -393,6 +434,10 @@ export default function AppNavigator() {
   }, [refreshUnreadMatches]);
 
   useEffect(() => {
+    refreshLiveLobbyStats();
+  }, [refreshLiveLobbyStats]);
+
+  useEffect(() => {
     if (!socket || !isAuthenticated) {
       return undefined;
     }
@@ -415,17 +460,27 @@ export default function AppNavigator() {
         refreshUnreadMatches();
       }
     };
+    const onLiveLobbyStats = (stats) => {
+      setLiveLobbyStats(stats);
+    };
+    const onMatchesUpdated = () => {
+      refreshUnreadMatches();
+    };
 
     socket.on("gamer_lobby:team_found", onTeamFound);
     socket.on("gamer_lobby:team_dissolved", onTeamDissolved);
     socket.on("message:notification", onMessageNotification);
     socket.on("read_message", onReadMessage);
+    socket.on("live_lobby:stats", onLiveLobbyStats);
+    socket.on("matches:updated", onMatchesUpdated);
 
     return () => {
       socket.off("gamer_lobby:team_found", onTeamFound);
       socket.off("gamer_lobby:team_dissolved", onTeamDissolved);
       socket.off("message:notification", onMessageNotification);
       socket.off("read_message", onReadMessage);
+      socket.off("live_lobby:stats", onLiveLobbyStats);
+      socket.off("matches:updated", onMatchesUpdated);
     };
   }, [isAuthenticated, refreshUnreadMatches, socket, user]);
 
@@ -438,12 +493,14 @@ export default function AppNavigator() {
       return;
     }
 
-    const otherUser = chatMatch.users?.find((item) => getUserId(item) !== getUserId(user));
     setTeamFound(null);
     setHasUnreadMatches(false);
-    navigationRef.navigate("Chat", {
-      match: chatMatch,
-      user: otherUser,
+    navigationRef.navigate("Main", {
+      screen: "Matches",
+      params: {
+        matchId: chatMatch._id,
+        openRequestId: `team-${chatMatch._id}-${Date.now()}`,
+      },
     });
   };
 
@@ -477,7 +534,10 @@ export default function AppNavigator() {
               <Stack.Screen name="Main">
                 {() => (
                   <MainTabs
+                    activeMatchCount={activeMatchCount}
                     hasUnreadMatches={hasUnreadMatches}
+                    liveLobbyStats={liveLobbyStats}
+                    onMatchCreated={refreshUnreadMatches}
                     onUnreadMatchesChange={setHasUnreadMatches}
                   />
                 )}
@@ -489,80 +549,13 @@ export default function AppNavigator() {
             <Stack.Screen name="Login" component={LoginScreen} />
           )}
         </Stack.Navigator>
-        <Modal
+        <TeamFoundModal
           visible={Boolean(teamFound)}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setTeamFound(null)}
-        >
-          <View style={[styles.teamFoundOverlay, { backgroundColor: colors.overlay }]}>
-            <View
-              style={[
-                styles.teamFoundCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: teamFoundGame.color,
-                  shadowColor: teamFoundGame.color,
-                },
-              ]}
-            >
-              <View style={[styles.teamFoundIcon, { backgroundColor: teamFoundGame.color }]}>
-                <Text style={styles.teamFoundIconText}>{teamFoundGame.icon}</Text>
-              </View>
-              <Text style={[styles.teamFoundTitle, { color: colors.text }]}>Teammate found</Text>
-              {teamFound?.teamMatch?.teamName ? (
-                <Text style={[styles.teamFoundTeamName, { color: teamFoundGame.color }]} numberOfLines={2}>
-                  {teamFound.teamMatch.teamName}
-                </Text>
-              ) : null}
-              <Text style={[styles.teamFoundSubtitle, { color: colors.muted }]}>
-                {teamFoundGame.label} - Team {teamFound?.teamMatch?.teamSize} -{" "}
-                {teamFound?.teamMatch?.playMode === "ranked" ? "Ranked" : "Casual"}
-              </Text>
-              <View style={styles.teamFoundUsers}>
-                <View style={styles.teamFoundUser}>
-                  <Image source={{ uri: getAvatar(teamFound?.teamMatch?.owner) }} style={styles.teamFoundAvatar} />
-                  <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
-                    {teamFound?.teamMatch?.owner?.name || "Captain"}
-                  </Text>
-                </View>
-                <View style={[styles.teamFoundConnector, { backgroundColor: teamFoundGame.color }]} />
-                <View style={styles.teamFoundUser}>
-                  <Image source={{ uri: getAvatar(teamFound?.teamMatch?.joiner) }} style={styles.teamFoundAvatar} />
-                  <Text style={[styles.teamFoundUserName, { color: colors.text }]} numberOfLines={1}>
-                    {teamFound?.teamMatch?.joiner?.name || "Teammate"}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.teamFoundActions}>
-                <Pressable
-                  onPress={openTeamChat}
-                  style={({ hovered, pressed }) => [
-                    styles.teamFoundButton,
-                    { backgroundColor: teamFoundGame.color },
-                    hovered && styles.teamFoundButtonHover,
-                    pressed && styles.tabItemPressed,
-                  ]}
-                >
-                  <Text style={styles.teamFoundButtonText}>Go to chat</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setTeamFound(null)}
-                  style={({ hovered, pressed }) => [
-                    styles.teamFoundSecondaryButton,
-                    { backgroundColor: colors.elevated, borderColor: teamFoundGame.color },
-                    hovered && styles.teamFoundButtonHover,
-                    pressed && styles.tabItemPressed,
-                  ]}
-                >
-                  <Text style={[styles.teamFoundSecondaryText, { color: teamFoundGame.color }]}>
-                    Keep finding
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </Modal>
+          result={teamFound}
+          game={teamFoundGame}
+          onClose={() => setTeamFound(null)}
+          onOpenChat={openTeamChat}
+        />
         <Modal
           visible={Boolean(teamDissolved)}
           transparent
@@ -787,17 +780,6 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 0,
   },
-  tabItemActive: {
-    backgroundColor: "rgba(255,79,123,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(255,79,123,0.28)",
-  },
-  tabItemHover: {
-    backgroundColor: "rgba(32,199,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(32,199,255,0.34)",
-    transform: [{ translateY: -2 }],
-  },
   tabItemPressed: {
     opacity: 0.72,
     transform: [{ scale: 0.96 }],
@@ -815,17 +797,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-  tabLabelActive: {
-    color: "#ff4f7b",
-  },
-  tabLabelHover: {
-    color: "#ffffff",
-  },
-  tabIcon: {
-    color: "#a79aaa",
-    fontSize: 16,
-    fontWeight: "900",
-  },
   tabIconImage: {
     width: 18,
     height: 18,
@@ -834,11 +805,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
   },
-  sideTabIcon: {
-    width: 22,
-    fontSize: 16,
-    textAlign: "center",
-  },
   tabIndicator: {
     position: "absolute",
     bottom: 2,
@@ -846,21 +812,10 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 999,
   },
-  sideTabIndicator: {
-    left: 5,
-    top: 8,
-    bottom: undefined,
-    width: 3,
-    height: 22,
-  },
   tabIndicatorActive: {
     width: 26,
     shadowOpacity: 0.5,
     shadowRadius: 8,
-  },
-  sideTabIndicatorActive: {
-    width: 3,
-    height: 28,
   },
   tabIndicatorHover: {
     width: 20,
@@ -887,13 +842,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "900",
     lineHeight: 14,
-  },
-  tabIconActive: {
-    color: "#ff4f7b",
-  },
-  tabIconHover: {
-    color: "#ffffff",
-    transform: [{ scale: 1.08 }],
   },
   teamFoundOverlay: {
     flex: 1,
@@ -937,40 +885,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
-  teamFoundTeamName: {
-    marginTop: -8,
-    fontSize: 18,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  teamFoundUsers: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-  },
-  teamFoundUser: {
-    flex: 1,
-    alignItems: "center",
-    gap: 8,
-  },
-  teamFoundAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-  },
-  teamFoundUserName: {
-    maxWidth: "100%",
-    fontSize: 14,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  teamFoundConnector: {
-    width: 38,
-    height: 5,
-    borderRadius: 999,
-  },
   teamFoundActions: {
     width: "100%",
     gap: 10,
@@ -987,18 +901,6 @@ const styles = StyleSheet.create({
   },
   teamFoundButtonText: {
     color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  teamFoundSecondaryButton: {
-    width: "100%",
-    minHeight: 48,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  teamFoundSecondaryText: {
     fontSize: 15,
     fontWeight: "900",
   },

@@ -123,7 +123,9 @@ async function emitPresenceToActiveMatchRooms(io, presence) {
   }).select("_id").lean();
 
   matches.forEach((match) => {
-    io.to(match._id.toString()).emit("presence:update", presence);
+    const matchId = match._id.toString();
+    io.to(matchId).emit("presence:update", presence);
+    io.to(`presence:${matchId}`).emit("presence:update", presence);
   });
 }
 

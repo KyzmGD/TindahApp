@@ -33,25 +33,24 @@ const ALL_GENDER_VALUES = GENDER_OPTIONS.map((option) => option.value);
 const EXPLORE_BACKGROUND = require("../../assets/explore-hearts-bg.png");
 const STITCH_TINDAH_LOGO = require("../../assets/tindah_logo_stitch.png");
 const HEART_ICON = require("../../assets/figma-explore/heart.png");
-const STAR_ICON = require("../../assets/figma-explore/star.png");
 const CANCEL_ICON = require("../../assets/figma-explore/cancel.png");
 const DESKTOP_SIDEBAR_WIDTH = 288;
 const LIVE_ACTIVITY_ITEMS = [
   {
-    title: "Top gamers nearby",
-    detail: "2.4k online",
+    key: "onlineGamers",
+    title: "Top gamers online",
     accent: "#ffb3b5",
     icon: "SH",
   },
   {
+    key: "activeParties",
     title: "Active parties",
-    detail: "842 rooms",
     accent: "#c0c1ff",
     icon: "GP",
   },
   {
+    key: "activeMatches",
     title: "Match found",
-    detail: "In your area",
     accent: "#ddb7ff",
     icon: "FX",
   },
@@ -324,7 +323,24 @@ function ExploreSkeleton({ colors }) {
   );
 }
 
-function LiveActivityPanel({ colors, isCompact }) {
+function formatActivityCount(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return Number.isFinite(Number(value)) ? Number(value).toLocaleString() : "—";
+}
+
+function LiveActivityPanel({ activeMatchCount, colors, height, isCompact, liveLobbyStats }) {
+  const activityItems = LIVE_ACTIVITY_ITEMS.map((item) => {
+    if (item.key === "onlineGamers") {
+      return { ...item, detail: `${formatActivityCount(liveLobbyStats?.onlineGamers)} online now` };
+    }
+    if (item.key === "activeParties") {
+      const count = Number(liveLobbyStats?.activeParties);
+      return { ...item, detail: `${formatActivityCount(count)} recruitment ${count === 1 ? "post" : "posts"}` };
+    }
+    const count = Number(activeMatchCount);
+    return { ...item, detail: `${formatActivityCount(activeMatchCount)} active ${count === 1 ? "match" : "matches"}` };
+  });
+
   return (
     <View
       style={[
@@ -334,6 +350,7 @@ function LiveActivityPanel({ colors, isCompact }) {
           borderColor: "rgba(255,255,255,0.08)",
           shadowColor: colors.accent,
         },
+        height ? { height, minHeight: height } : null,
         isCompact && styles.activityPanelCompact,
       ]}
     >
@@ -341,12 +358,13 @@ function LiveActivityPanel({ colors, isCompact }) {
         <Text style={[styles.activityTitle, { color: colors.text }]}>Live Activity</Text>
         <View style={[styles.activityPing, { backgroundColor: colors.accent }]} />
       </View>
-      <View style={styles.activityList}>
-        {LIVE_ACTIVITY_ITEMS.map((item, index) => (
+      <View style={[styles.activityList, isCompact && styles.activityListCompact]}>
+        {activityItems.map((item, index) => (
           <Pressable
             key={item.title}
             style={({ hovered, pressed }) => [
               styles.activityItem,
+              isCompact && styles.activityItemCompact,
               {
                 backgroundColor: index === 2 ? "rgba(45,52,73,0.72)" : "rgba(11,19,38,0.56)",
                 borderColor: hovered ? item.accent : "rgba(255,255,255,0.06)",
@@ -371,9 +389,7 @@ function LiveActivityPanel({ colors, isCompact }) {
                 {item.detail}
               </Text>
             </View>
-            <Text style={[styles.activityTime, { color: colors.muted }]}>
-              {index === 0 ? "Now" : index === 1 ? "5m" : "12m"}
-            </Text>
+            <Text style={[styles.activityTime, { color: item.accent }]}>LIVE</Text>
           </Pressable>
         ))}
       </View>
@@ -381,7 +397,7 @@ function LiveActivityPanel({ colors, isCompact }) {
   );
 }
 
-export default function ExploreScreen() {
+export default function ExploreScreen({ activeMatchCount, liveLobbyStats, onMatchCreated }) {
   const { user, updateProfile } = useAuth();
   const { theme } = useTheme();
   const colors = theme.colors;
@@ -433,14 +449,14 @@ export default function ExploreScreen() {
     ],
   };
   const cardFrameStyle = useMemo(() => {
-    const horizontalSpace = isWideLayout ? 0 : 34;
-    const maxWidth = isWideLayout ? 420 : 372;
-    const minHeight = isMediumLayout ? 510 : 430;
-    const maxHeight = isWideLayout ? 560 : 540;
+    const horizontalSpace = isWideLayout ? 0 : 28;
+    const maxWidth = isWideLayout ? 430 : 390;
+    const minHeight = isMediumLayout ? 520 : 460;
+    const maxHeight = isWideLayout ? 580 : 560;
 
     return {
       width: Math.min(Math.max(mainViewportWidth - horizontalSpace, 288), maxWidth),
-      height: Math.min(Math.max(viewportHeight * 0.6, minHeight), maxHeight),
+      height: Math.min(Math.max(viewportHeight * 0.66, minHeight), maxHeight),
     };
   }, [isMediumLayout, isWideLayout, mainViewportWidth, viewportHeight]);
 
@@ -505,15 +521,13 @@ const [matchedMatch, setMatchedMatch] =
     }
   };
   const openChat = () => {
-  setShowMatchModal(false);
-
-  navigation.navigate(
-    "Chat",
-    {
-      match: matchedMatch,
-      user: matchedUser,
-    }
-  );
+    const matchId = matchedMatch?._id || matchedMatch?.id;
+    setShowMatchModal(false);
+    navigation.navigate("Matches", {
+      matchId,
+      targetUserId: matchedUser?._id || matchedUser?.id,
+      openRequestId: `dating-${matchId || "latest"}-${Date.now()}`,
+    });
   };
 
   const openFilters = () => {
@@ -696,6 +710,7 @@ const [matchedMatch, setMatchedMatch] =
   setMatchedUser(user);
   setMatchedMatch(result.match);
   setShowMatchModal(true);
+  onMatchCreated?.();
     }
   } catch (swipeError) {
     setUsers((current) => [user, ...current]);
@@ -707,21 +722,23 @@ const [matchedMatch, setMatchedMatch] =
   const renderSwipeActions = () => (
     <View style={styles.actions}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Pass on this profile"
         style={({ hovered, pressed }) => [
           styles.actionButton,
           styles.nope,
           {
             backgroundColor: "rgba(34,42,61,0.8)",
             shadowColor: "#ffb4ab",
-            shadowOpacity: 0.38,
-            shadowRadius: 18,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 8,
+            shadowOpacity: 0.22,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 4,
           },
           hovered && {
             backgroundColor: "rgba(45,52,73,0.94)",
-            transform: [{ translateY: -4 }, { scale: 1.08 }],
-            shadowOpacity: 0.3,
+            transform: [{ translateY: -2 }, { scale: 1.04 }],
+            shadowOpacity: 0.28,
           },
           pressed && styles.actionPressed,
         ]}
@@ -734,59 +751,22 @@ const [matchedMatch, setMatchedMatch] =
         />
       </Pressable>
       <Pressable
-        style={({ hovered, pressed }) => [
-          styles.actionButton,
-          styles.superLike,
-          {
-            backgroundColor: "#3131c0",
-            shadowColor: "#b0b2ff",
-            shadowOpacity: 0.5,
-            shadowRadius: 22,
-            shadowOffset: { width: 0, height: 10 },
-            elevation: 10,
-          },
-          hovered && {
-            backgroundColor: "#3f3fe0",
-            transform: [{ translateY: -8 }, { scale: 1.1 }],
-            shadowOpacity: 0.42,
-          },
-          pressed && styles.actionPressed,
-        ]}
-        onPress={() => users[0] && handleSwipe(users[0], "superlike")}
-      >
-        <Animated.Image
-          source={STAR_ICON}
-          resizeMode="contain"
-          style={[
-            styles.starActionIcon,
-            {
-              transform: [
-                {
-                  scale: pulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.08],
-                  }),
-                },
-              ],
-            },
-          ]}
-        />
-      </Pressable>
-      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Like this profile"
         style={({ hovered, pressed }) => [
           styles.actionButton,
           styles.like,
           {
             backgroundColor: "transparent",
             shadowColor: "#ff5167",
-            shadowOpacity: 0.52,
-            shadowRadius: 26,
-            shadowOffset: { width: 0, height: 12 },
-            elevation: 12,
+            shadowOpacity: 0.34,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 7,
           },
           hovered && {
-            transform: [{ translateY: -5 }, { scale: 1.11 }],
-            shadowOpacity: 0.46,
+            transform: [{ translateY: -2 }, { scale: 1.05 }],
+            shadowOpacity: 0.42,
           },
           pressed && styles.actionPressed,
         ]}
@@ -954,19 +934,32 @@ const [matchedMatch, setMatchedMatch] =
                   remaining={remaining}
                   onNope={(user) => handleSwipe(user, "nope")}
                   onLike={(user) => handleSwipe(user, "like")}
-                  onSuperLike={(user) => handleSwipe(user, "superlike")}
                 />
               </Animated.View>
             )}
             {renderSwipeActions()}
           </View>
-          {isWideLayout ? <LiveActivityPanel colors={colors} /> : null}
+          {isWideLayout ? (
+            <LiveActivityPanel
+              activeMatchCount={activeMatchCount}
+              colors={colors}
+              height={cardFrameStyle.height}
+              liveLobbyStats={liveLobbyStats}
+            />
+          ) : null}
         </View>
-        {!isWideLayout ? <LiveActivityPanel colors={colors} isCompact /> : null}
+        {!isWideLayout ? (
+          <LiveActivityPanel
+            activeMatchCount={activeMatchCount}
+            colors={colors}
+            isCompact
+            liveLobbyStats={liveLobbyStats}
+          />
+        ) : null}
       </ScrollView>
       <MatchModal
   visible={showMatchModal}
-  currentUser={null}
+  currentUser={user}
   matchedUser={matchedUser}
   onClose={() => setShowMatchModal(false)}
   onMessage={openChat}
@@ -1480,10 +1473,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
-  filterButtonHover: {
-    backgroundColor: "#2a2133",
-    transform: [{ translateY: -1 }],
-  },
   filterText: {
     color: "#ffffff",
     fontWeight: "900",
@@ -1492,32 +1481,33 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingHorizontal: 18,
-    paddingTop: 36,
-    paddingBottom: 26,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 34,
   },
   exploreLayout: {
     width: "100%",
-    maxWidth: 1180,
+    maxWidth: 1080,
     alignItems: "center",
     justifyContent: "center",
-    gap: 22,
+    gap: 28,
   },
   exploreLayoutWide: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "center",
-    gap: 30,
+    gap: 44,
   },
   swipeColumn: {
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    paddingTop: 26,
+    paddingTop: 18,
     minWidth: 0,
   },
   swipeColumnWide: {
-    paddingTop: 18,
+    width: 430,
+    paddingTop: 12,
   },
   stackGhostBack: {
     position: "absolute",
@@ -1554,12 +1544,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 24 },
     elevation: 16,
     boxShadow: "0 22px 52px rgba(255,81,103,0.52)",
-  },
-  loading: {
-    flex: 1,
-    minHeight: 520,
-    alignItems: "center",
-    justifyContent: "center",
   },
   skeletonCard: {
     flex: 1,
@@ -1690,28 +1674,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 24,
-    marginTop: -42,
-    paddingBottom: 4,
+    gap: 16,
+    marginTop: 14,
+    paddingBottom: 0,
     backgroundColor: "transparent",
     borderTopWidth: 0,
     zIndex: 4,
   },
   actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#222a3d",
     shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 4,
-  },
-  actionHover: {
-    backgroundColor: "#2a2133",
-    transform: [{ translateY: -2 }, { scale: 1.04 }],
   },
   actionPressed: {
     opacity: 0.82,
@@ -1720,18 +1700,11 @@ const styles = StyleSheet.create({
   nope: {
     borderWidth: 0,
   },
-  superLike: {
-    borderWidth: 0,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    transform: [{ translateY: -14 }],
-  },
   like: {
     borderWidth: 0,
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     overflow: "hidden",
   },
   retryButton: {
@@ -1742,10 +1715,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#ff4f7b",
   },
-  retryButtonHover: {
-    backgroundColor: "#ff7aa2",
-    transform: [{ translateY: -1 }],
-  },
   buttonPressed: {
     opacity: 0.82,
     transform: [{ scale: 0.97 }],
@@ -1755,12 +1724,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   activityPanel: {
-    width: 340,
-    minHeight: 540,
-    borderRadius: 24,
+    width: 320,
+    minHeight: 560,
+    marginTop: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 22,
-    gap: 22,
+    padding: 18,
+    gap: 18,
     shadowOpacity: 0.18,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 16 },
@@ -1770,6 +1740,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     minHeight: 0,
+    marginTop: 0,
     padding: 16,
   },
   activityHeader: {
@@ -1791,10 +1762,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   activityList: {
-    gap: 14,
+    flex: 1,
+    gap: 10,
   },
+  activityListCompact: { flex: 0, gap: 10 },
   activityItem: {
-    minHeight: 84,
+    flex: 1,
+    minHeight: 0,
     borderRadius: 16,
     borderWidth: 1,
     padding: 12,
@@ -1802,6 +1776,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  activityItemCompact: { flexGrow: 0, minHeight: 84 },
   activityIcon: {
     width: 48,
     height: 48,
@@ -1917,10 +1892,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  locationRowHover: {
-    backgroundColor: "#231b2b",
-    transform: [{ translateX: 4 }],
-  },
   locationCopy: {
     flex: 1,
     gap: 8,
@@ -2006,25 +1977,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 18,
   },
-  genderChipSelected: {
-    borderColor: "#ff4f7b",
-    backgroundColor: "#321827",
-  },
-  genderChipHover: {
-    borderColor: "#ffffff",
-    backgroundColor: "#2f2440",
-    transform: [{ translateY: -2 }, { scale: 1.03 }],
-  },
   genderChipText: {
     color: "#ddd0e5",
     fontSize: 16,
     fontWeight: "800",
-  },
-  genderChipTextSelected: {
-    color: "#ff4f7b",
-  },
-  genderChipTextHover: {
-    color: "#ffffff",
   },
   sliderLabel: {
     color: "#c7b9cf",
@@ -2048,10 +2004,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     gap: 12,
-  },
-  searchFilterRowHover: {
-    backgroundColor: "#231b2b",
-    transform: [{ translateX: 4 }],
   },
   searchFilterIcon: {
     width: 42,
@@ -2129,23 +2081,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 14,
   },
-  selectorOptionRowSelected: {
-    borderColor: "#ff4f7b",
-    backgroundColor: "#321827",
-  },
-  selectorOptionRowHover: {
-    borderColor: "#20c7ff",
-    backgroundColor: "#231b2b",
-  },
   selectorOptionText: {
     flex: 1,
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
     paddingRight: 12,
-  },
-  selectorOptionTextSelected: {
-    color: "#ff7aa2",
   },
   selectorCheck: {
     width: 24,
@@ -2156,35 +2097,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  selectorCheckSelected: {
-    borderColor: "#ff4f7b",
-    backgroundColor: "#ff4f7b",
-  },
   selectorCheckText: {
     color: "#ffffff",
     fontSize: 10,
     fontWeight: "900",
   },
   cancelActionIcon: {
-    width: 19,
-    height: 19,
+    width: 16,
+    height: 16,
     tintColor: "#ffb4ab",
-  },
-  starActionIcon: {
-    width: 24,
-    height: 23,
-    tintColor: "#b0b2ff",
   },
   likeGradient: {
     width: "100%",
     height: "100%",
-    borderRadius: 40,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },
   heartActionIcon: {
-    width: 34,
-    height: 31,
+    width: 25,
+    height: 23,
     tintColor: "#680019",
   },
 });

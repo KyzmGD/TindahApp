@@ -3,6 +3,7 @@
     "name": "Tindah",
     "slug": "tindah",
     "version": "1.0.0",
+    "icon": "./assets/tindah_logo_stitch.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
@@ -13,8 +14,12 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/tindah_logo_stitch.png",
         "backgroundColor": "#ffffff"
       }
+    },
+    "web": {
+      "favicon": "./assets/tindah_logo_stitch.png"
     },
     "plugins": [
       "expo-status-bar",

@@ -13,6 +13,7 @@ const {
   markUserOfflineIfNoSockets,
   markUserOnline,
 } = require("../services/presence.service");
+const { emitLiveLobbyStats } = require("../services/liveLobbyStats.service");
 
 function registerChatSocket(server, app) {
   const io = new Server(server, {
@@ -47,6 +48,33 @@ function registerChatSocket(server, app) {
   io.on("connection", (socket) => {
     socket.join(`user:${socket.user._id}`);
 
+    socket.on("presence:subscribe", async (payload = {}, callback) => {
+      try {
+        const requestedMatchIds = Array.isArray(payload.matchIds)
+          ? [...new Set(payload.matchIds.filter(Boolean).map(String))].slice(0, 100)
+          : [];
+        const currentRooms = socket.data.presenceRooms || new Set();
+        const nextRooms = new Set();
+
+        for (const matchId of requestedMatchIds) {
+          const match = await assertUserInActiveMatch(matchId, socket.user._id);
+          const roomName = `presence:${matchId}`;
+          nextRooms.add(roomName);
+          socket.join(roomName);
+          const users = await getPresenceSnapshot(match.users);
+          socket.emit("presence:snapshot", { matchId, users });
+        }
+
+        currentRooms.forEach((roomName) => {
+          if (!nextRooms.has(roomName)) socket.leave(roomName);
+        });
+        socket.data.presenceRooms = nextRooms;
+        callback?.({ ok: true, matchIds: requestedMatchIds });
+      } catch (error) {
+        callback?.({ ok: false, message: error.message });
+      }
+    });
+
     socket.on("match:join", async (matchId, callback) => {
       try {
         const match = await assertUserInActiveMatch(matchId, socket.user._id);
@@ -71,11 +99,12 @@ function registerChatSocket(server, app) {
 
         socket.join(payload.matchId);
         io.to(payload.matchId).emit("receive_message", message);
-        if (message.receiver) {
-          io.to(`user:${message.receiver.toString()}`).emit("message:notification", message);
-        }
+        const receiverIds = message.receivers?.length ? message.receivers : [message.receiver].filter(Boolean);
+        receiverIds.forEach((receiverId) => {
+          io.to(`user:${receiverId.toString()}`).emit("message:notification", message);
+        });
         if (message.$locals?.wasCreated) {
-          await sendOfflineMessagePush({ io, message });
+          await Promise.all(receiverIds.map((receiverId) => sendOfflineMessagePush({ io, message, receiverId })));
         }
         callback?.({ ok: true, message });
       } catch (error) {
@@ -124,6 +153,7 @@ function registerChatSocket(server, app) {
 
         if (presence) {
           await emitPresenceToActiveMatchRooms(io, presence);
+          await emitLiveLobbyStats(io);
         }
       } catch (error) {
         console.warn("Presence offline update failed:", error.message);
@@ -131,7 +161,10 @@ function registerChatSocket(server, app) {
     });
 
     markUserOnline(socket.user._id)
-      .then((presence) => emitPresenceToActiveMatchRooms(io, presence))
+      .then(async (presence) => {
+        await emitPresenceToActiveMatchRooms(io, presence);
+        await emitLiveLobbyStats(io);
+      })
       .catch((error) => {
         console.warn("Presence online update failed:", error.message);
       });

@@ -18,7 +18,9 @@ export function SocketProvider({ children }) {
       const timeout = setTimeout(() => {
         if (!settled) {
           settled = true;
-          reject(new Error("Message acknowledgement timeout"));
+          const timeoutError = new Error("Message acknowledgement timeout");
+          timeoutError.retryable = true;
+          reject(timeoutError);
         }
       }, MESSAGE_ACK_TIMEOUT_MS);
 
@@ -44,7 +46,9 @@ export function SocketProvider({ children }) {
             return;
           }
 
-          reject(new Error(response?.message || "Could not send message"));
+          const responseError = new Error(response?.message || "Could not send message");
+          responseError.retryable = false;
+          reject(responseError);
         },
       );
     }), []);
@@ -55,11 +59,15 @@ export function SocketProvider({ children }) {
     }
 
     pendingMessagesRef.current.forEach((pendingMessage) => {
-      emitMessage(activeSocket, pendingMessage).catch(() => {
-        pendingMessagesRef.current.set(pendingMessage.clientMessageId, {
-          ...pendingMessage,
-          status: "pending",
-        });
+      emitMessage(activeSocket, pendingMessage).catch((error) => {
+        if (error.retryable === false) {
+          pendingMessagesRef.current.delete(pendingMessage.clientMessageId);
+        } else {
+          pendingMessagesRef.current.set(pendingMessage.clientMessageId, {
+            ...pendingMessage,
+            status: "pending",
+          });
+        }
       });
     });
   }, [emitMessage]);
@@ -122,6 +130,18 @@ export function SocketProvider({ children }) {
     [socket],
   );
 
+  const subscribeToMatchPresence = useCallback(
+    (matchIds = []) =>
+      new Promise((resolve) => {
+        if (!socket?.connected) {
+          resolve({ ok: false });
+          return;
+        }
+        socket.emit("presence:subscribe", { matchIds }, resolve);
+      }),
+    [socket],
+  );
+
   const markMessagesRead = useCallback(
     (matchId, messageIds = []) =>
       new Promise((resolve) => {
@@ -160,7 +180,13 @@ export function SocketProvider({ children }) {
 
       return emitMessage(socket, pendingMessage)
         .then((message) => message)
-        .catch(() => pendingMessage);
+        .catch((error) => {
+          if (error.retryable === false) {
+            pendingMessagesRef.current.delete(clientMessageId);
+            throw error;
+          }
+          return pendingMessage;
+        });
     },
     [emitMessage, socket],
   );
@@ -172,6 +198,7 @@ export function SocketProvider({ children }) {
       joinMatch,
       markMessagesRead,
       setTyping,
+      subscribeToMatchPresence,
       sendMessageRealtime,
       flushPendingMessages: () => flushPendingMessages(socket),
     }),
@@ -183,6 +210,7 @@ export function SocketProvider({ children }) {
       sendMessageRealtime,
       setTyping,
       socket,
+      subscribeToMatchPresence,
     ],
   );
 

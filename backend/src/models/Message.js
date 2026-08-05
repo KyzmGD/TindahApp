@@ -5,6 +5,7 @@ const messageSchema = new mongoose.Schema(
     match: { type: mongoose.Schema.Types.ObjectId, ref: "Match", required: true },
     sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     receiver: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    receivers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     clientMessageId: { type: String, trim: true, maxlength: 120 },
     text: { type: String, trim: true, maxlength: 2000 },
     imageUrl: String,
