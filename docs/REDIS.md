@@ -1,85 +1,73 @@
-# Redis Cache Setup
+# Redis Swipe Cache
 
-This project uses Redis to cache swipe exclusion lists for discovery.
+Redis is an optional acceleration layer for discovery. MongoDB remains the source
+of truth, and the API continues operating if Redis is absent or unavailable.
 
-## Purpose
+## Cached data
 
-Discovery needs to exclude users that the current user already swiped.
-Without Redis, the API reads swipe history from MongoDB on every discovery request.
-With Redis, the API first reads a Set of excluded target IDs from:
+Discovery excludes profiles already swiped by the current user. The cache stores
+those target IDs in a Redis Set:
 
 ```text
 swipe:excluded:{userId}
 ```
 
-Example:
+Sets expire after 86,400 seconds (24 hours). On a cache miss, the service reads the
+user's swipe history from MongoDB and populates the Set when at least one target
+exists. After a new swipe, the target ID is added and the 24-hour TTL is refreshed.
+Invalid cached ObjectIds are discarded.
 
-```text
-swipe:excluded:65b000000000000000000001
-```
+## Local setup
 
-Each key has a TTL of 24 hours.
-
-## Local Redis
-
-Recommended local setup with Docker:
+Start Redis 7 with Docker:
 
 ```bash
 docker run --name tindah-redis -p 6379:6379 redis:7-alpine
 ```
 
-Set backend environment:
+Set the backend variable and restart the API:
 
 ```env
 REDIS_URL=redis://localhost:6379
 ```
-
-Start backend:
 
 ```bash
 cd backend
 npm run dev
 ```
 
-## Verify Key And TTL
+The server logs `Redis connected` on success. If `REDIS_URL` is unset, connection
+takes longer than three seconds, or the connection fails, startup continues without
+the cache.
 
-After a user swipes another user, open Redis CLI:
+## Verification
 
-```bash
-redis-cli
-```
+After a user swipes, inspect the Set with `redis-cli`:
 
-Check the key:
-
-```bash
+```text
 SMEMBERS swipe:excluded:<userId>
 TTL swipe:excluded:<userId>
 ```
 
-Expected TTL is close to:
+The target ID should be present and TTL should be between 1 and 86,400. A key with
+no swipe history is intentionally not created.
 
-```text
-86400
+## Failure behavior
+
+Read and write errors are logged as warnings. Reads immediately fall back to a
+MongoDB query; failed cache writes do not fail the swipe request. Because Redis is
+not authoritative, deleting these keys is safe and causes lazy repopulation.
+
+## Testing and measurement
+
+Run the backend Jest suite to cover cache hits, misses, updates, and fallback:
+
+```bash
+cd backend
+npm test -- --runInBand tests/swipeCache.test.js
 ```
 
-## Fallback Behavior
-
-If Redis is offline, unavailable, or times out, discovery falls back to MongoDB.
-The API must keep responding instead of returning 500 due to Redis failure.
-
-## Performance Measurement
-
-Before merging Redis cache changes, measure discovery response time before and after Redis.
-Use Postman Runner, k6, or another HTTP benchmark tool with 50 requests.
-
-| Case | Requests | Avg response time | Note |
-| --- | ---: | ---: | --- |
-| Before Redis | 50 | ___ ms | Query MongoDB directly |
-| Redis online | 50 | ___ ms | Read excluded IDs from Redis |
-| Redis offline | 50 | ___ ms | Fallback MongoDB, no 500 |
-
-Acceptance target:
-
-```text
-Redis online avg response time is at least 30% lower than baseline.
-```
+For performance comparisons, run the same discovery workload with Redis disabled,
+enabled, and deliberately offline. Record request count, average and p95 latency,
+errors, MongoDB query load, and environment details. Treat lower latency as a
+measured outcome rather than assuming a fixed improvement percentage.

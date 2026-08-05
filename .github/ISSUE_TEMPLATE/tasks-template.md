@@ -1,31 +1,29 @@
 ---
-name: Tasks Template
-about: Describe this issue template's purpose here.
+name: Task
+about: Plan a scoped implementation, maintenance, or documentation task
 title: ""
 labels: ""
 assignees: ""
 ---
 
-### 📝 Mô tả công việc (Scope of Work)
+## Summary
 
-<!-- Mô tả ngắn gọn tính năng này làm gì và tại sao cần làm -->
+<!-- What needs to change, for whom, and why? -->
 
--
+## Scope
 
-### 🛠️ Nhiệm vụ cụ thể (Tasks)
+- [ ] Implementation task
+- [ ] Tests or verification
+- [ ] Documentation or migration notes
 
-<!-- Sử dụng dấu - [ ] để tạo checkbox cho từng đầu việc nhỏ -->
+## Acceptance criteria
 
-- [ ] Nhiệm vụ 1:...
-- [ ] Nhiệm vụ 2:...
-- [ ] Gợi ý Prompt cho Codex (nếu có): `// Viết hàm...`
+- [ ] Expected behavior and error cases are defined.
+- [ ] Relevant automated checks pass.
+- [ ] Affected mobile/web flows are manually verified where applicable.
+- [ ] API, schema, configuration, security, and compatibility impacts are addressed.
+- [ ] No credentials, private data, or unrelated changes are included.
 
-### 🏁 Tiêu chuẩn nghiệm thu (Definition of Done - DoD)
+## Context
 
-<!-- Điều kiện bắt buộc để Member D (QA) duyệt và đóng Issue này -->
-
-- [ ] Code không lỗi, chạy được trên môi trường local.
-- [ ] Đã test qua các trường hợp lỗi dữ liệu đầu vào.
-- [ ] Kết quả đầu ra trả về đúng định dạng (JSON/UI) như thiết kế.
-
-Test commit
+<!-- Add designs, logs, reproduction steps, dependencies, and out-of-scope items. -->
