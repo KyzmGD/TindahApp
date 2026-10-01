@@ -1,17 +1,64 @@
 pipeline {
     agent any
 
+    // Định nghĩa môi trường nếu cần (ví dụ: dùng phiên bản Node.js cụ thể)
+    tools {
+        // Đảm bảo bạn đã cấu hình Tool NodeJS trong Jenkins Management trước, 
+        // hoặc bỏ qua phần này nếu dùng Node.js có sẵn trong container/agent.
+        nodejs "NodeJS-18" // Tên tool bạn đặt trong Global Tool Configuration của Jenkins
+    }
+
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
+                echo 'Đang lấy code từ GitHub...'
                 checkout scm
             }
         }
 
-        stage('Test Pipeline') {
+        stage('Install Dependencies') {
             steps {
-                echo 'Jenkins da lay code tu GitHub thanh cong!'
+                echo 'Cài đặt các gói phụ thuộc (npm packages)...'
+                // Dùng sh 'npm ci' nếu có file package-lock.json để cài đặt nhanh và chính xác hơn
+                sh 'npm install' 
             }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo 'Chạy bộ kiểm thử (Unit Tests)...'
+                // Bỏ qua bước này nếu dự án của bạn chưa viết test
+                sh 'npm test' 
+            }
+        }
+
+        stage('Build Application') {
+            steps {
+                echo 'Build ứng dụng Node.js...'
+                // Nếu dự án có lệnh build (ví dụ: TypeScript, React, Next.js...)
+                // sh 'npm run build'
+                echo 'Build thành công (hoặc bỏ qua nếu chỉ chạy source gốc).'
+            }
+        }
+        
+        /* 
+        // Giai đoạn tùy chọn: Đóng gói Docker
+        stage('Build & Push Docker Image') {
+            steps {
+                echo 'Đang đóng gói Docker...'
+                // sh 'docker build -t username/tindahapp:${BUILD_NUMBER} .'
+                // sh 'docker push username/tindahapp:${BUILD_NUMBER}'
+            }
+        }
+        */
+    }
+
+    post {
+        success {
+            echo '🎉 Chúc mừng! Pipeline hoàn thành thành công rực rỡ.'
+        }
+        failure {
+            echo '❌ Pipeline đã gặp lỗi ở một stage nào đó. Vui lòng kiểm tra lại log.'
         }
     }
 }
