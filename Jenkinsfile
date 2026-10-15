@@ -21,7 +21,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 dir('backend') {
-                    bat 'npm ci --no-audit --no-fund'
+                    bat 'npm install --no-audit --no-fund'
                 }
             }
         }
