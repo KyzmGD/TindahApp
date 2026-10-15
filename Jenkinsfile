@@ -51,6 +51,14 @@ pipeline {
                     }
                 }
         }
+        stage('Quality Gate'){
+            steps{
+                timeout(activity: true, time: 1, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: true, credentialsId: 'Test1-token'
+                }
+            }
+        }
+        
         stage('Build Application') {
             steps {
                 echo 'Build ứng dụng Node.js...'
