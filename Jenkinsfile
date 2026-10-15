@@ -1,11 +1,15 @@
 pipeline {
     agent any
-
+    
     // Định nghĩa môi trường nếu cần (ví dụ: dùng phiên bản Node.js cụ thể)
     tools {
         // Đảm bảo bạn đã cấu hình Tool NodeJS trong Jenkins Management trước, 
         // hoặc bỏ qua phần này nếu dùng Node.js có sẵn trong container/agent.
         nodejs "NodeJS-18" // Tên tool bạn đặt trong Global Tool Configuration của Jenkins
+    }
+    enviroment{
+        SONAR_PROJECT_KEY = 'Test1'
+        SONAR_SCANNER_HOME = tool 'SonarQubeScanner'
     }
 
     stages {
@@ -29,6 +33,20 @@ pipeline {
                 echo 'Chạy bộ kiểm thử (Unit Tests)...'
                 // Bỏ qua bước này nếu dự án của bạn chưa viết test
                 sh 'npm test' 
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps{
+                withSonarQubeEnv(credentialsId: 'Test1-token') {
+                    sh """
+                    ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=http://localhost:9000/ \
+                    -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
             }
         }
 
