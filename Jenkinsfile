@@ -38,12 +38,12 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps{
-                withSonarQubeEnv(credentialsId: 'Test1-token') {
+                withSonarQubeEnv('SonarQube') {
                     sh """
                     ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                     -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                     -Dsonar.sources=. \
-                    -Dsonar.host.url=http://localhost:9000/ \
+                    -Dsonar.host.url= \
                     -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
