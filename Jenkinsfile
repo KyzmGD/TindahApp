@@ -38,6 +38,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps{
+                withCredentials([string(credentialsId: 'Test1-token', variable: 'SONAR_TOKEN')]) {
                 withSonarQubeEnv('SonarQube') {
                     sh """
                     ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
@@ -46,10 +47,10 @@ pipeline {
                     -Dsonar.host.url= \
                     -Dsonar.login=${SONAR_TOKEN}
                     """
+                        }
+                    }
                 }
-            }
         }
-
         stage('Build Application') {
             steps {
                 echo 'Build ứng dụng Node.js...'
